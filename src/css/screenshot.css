@@ -53,6 +53,22 @@
   line-height: 25px;
   padding: 0;
 }
+
+.screenshot-preview .thumb-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.45);
+  padding: 6px 8px;
+  border-radius: 999px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
 #screenshotModal {
   display: none;
   position: fixed;
