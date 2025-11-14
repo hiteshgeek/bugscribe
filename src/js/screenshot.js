@@ -27,6 +27,11 @@ class ScreenshotManager {
     this.recordedUrls = new Set(); // Track created blob URLs
     this.cursorOverlayElement = null; // Cursor highlight overlay element
     this.cursorOverlayListener = null; // Listener for cursor overlay
+    // Recording limits and timer state
+    this.MAX_RECORD_SECONDS = 10; // default maximum recording length in seconds
+    this._recordSeconds = 0;
+    this._recordTimerInterval = null;
+    this.recordBtn = null; // DOM reference to the record button (set in registerEvents)
     this.initUI();
     this.registerEvents();
   }
@@ -39,9 +44,40 @@ class ScreenshotManager {
     // Modal for fullscreen view
     this.fullscreenModal = document.createElement("div");
     this.fullscreenModal.id = "screenshotModal";
+    // Basic carousel modal structure: close, prev, next, slides container
     this.fullscreenModal.innerHTML =
-      '<span id="closeScreenshotModal">&times;</span><img id="fullscreenScreenshotImg">';
+      '<div id="screenshotModalInner" class="screenshot-modal-inner">' +
+      '  <button id="closeScreenshotModal" class="screenshot-close" aria-label="Close">&times;</button>' +
+      '  <div class="carousel-main" style="display:flex;align-items:center;gap:12px;">' +
+      '    <button id="carouselPrev" class="screenshot-nav prev" aria-label="Previous">&#9664;</button>' +
+      '    <div id="screenshotSlides" class="screenshot-slides" role="region" aria-label="Preview carousel"></div>' +
+      '    <button id="carouselNext" class="screenshot-nav next" aria-label="Next">&#9654;</button>' +
+      "  </div>" +
+      '  <div id="screenshotThumbnailStrip" class="screenshot-thumbs" aria-label="Thumbnails"></div>' +
+      "</div>";
     document.body.appendChild(this.fullscreenModal);
+    // Minimal styles for the modal/carousel (scoped here for simplicity)
+    if (!document.getElementById("screenshot-carousel-style")) {
+      const style = document.createElement("style");
+      style.id = "screenshot-carousel-style";
+      style.textContent =
+        "\n" +
+        "#screenshotModal{display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);z-index:2147483646} " +
+        "#screenshotModal .screenshot-modal-inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:94vw;max-height:94vh;padding:12px;border-radius:8px} " +
+        ".carousel-main{width:100%;display:flex;align-items:center;justify-content:center} " +
+        "#screenshotSlides{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-width:360px;min-height:200px} " +
+        ".carousel-slide{display:none;align-items:center;justify-content:center;width:100%;height:100%} " +
+        ".carousel-slide.active{display:flex} " +
+        ".carousel-slide img,.carousel-slide video{max-width:86vw;max-height:68vh;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,0.6);background:#111} " +
+        ".screenshot-close{position:absolute;top:8px;right:8px;background:transparent;border:none;color:#fff;font-size:30px;cursor:pointer;z-index:3} " +
+        ".screenshot-nav{background:rgba(0,0,0,0.45);border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;margin:0 6px} " +
+        ".screenshot-nav:hover{background:rgba(0,0,0,0.65)} " +
+        "#screenshotThumbnailStrip{display:flex;gap:8px;overflow-x:auto;padding:8px 6px;margin-top:8px;justify-content:center;width:100%;box-sizing:border-box} " +
+        ".screenshot-thumb{width:96px;height:64px;object-fit:cover;border-radius:6px;opacity:0.75;cursor:pointer;border:2px solid transparent;transition:transform .12s,opacity .12s,box-shadow .12s} " +
+        ".screenshot-thumb:hover{opacity:1;transform:translateY(-4px)} " +
+        ".screenshot-thumb.active{opacity:1;border-color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.6);transform:translateY(-6px)}\n";
+      document.head.appendChild(style);
+    }
     // Revoke recorded object URLs on page unload to free memory
     window.addEventListener("beforeunload", () => {
       try {
@@ -107,19 +143,16 @@ class ScreenshotManager {
     // Record button
     const recordBtn = document.getElementById("recordBtn");
     if (recordBtn) {
+      // keep reference for timer/UI updates
+      this.recordBtn = recordBtn;
       recordBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         if (!this.recording) {
+          // attempt to start recording; startRecording handles errors and UI
           await this.startRecording();
-          recordBtn.classList.add("btn-danger");
-          recordBtn.classList.remove("btn-outline-danger");
-          recordBtn.innerHTML = '<i class="fa-solid fa-stop"></i> Stop';
         } else {
+          // stopRecording handles UI cleanup
           await this.stopRecording();
-          recordBtn.classList.remove("btn-danger");
-          recordBtn.classList.add("btn-outline-danger");
-          recordBtn.innerHTML =
-            '<i class="fa-solid fa-circle-record"></i> Record';
         }
       });
     }
@@ -140,20 +173,142 @@ class ScreenshotManager {
       }
     });
     // Modal close -> use centralized cleanup to stop any playing video
-    document
-      .getElementById("closeScreenshotModal")
-      .addEventListener("click", () => {
-        this.closeFullscreen();
-      });
+    const closeBtn = document.getElementById("closeScreenshotModal");
+    if (closeBtn)
+      closeBtn.addEventListener("click", () => this.closeFullscreen());
     // Click outside image closes modal
     this.fullscreenModal.addEventListener("click", (e) => {
-      if (
-        e.target === this.fullscreenModal ||
-        e.target.id === "closeFullscreenBtn"
-      ) {
+      if (e.target === this.fullscreenModal) {
         this.closeFullscreen(true);
       }
     });
+    // Prev/Next nav
+    const prev = document.getElementById("carouselPrev");
+    const next = document.getElementById("carouselNext");
+    if (prev)
+      prev.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._showCarouselSlide(this._carouselIndex - 1);
+      });
+    if (next)
+      next.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._showCarouselSlide(this._carouselIndex + 1);
+      });
+  }
+
+  // Build slides and open at given 1-based preview index
+  openCarouselAt(index) {
+    // normalize
+    const idx = Number(index) || 1;
+    // build slides container
+    const slidesContainer = document.getElementById("screenshotSlides");
+    if (!slidesContainer) return;
+    // clear existing slides
+    slidesContainer.innerHTML = "";
+    const previews = Array.from(
+      this.previewContainer.querySelectorAll(".screenshot-preview")
+    );
+    previews.forEach((p, i) => {
+      const slide = document.createElement("div");
+      slide.className = "carousel-slide";
+      slide.setAttribute("data-slide-index", i + 1);
+      const type =
+        p.getAttribute("data-type") ||
+        (p.getAttribute("data-video-url") ? "video" : "image");
+      if (type === "video") {
+        const url = p.getAttribute("data-video-url");
+        const v = document.createElement("video");
+        v.src = url;
+        v.controls = true;
+        v.style.maxWidth = "90vw";
+        v.style.maxHeight = "82vh";
+        slide.appendChild(v);
+      } else {
+        const img = document.createElement("img");
+        // for image previews, the <img> inside preview holds the src
+        const srcImg = p.querySelector("img");
+        if (srcImg) img.src = srcImg.src;
+        img.alt = "Screenshot preview";
+        slide.appendChild(img);
+      }
+      slidesContainer.appendChild(slide);
+    });
+    // set carousel index tracking (1-based)
+    this._carouselTotal = Math.max(1, slidesContainer.children.length);
+    this._carouselIndex = Math.min(Math.max(1, idx), this._carouselTotal);
+    // build thumbnail strip
+    const thumbs = document.getElementById("screenshotThumbnailStrip");
+    if (thumbs) {
+      thumbs.innerHTML = "";
+      const previewsEls = Array.from(
+        this.previewContainer.querySelectorAll(".screenshot-preview")
+      );
+      previewsEls.forEach((p, i) => {
+        const thumbImg = document.createElement("img");
+        thumbImg.className = "screenshot-thumb";
+        const previewImg = p.querySelector("img");
+        if (previewImg) thumbImg.src = previewImg.src;
+        thumbImg.setAttribute("data-thumb-index", i + 1);
+        thumbImg.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this._showCarouselSlide(i + 1);
+        });
+        thumbs.appendChild(thumbImg);
+      });
+    }
+    this.fullscreenModal.style.display = "flex";
+    this._showCarouselSlide(this._carouselIndex);
+  }
+
+  // internal: show slide by 1-based index and pause/stop others
+  _showCarouselSlide(index) {
+    const slidesContainer = document.getElementById("screenshotSlides");
+    if (!slidesContainer) return;
+    const slides = Array.from(slidesContainer.children);
+    if (!slides.length) return;
+    // wrap index
+    let idx = Number(index) || 1;
+    if (idx < 1) idx = slides.length;
+    if (idx > slides.length) idx = 1;
+    // pause other videos
+    slides.forEach((s, i) => {
+      if (i + 1 === idx) {
+        s.classList.add("active");
+        const v = s.querySelector("video");
+        if (v) {
+          try {
+            v.play();
+          } catch (e) {}
+        }
+      } else {
+        s.classList.remove("active");
+        const v = s.querySelector("video");
+        if (v) {
+          try {
+            v.pause();
+            v.currentTime = 0;
+          } catch (e) {}
+        }
+      }
+    });
+    // update thumbnail active state
+    try {
+      const thumbs = document.getElementById("screenshotThumbnailStrip");
+      if (thumbs) {
+        const items = Array.from(thumbs.querySelectorAll(".screenshot-thumb"));
+        items.forEach((it, j) => {
+          if (j + 1 === idx) it.classList.add("active");
+          else it.classList.remove("active");
+        });
+        // ensure active thumb is visible
+        const active = thumbs.querySelector(".screenshot-thumb.active");
+        if (active)
+          active.scrollIntoView({ behavior: "smooth", inline: "center" });
+      }
+    } catch (e) {}
+
+    this._carouselIndex = idx;
   }
   // Create and show a cursor highlight overlay that follows the cursor.
   createCursorOverlay() {
@@ -292,6 +447,55 @@ class ScreenshotManager {
     } catch (e) {}
     this.cursorOverlayElement = null;
     this.cursorOverlayListener = null;
+  }
+
+  // --- Recording timer helpers ---
+  _formatSeconds(sec) {
+    const s = Math.max(0, Math.floor(sec));
+    const mm = String(Math.floor(s / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
+  }
+
+  _startRecordTimer() {
+    this._recordSeconds = 0;
+    if (this._recordTimerInterval) clearInterval(this._recordTimerInterval);
+    // update UI immediately
+    if (this.recordBtn) {
+      // append timer span if not present
+      let span = this.recordBtn.querySelector(".record-timer");
+      if (!span) {
+        span = document.createElement("span");
+        span.className = "record-timer ms-2";
+        this.recordBtn.appendChild(span);
+      }
+      span.textContent = this._formatSeconds(this._recordSeconds);
+    }
+    this._recordTimerInterval = setInterval(() => {
+      this._recordSeconds += 1;
+      if (this.recordBtn) {
+        const span = this.recordBtn.querySelector(".record-timer");
+        if (span) span.textContent = this._formatSeconds(this._recordSeconds);
+      }
+      // stop if reached maximum
+      if (this._recordSeconds >= this.MAX_RECORD_SECONDS) {
+        try {
+          this.stopRecording();
+        } catch (e) {}
+      }
+    }, 1000);
+  }
+
+  _stopRecordTimer() {
+    if (this._recordTimerInterval) {
+      clearInterval(this._recordTimerInterval);
+      this._recordTimerInterval = null;
+    }
+    this._recordSeconds = 0;
+    if (this.recordBtn) {
+      const span = this.recordBtn.querySelector(".record-timer");
+      if (span) span.remove();
+    }
   }
 
   // Screenshot of only the visible viewport
@@ -454,6 +658,22 @@ class ScreenshotManager {
       try {
         this.createCursorOverlay();
       } catch (e) {}
+      // update record button UI and start timer UI and auto-stop guard
+      try {
+        if (this.recordBtn) {
+          this.recordBtn.classList.add("btn-danger");
+          this.recordBtn.classList.remove("btn-outline-danger");
+          // set base label (icon + text) but preserve timer span which _startRecordTimer will add
+          // create an icon node and text node rather than using innerHTML to avoid wiping spans
+          this.recordBtn.innerHTML = "";
+          const icon = document.createElement("i");
+          icon.className = "fa-solid fa-stop";
+          this.recordBtn.appendChild(icon);
+          const text = document.createTextNode(" Stop");
+          this.recordBtn.appendChild(text);
+        }
+        this._startRecordTimer();
+      } catch (e) {}
     } catch (err) {
       console.error("Recording failed", err);
       alert("Could not start recording: " + err.message);
@@ -462,9 +682,24 @@ class ScreenshotManager {
 
   async stopRecording() {
     if (this.mediaRecorder && this.recording) {
-      this.mediaRecorder.stop();
+      try {
+        this.mediaRecorder.stop();
+      } catch (e) {}
       this.recording = false;
     }
+    // stop timer UI
+    try {
+      this._stopRecordTimer();
+    } catch (e) {}
+    // ensure record button UI resets if present
+    try {
+      if (this.recordBtn) {
+        this.recordBtn.classList.remove("btn-danger");
+        this.recordBtn.classList.add("btn-outline-danger");
+        this.recordBtn.innerHTML =
+          '<i class="fa-solid fa-circle-record"></i> Record';
+      }
+    } catch (e) {}
   }
 
   async handleRecorded(blob) {
@@ -493,6 +728,7 @@ class ScreenshotManager {
         wrapper.className = "screenshot-preview position-relative";
         wrapper.setAttribute("data-preview-index", this.previewCount);
         wrapper.setAttribute("data-video-url", url);
+        wrapper.setAttribute("data-type", "video");
 
         const img = document.createElement("img");
         img.src = thumbData;
@@ -505,9 +741,9 @@ class ScreenshotManager {
         play.innerHTML = '<i class="fa-solid fa-play"></i>';
         wrapper.appendChild(play);
 
-        // click opens modal and plays video via centralized method
+        // click opens carousel modal at this preview index
         wrapper.addEventListener("click", () => {
-          this.expandVideo(url);
+          this.openCarouselAt(this.previewCount);
         });
 
         this.previewContainer.appendChild(wrapper);
@@ -546,13 +782,15 @@ class ScreenshotManager {
     const wrapper = document.createElement("div");
     wrapper.className = "screenshot-preview position-relative";
     wrapper.setAttribute("data-preview-index", this.previewCount);
-
+    wrapper.setAttribute("data-type", "image");
     const img = document.createElement("img");
     img.src = dataUrl;
     img.title = "Click to expand";
     img.className = "thumb-img";
-    img.addEventListener("click", () => {
-      this.expandScreenshot(dataUrl);
+    // clicking thumbnail opens the carousel at this preview
+    // prefer attaching click to the wrapper so play overlay is included
+    wrapper.addEventListener("click", () => {
+      this.openCarouselAt(this.previewCount);
     });
 
     const number = document.createElement("span");
@@ -608,24 +846,30 @@ class ScreenshotManager {
   closeFullscreen(hideModal = true) {
     // if a video is present, pause and revoke
     try {
+      // Pause and cleanup any videos inside the carousel slides
+      const slidesContainer = document.getElementById("screenshotSlides");
+      if (slidesContainer) {
+        const vids = slidesContainer.querySelectorAll("video");
+        vids.forEach((v) => {
+          try {
+            v.pause();
+            v.removeAttribute("src");
+            v.load();
+          } catch (e) {}
+        });
+      }
+      // Also handle legacy fullscreen element if present
       const el = document.getElementById("fullscreenScreenshotImg");
       if (el && el.tagName === "VIDEO") {
         try {
           el.pause();
         } catch (e) {}
-        // remove src to stop streaming
         try {
           el.removeAttribute("src");
-        } catch (e) {}
-        try {
           el.load();
         } catch (e) {}
-        // Do not revoke the object URL here so the user can re-open the
-        // recorded video after closing the modal. Recorded URLs are revoked
-        // on page unload to free resources.
         this.currentPlayingVideoUrl = null;
         this.currentPlayingVideoElement = null;
-        // replace video with an img placeholder for future screenshots
         const newImg = document.createElement("img");
         newImg.id = "fullscreenScreenshotImg";
         newImg.style.maxWidth = "90vw";
@@ -635,7 +879,16 @@ class ScreenshotManager {
     } catch (err) {
       console.error("Error cleaning up fullscreen video", err);
     }
-    if (hideModal) this.fullscreenModal.style.display = "none";
+    if (hideModal) {
+      try {
+        this.fullscreenModal.style.display = "none";
+      } catch (e) {}
+      // clear slides to free memory
+      try {
+        const slides = document.getElementById("screenshotSlides");
+        if (slides) slides.innerHTML = "";
+      } catch (e) {}
+    }
   }
 }
 
