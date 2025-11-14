@@ -1,0 +1,223 @@
+// Modern Gulpfile with async/await, modular tasks, and improved config
+const gulp = require("gulp");
+const fs = require("fs");
+const { rimraf } = require("rimraf");
+const gulpLoadPlugins = require("gulp-load-plugins");
+const plugins = gulpLoadPlugins();
+const noop = require("gulp-noop");
+const uglify = require("gulp-uglify-es").default;
+const rollup = require("gulp-better-rollup");
+const rollupBabel = require("@rollup/plugin-babel").default;
+const sass = require("gulp-sass")(require("sass"));
+const javascriptObfuscator = require("gulp-javascript-obfuscator");
+const path = require("path");
+const rev = require("gulp-rev");
+
+// Configurable options (adjusted for your structure)
+const config = {
+  assetsCssDir: "src/assets/css",
+  assetsJsDir: "src/assets/js",
+  libCssDir: "src/uibuilder/css",
+  libJsDir: "src/uibuilder/js",
+  nodeDir: "node_modules",
+  sassPattern: "css/**/*.scss",
+  jsPattern: "js/**/*.js",
+  cssManifestPath: "dist/rev/manifest-css.json",
+  jsManifestPath: "dist/rev/manifest-js.json",
+  cssOutDir: "dist/css",
+  jsOutDir: "dist/js",
+};
+
+// Utility: Remove old hashed files not in manifest
+function cleanupOldFiles(dir, manifestPath, ext) {
+  return async function cleanupTask(done) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+      const keepFiles = new Set(Object.values(manifest));
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        if (file.endsWith(ext) && !keepFiles.has(file)) {
+          fs.unlinkSync(path.join(dir, file));
+          // Also try to remove sourcemap if present
+          const mapFile = file + ".map";
+          if (fs.existsSync(path.join(dir, mapFile))) {
+            fs.unlinkSync(path.join(dir, mapFile));
+          }
+        }
+      }
+      done && done();
+    } catch (e) {
+      console.error("[Cleanup] Error:", e);
+      done && done(e);
+    }
+  };
+}
+
+gulp.task(
+  "clean-old-js",
+  cleanupOldFiles(config.jsOutDir, config.jsManifestPath, ".js")
+);
+gulp.task(
+  "clean-old-css",
+  cleanupOldFiles(config.cssOutDir, config.cssManifestPath, ".css")
+);
+
+// Detect production mode via NODE_ENV or --production
+const isProduction =
+  process.env.NODE_ENV === "production" ||
+  process.argv.includes("--production");
+const useSourceMaps = !isProduction; // Enable sourcemaps in dev, disable in production
+
+// Utility: Run a series of tasks in sequence (replaces Pipeline/Q)
+async function runPipeline(entries, taskFn) {
+  for (const entry of entries) {
+    await new Promise((resolve, reject) => {
+      const stream = taskFn(...entry);
+      stream.on("end", resolve);
+      stream.on("error", reject);
+    });
+  }
+}
+
+// Asset helpers
+
+function addAllStyles(done) {
+  const entries = styleEntries.map(([srcArr, outName]) =>
+    gulp
+      .src(srcArr)
+      .pipe(plugins.plumber({ errorHandler: onError }))
+      .pipe(useSourceMaps ? plugins.sourcemaps.init() : noop())
+      .pipe(sass())
+      .pipe(plugins.concat(outName))
+      .pipe(isProduction ? plugins.cleanCss() : noop())
+      .pipe(rev())
+      .pipe(useSourceMaps ? plugins.sourcemaps.write(".") : noop())
+      .pipe(gulp.dest(config.cssOutDir))
+  );
+  return require("merge-stream")(...entries)
+    .pipe(rev.manifest(config.cssManifestPath))
+    .pipe(gulp.dest("."));
+}
+
+// ESM output (for <script type="module">)
+
+function addAllScriptsESM() {
+  const entries = scriptEntries.map(([srcArr, outName]) =>
+    gulp
+      .src(srcArr)
+      .pipe(plugins.plumber({ errorHandler: onError }))
+      .pipe(useSourceMaps ? plugins.sourcemaps.init() : noop())
+      .pipe(
+        rollup(
+          { plugins: [rollupBabel({ babelHelpers: "bundled" })] },
+          { format: "esm" }
+        )
+      )
+      .pipe(plugins.concat(outName))
+      .pipe(isProduction ? uglify() : noop())
+      .pipe(isProduction ? javascriptObfuscator() : noop())
+      .pipe(rev())
+      .pipe(useSourceMaps ? plugins.sourcemaps.write(".") : noop())
+      .pipe(gulp.dest(config.jsOutDir))
+  );
+  return require("merge-stream")(...entries)
+    .pipe(rev.manifest(config.jsManifestPath))
+    .pipe(gulp.dest("."));
+}
+
+// IIFE output (for <script nomodule>)
+
+function addAllScriptsIIFE() {
+  const entries = scriptEntries.map(([srcArr, outName]) =>
+    gulp
+      .src(srcArr)
+      .pipe(plugins.plumber({ errorHandler: onError }))
+      .pipe(useSourceMaps ? plugins.sourcemaps.init() : noop())
+      .pipe(
+        rollup(
+          { plugins: [rollupBabel({ babelHelpers: "bundled" })] },
+          { format: "iife", name: "MyLib" }
+        )
+      )
+      .pipe(plugins.concat(outName.replace(/\.js$/, ".iife.js")))
+      .pipe(isProduction ? uglify() : noop())
+      .pipe(isProduction ? javascriptObfuscator() : noop())
+      .pipe(rev())
+      .pipe(useSourceMaps ? plugins.sourcemaps.write(".") : noop())
+      .pipe(gulp.dest(config.jsOutDir))
+  );
+  return require("merge-stream")(...entries)
+    .pipe(rev.manifest(config.jsManifestPath, { merge: true }))
+    .pipe(gulp.dest("."));
+}
+
+function onError(err) {
+  console.error("[Error]", err.toString());
+  if (this && typeof this.emit === "function") this.emit("end");
+}
+
+gulp.task("clean", async function () {});
+
+// Clean output folders before each build
+gulp.task("clean-js", async function () {
+  await rimraf(config.jsOutDir + "/*", { glob: true });
+});
+gulp.task("clean-css", async function () {
+  await rimraf(config.cssOutDir + "/*", { glob: true });
+});
+gulp.task("clean", async function () {
+  await rimraf("dist/**", { glob: true });
+});
+
+const styleEntries = [
+  [[config.libCssDir + "/ui-builder.scss"], "ui-builder.css"],
+  [[config.assetsCssDir + "/sidebar.scss"], "sidebar.css"],
+];
+gulp.task("styles", gulp.series("clean-css", addAllStyles));
+
+// Run cleanup after styles
+gulp.task("styles-clean", gulp.series("styles", "clean-old-css"));
+
+const scriptEntries = [
+  [
+    [
+      config.libJsDir + "/index.js",
+      config.libJsDir + "/ui-utils.js",
+      config.libJsDir + "/ui-buttons.js",
+    ],
+    "ui-builder.js",
+  ],
+  [[config.assetsJsDir + "/modal.js"], "modal.js"],
+  [[config.assetsJsDir + "/tabs.js"], "tabs.js"],
+];
+
+gulp.task(
+  "scripts",
+  gulp.series("clean-js", addAllScriptsESM, addAllScriptsIIFE)
+);
+
+// Run cleanup after scripts
+gulp.task("scripts-clean", gulp.series("scripts", "clean-old-js"));
+
+// Watch task
+
+gulp.task("watch", function () {
+  gulp.watch(
+    [config.libCssDir + "/**/*.scss", config.assetsCssDir + "/**/*.scss"],
+    gulp.series("styles")
+  );
+  gulp.watch(
+    [config.libJsDir + "/**/*.js", config.assetsJsDir + "/**/*.js"],
+    gulp.series("scripts")
+  );
+});
+
+// Minimal test watcher for debugging (no polling)
+
+// Default and dev/prod tasks (must be last)
+gulp.task(
+  "dev",
+  gulp.series("clean", "styles-clean", "scripts-clean", "watch")
+);
+gulp.task("prod", gulp.series("clean", "styles-clean", "scripts-clean"));
+gulp.task("default", gulp.series("dev"));
