@@ -44,6 +44,34 @@ class ScreenshotManager {
     // Modal for fullscreen view
     this.fullscreenModal = document.createElement("div");
     this.fullscreenModal.id = "screenshotModal";
+    // --- Report Bug modal markup ---
+    const reportModal = document.createElement("div");
+    reportModal.className = "modal fade";
+    reportModal.id = "reportBugModal";
+    reportModal.tabIndex = -1;
+    reportModal.innerHTML = `
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Report Bug</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-2"><label class="form-label">Page URL</label><input id="reportUrl" class="form-control" readonly></div>
+              <div class="mb-2"><label class="form-label">Message</label><textarea id="reportMessage" class="form-control" rows="4" placeholder="Describe the bug..."></textarea></div>
+              <div class="mb-2"><label class="form-label">Attached Media</label>
+                <div id="reportMediaList" class="d-flex flex-wrap gap-2"></div>
+              </div>
+              <div id="reportStatus" class="text-muted small"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" id="submitReportBtn" class="btn btn-primary">Submit Report</button>
+            </div>
+          </div>
+        </div>`;
+    document.body.appendChild(reportModal);
+    this.reportModalEl = reportModal;
     // Basic carousel modal structure: close, prev, next, slides container
     this.fullscreenModal.innerHTML =
       '<div id="screenshotModalInner" class="screenshot-modal-inner">' +
@@ -88,6 +116,22 @@ class ScreenshotManager {
         });
       } catch (e) {}
     });
+    // Add a 'Clear All' button to the preview area for quick cleanup
+    try {
+      if (this.previewContainer) {
+        const clearBtn = document.createElement("button");
+        clearBtn.id = "clearAllPreviewsBtn";
+        clearBtn.className = "btn btn-sm btn-outline-secondary ms-2";
+        clearBtn.title = "Remove all previews";
+        clearBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Clear All';
+        clearBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          this._clearAllPreviews();
+        });
+        // content block: media + delete button (horizontal)
+        this.previewContainer.appendChild(clearBtn);
+      }
+    } catch (e) {}
   }
 
   registerEvents() {
@@ -98,6 +142,24 @@ class ScreenshotManager {
         this.takeScreenshot();
       });
     }
+
+    // Report Bug button
+    try {
+      const reportBtn = document.querySelector(".report-btn");
+      if (reportBtn) {
+        reportBtn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          this._openReportModal();
+        });
+      }
+      const submitBtn = document.getElementById("submitReportBtn");
+      if (submitBtn) {
+        submitBtn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          this._submitReport();
+        });
+      }
+    } catch (e) {}
     // Dropdown: visible page screenshot
     const visibleBtn = document.getElementById("screenshotVisibleBtn");
     if (visibleBtn) {
@@ -498,6 +560,263 @@ class ScreenshotManager {
     }
   }
 
+  // Remove a single preview element and clean up any associated resources
+  _removePreviewElement(wrapper) {
+    if (!wrapper || !wrapper.parentNode) return;
+    try {
+      // if it's a video preview, revoke its object URL
+      const videoUrl = wrapper.getAttribute("data-video-url");
+      if (videoUrl) {
+        try {
+          // stop any playing video elements that reference this URL
+          const vids = wrapper.querySelectorAll("video");
+          vids.forEach((v) => {
+            try {
+              v.pause();
+              v.removeAttribute("src");
+              v.load();
+            } catch (e) {}
+          });
+        } catch (e) {}
+        try {
+          URL.revokeObjectURL(videoUrl);
+        } catch (e) {}
+        try {
+          this.recordedUrls.delete(videoUrl);
+        } catch (e) {}
+      }
+      // remove the element from DOM
+      wrapper.remove();
+    } catch (e) {
+      console.error("Failed to remove preview", e);
+    }
+    // renumber remaining previews so numbering stays contiguous
+    try {
+      const previews = Array.from(
+        this.previewContainer.querySelectorAll(".screenshot-preview")
+      );
+      previews.forEach((p, idx) => {
+        const newIndex = idx + 1;
+        p.setAttribute("data-preview-index", String(newIndex));
+        const num = p.querySelector(".thumb-number");
+        if (num) num.textContent = String(newIndex);
+        // also update any thumb-img data-thumb-index if present
+        const thumbImg = p.querySelector(".screenshot-thumb");
+        if (thumbImg)
+          thumbImg.setAttribute("data-thumb-index", String(newIndex));
+      });
+      // keep previewCount in sync with current number
+      this.previewCount = previews.length;
+    } catch (e) {
+      // ignore renumber errors
+    }
+    // if modal is open, close it to avoid stale slides
+    try {
+      if (
+        this.fullscreenModal &&
+        this.fullscreenModal.style &&
+        this.fullscreenModal.style.display === "flex"
+      ) {
+        this.closeFullscreen(true);
+      }
+    } catch (e) {}
+  }
+
+  // Remove all previews and revoke created blob URLs
+  _clearAllPreviews() {
+    try {
+      // revoke tracked recorded URLs
+      try {
+        this.recordedUrls.forEach((u) => {
+          try {
+            URL.revokeObjectURL(u);
+          } catch (e) {}
+        });
+      } catch (e) {}
+      this.recordedUrls.clear();
+      // remove preview elements
+      const items = Array.from(
+        this.previewContainer.querySelectorAll(".screenshot-preview")
+      );
+      items.forEach((it) => {
+        try {
+          it.remove();
+        } catch (e) {}
+      });
+      // reset preview counter so new screenshots start from 1
+      try {
+        this.previewCount = 0;
+      } catch (e) {}
+    } catch (e) {
+      console.error("Failed clearing previews", e);
+    }
+    // close any open modal/carousel
+    try {
+      this.closeFullscreen(true);
+    } catch (e) {}
+  }
+
+  // ---------------- Report modal helpers ----------------
+  _openReportModal() {
+    if (!this.reportModalEl) return;
+    const bsModal = new bootstrap.Modal(this.reportModalEl);
+    const urlInput = this.reportModalEl.querySelector("#reportUrl");
+    const msgInput = this.reportModalEl.querySelector("#reportMessage");
+    const mediaList = this.reportModalEl.querySelector("#reportMediaList");
+    urlInput.value = window.location.href;
+    msgInput.value = "";
+    mediaList.innerHTML = "";
+    // populate current previews
+    const previews = Array.from(
+      this.previewContainer.querySelectorAll(".screenshot-preview")
+    );
+    previews.forEach((p, idx) => {
+      const item = document.createElement("div");
+      item.className = "card p-1";
+      item.style.width = "120px";
+      item.style.height = "90px";
+      item.style.display = "flex";
+      item.style.flexDirection = "column";
+      item.style.alignItems = "stretch";
+      item.style.justifyContent = "space-between";
+      item.dataset.previewIndex = idx;
+      const thumb = p.querySelector("img, video");
+      const img = document.createElement("img");
+      img.style.width = "100%";
+      img.style.height = "64px";
+      img.style.objectFit = "cover";
+      if (thumb && thumb.tagName === "VIDEO") {
+        img.src = thumb.dataset.thumb || "";
+      } else if (thumb && thumb.tagName === "IMG") {
+        img.src = thumb.src || "";
+      }
+      const btnRow = document.createElement("div");
+      btnRow.style.display = "flex";
+      btnRow.style.justifyContent = "space-between";
+      const viewBtn = document.createElement("button");
+      viewBtn.className = "btn btn-sm btn-outline-primary";
+      viewBtn.textContent = "View";
+      viewBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.openCarouselAt(idx + 1);
+      });
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn btn-sm btn-outline-danger";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const wrapper = this.previewContainer.querySelectorAll(
+          ".screenshot-preview"
+        )[idx];
+        if (wrapper) this._removePreviewElement(wrapper);
+        item.remove();
+      });
+      btnRow.appendChild(viewBtn);
+      btnRow.appendChild(delBtn);
+      item.appendChild(img);
+      item.appendChild(btnRow);
+      mediaList.appendChild(item);
+    });
+    bsModal.show();
+  }
+
+  _closeReportModal() {
+    if (!this.reportModalEl) return;
+    const bsModal = bootstrap.Modal.getInstance(this.reportModalEl);
+    if (bsModal) bsModal.hide();
+  }
+
+  // helper: convert data URL to Blob
+  _dataURLToBlob(dataurl) {
+    const parts = dataurl.split(",");
+    const matches = parts[0].match(/:(.*?);/);
+    const mime = matches ? matches[1] : "application/octet-stream";
+    const bstr = atob(parts[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new Blob([u8arr], { type: mime });
+  }
+
+  _gatherMediaForReport() {
+    const previews = Array.from(
+      this.previewContainer.querySelectorAll(".screenshot-preview")
+    );
+    const promises = previews.map((p, idx) => {
+      const img = p.querySelector("img");
+      const vid = p.querySelector("video");
+      const wrapperVideoUrl = p.getAttribute("data-video-url");
+      if (img) {
+        const src = img.src || "";
+        if (src.indexOf("data:") === 0) {
+          const blob = this._dataURLToBlob(src);
+          return Promise.resolve({
+            blob: blob,
+            filename: `screenshot_${idx + 1}.png`,
+            mime: blob.type || "image/png",
+          });
+        }
+        // if it's an object URL or remote, try fetch
+        return fetch(src)
+          .then((r) => r.blob())
+          .then((blob) => ({
+            blob: blob,
+            filename: `screenshot_${idx + 1}.png`,
+            mime: blob.type || "image/png",
+          }))
+          .catch(() => null);
+      }
+      const srcUrl =
+        wrapperVideoUrl ||
+        (vid ? vid.getAttribute("data-video-url") || vid.src || "" : "");
+      if (srcUrl) {
+        return fetch(srcUrl)
+          .then((r) => r.blob())
+          .then((blob) => ({
+            blob: blob,
+            filename: `recording_${idx + 1}.webm`,
+            mime: blob.type || "video/webm",
+          }))
+          .catch(() => null);
+      }
+      return Promise.resolve(null);
+    });
+    return Promise.all(promises).then((arr) => arr.filter((a) => a));
+  }
+
+  async _submitReport() {
+    const statusEl = this.reportModalEl.querySelector("#reportStatus");
+    statusEl.textContent = "Preparing report...";
+    const url = this.reportModalEl.querySelector("#reportUrl").value;
+    const message = this.reportModalEl.querySelector("#reportMessage").value;
+    try {
+      const mediaItems = await this._gatherMediaForReport();
+      statusEl.textContent = "Uploading report...";
+      const form = new FormData();
+      form.append("page_url", url);
+      form.append("message", message);
+      mediaItems.forEach((it, i) => {
+        try {
+          // `it.blob` is a Blob
+          form.append("attachments[]", it.blob, it.filename || `file_${i}`);
+        } catch (e) {}
+      });
+      const res = await fetch("report.php", { method: "POST", body: form });
+      const j = await res.json();
+      if (j && j.ok) {
+        statusEl.textContent = "Report submitted. ID: " + (j.id || "");
+        setTimeout(() => {
+          this._closeReportModal();
+          statusEl.textContent = "";
+        }, 1200);
+      } else {
+        statusEl.textContent = "Error submitting: " + (j.error || "unknown");
+      }
+    } catch (err) {
+      statusEl.textContent = "Error: " + err.message;
+    }
+  }
+
   // Screenshot of only the visible viewport
   takeScreenshotVisible() {
     loadHtml2Canvas(() => {
@@ -726,6 +1045,12 @@ class ScreenshotManager {
         this.previewCount += 1;
         const wrapper = document.createElement("div");
         wrapper.className = "screenshot-preview position-relative";
+        // layout: stack media above controls
+        wrapper.style.display = "flex";
+        wrapper.style.flexDirection = "column";
+        wrapper.style.alignItems = "center";
+        wrapper.style.justifyContent = "flex-start";
+        wrapper.style.gap = "6px";
         wrapper.setAttribute("data-preview-index", this.previewCount);
         wrapper.setAttribute("data-video-url", url);
         wrapper.setAttribute("data-type", "video");
@@ -734,18 +1059,43 @@ class ScreenshotManager {
         img.src = thumbData;
         img.title = "Click to play video";
         img.className = "thumb-img";
-        wrapper.appendChild(img);
 
         const play = document.createElement("span");
         play.className = "thumb-play";
         play.innerHTML = '<i class="fa-solid fa-play"></i>';
-        wrapper.appendChild(play);
 
         // click opens carousel modal at this preview index
         wrapper.addEventListener("click", () => {
           this.openCarouselAt(this.previewCount);
         });
 
+        const number = document.createElement("span");
+        number.className = "thumb-number";
+        number.textContent = String(this.previewCount);
+
+        // content block: media + delete button (horizontal)
+        const content = document.createElement("div");
+        content.className = "preview-content";
+        content.style.display = "flex";
+        content.style.alignItems = "center";
+        content.style.gap = "8px";
+        // add media
+        content.appendChild(img);
+        // delete button to the right of media
+        const del = document.createElement("button");
+        del.className = "btn btn-sm btn-outline-danger thumb-delete";
+        del.title = "Delete preview";
+        del.innerHTML = '<i class="fa-solid fa-trash"></i>';
+        del.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          this._removePreviewElement(wrapper);
+        });
+        content.appendChild(del);
+        // assemble wrapper: content (media+delete), play overlay, number overlay
+        wrapper.appendChild(content);
+        wrapper.appendChild(play);
+        wrapper.appendChild(number);
+        // add to preview strip
         this.previewContainer.appendChild(wrapper);
       } catch (err) {
         console.error("thumbnail capture failed", err);
@@ -781,6 +1131,12 @@ class ScreenshotManager {
     this.previewCount += 1;
     const wrapper = document.createElement("div");
     wrapper.className = "screenshot-preview position-relative";
+    // layout: stack media above controls
+    wrapper.style.display = "flex";
+    wrapper.style.flexDirection = "column";
+    wrapper.style.alignItems = "center";
+    wrapper.style.justifyContent = "flex-start";
+    wrapper.style.gap = "6px";
     wrapper.setAttribute("data-preview-index", this.previewCount);
     wrapper.setAttribute("data-type", "image");
     const img = document.createElement("img");
@@ -797,7 +1153,25 @@ class ScreenshotManager {
     number.className = "thumb-number";
     number.textContent = String(this.previewCount);
 
-    wrapper.appendChild(img);
+    // content block: media + delete button (horizontal)
+    const content = document.createElement("div");
+    content.className = "preview-content";
+    content.style.display = "flex";
+    content.style.alignItems = "center";
+    content.style.gap = "8px";
+    content.appendChild(img);
+    // delete button to the right of media
+    const del = document.createElement("button");
+    del.className = "btn btn-sm btn-outline-danger thumb-delete";
+    del.title = "Delete preview";
+    del.innerHTML = '<i class="fa-solid fa-trash"></i>';
+    del.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this._removePreviewElement(wrapper);
+    });
+    content.appendChild(del);
+
+    wrapper.appendChild(content);
     wrapper.appendChild(number);
     this.previewContainer.appendChild(wrapper);
   }
