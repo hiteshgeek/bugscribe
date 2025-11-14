@@ -6,45 +6,52 @@
   right: auto !important;
   z-index: auto !important;
 }
+
 #screenshotPreviewContainer {
+  margin-left: 10px;
   display: flex;
   justify-content: flex-start;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
 }
+/* generic thumbnail styles (kept minimal; specific .thumb-img will set size) */
 #screenshotPreviewContainer img {
-  height: 36px;
   width: auto;
   cursor: pointer;
   border: 2px solid #888;
   border-radius: 4px;
   box-shadow: 0 2px 8px #aaa;
-  box-shadow: 0 2px 8px #aaa;
-
-  .screenshot-preview {
-    position: relative;
-    display: inline-block;
-  }
-  .screenshot-preview .thumb-img {
-    display: block;
-    height: 54px;
-    max-width: 120px;
-  }
-  .screenshot-preview .thumb-number {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.6);
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-weight: 600;
-    font-size: 14px;
-    pointer-events: none;
-  }
   background: #fff;
+}
+
+.screenshot-preview {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.screenshot-preview .thumb-img {
+  display: block;
+  height: 54px;
+  max-width: 120px;
+}
+.screenshot-preview .thumb-number {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 14px;
+  pointer-events: none;
+
+  width: 25px;
+  height: 25px;
+  text-align: center;
+  line-height: 25px;
+  padding: 0;
 }
 #screenshotModal {
   display: none;
