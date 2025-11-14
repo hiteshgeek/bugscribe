@@ -1,8 +1,10 @@
 /* screenshot.css - styles for screenshot button, preview, and modal */
 .screenshot-btn {
-  bottom: 90px !important;
-  right: 24px !important;
-  z-index: 1050 !important;
+  /* Used in footer as a regular button; remove fixed positioning */
+  position: relative !important;
+  bottom: auto !important;
+  right: auto !important;
+  z-index: auto !important;
 }
 #screenshotPreviewContainer {
   display: flex;
@@ -12,13 +14,36 @@
   min-width: 0;
 }
 #screenshotPreviewContainer img {
-  height: 54px;
+  height: 36px;
   width: auto;
-  max-width: 120px;
   cursor: pointer;
   border: 2px solid #888;
   border-radius: 4px;
   box-shadow: 0 2px 8px #aaa;
+  box-shadow: 0 2px 8px #aaa;
+
+  .screenshot-preview {
+    position: relative;
+    display: inline-block;
+  }
+  .screenshot-preview .thumb-img {
+    display: block;
+    height: 54px;
+    max-width: 120px;
+  }
+  .screenshot-preview .thumb-number {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 14px;
+    pointer-events: none;
+  }
   background: #fff;
 }
 #screenshotModal {
