@@ -63,6 +63,11 @@ class ScreenshotManager {
                 <div id="reportMediaList" class="d-flex flex-wrap gap-2"></div>
               </div>
               <div id="reportStatus" class="text-muted small"></div>
+              <div id="reportUploadProgress" class="mt-2" style="display:none">
+                <div class="progress">
+                  <div id="reportProgressBar" class="progress-bar" role="progressbar" style="width:0%" aria-valuemin="0" aria-valuemax="100">0%</div>
+                </div>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -202,7 +207,6 @@ class ScreenshotManager {
         }
       });
     }
-    // Record button
     const recordBtn = document.getElementById("recordBtn");
     if (recordBtn) {
       // keep reference for timer/UI updates
@@ -681,14 +685,40 @@ class ScreenshotManager {
       item.style.justifyContent = "space-between";
       item.dataset.previewIndex = idx;
       const thumb = p.querySelector("img, video");
-      const img = document.createElement("img");
-      img.style.width = "100%";
-      img.style.height = "64px";
-      img.style.objectFit = "cover";
-      if (thumb && thumb.tagName === "VIDEO") {
-        img.src = thumb.dataset.thumb || "";
-      } else if (thumb && thumb.tagName === "IMG") {
-        img.src = thumb.src || "";
+      // If this preview is a video, show a small video element (with poster if available)
+      let mediaEl;
+      const isVideo =
+        p.getAttribute("data-type") === "video" ||
+        p.getAttribute("data-video-url");
+      if (isVideo) {
+        const videoEl = document.createElement("video");
+        videoEl.style.width = "100%";
+        videoEl.style.height = "64px";
+        videoEl.style.objectFit = "cover";
+        videoEl.controls = true;
+        // prefer original blob attached to wrapper, else use data-video-url
+        const origBlob = p.__originalBlob || p.__origBlob || null;
+        if (origBlob) {
+          try {
+            videoEl.src = URL.createObjectURL(origBlob);
+          } catch (e) {}
+        } else if (p.getAttribute("data-video-url")) {
+          videoEl.src = p.getAttribute("data-video-url");
+        }
+        // set poster from preview img if present
+        const previewImg = p.querySelector("img");
+        if (previewImg && previewImg.src)
+          videoEl.setAttribute("poster", previewImg.src);
+        mediaEl = videoEl;
+      } else {
+        const img = document.createElement("img");
+        img.style.width = "100%";
+        img.style.height = "64px";
+        img.style.objectFit = "cover";
+        if (thumb && thumb.tagName === "IMG") img.src = thumb.src || "";
+        else if (thumb && thumb.tagName === "VIDEO")
+          img.src = thumb.dataset.thumb || "";
+        mediaEl = img;
       }
       const btnRow = document.createElement("div");
       btnRow.style.display = "flex";
@@ -713,7 +743,7 @@ class ScreenshotManager {
       });
       btnRow.appendChild(viewBtn);
       btnRow.appendChild(delBtn);
-      item.appendChild(img);
+      item.appendChild(mediaEl);
       item.appendChild(btnRow);
       mediaList.appendChild(item);
     });
@@ -739,6 +769,7 @@ class ScreenshotManager {
   }
 
   _gatherMediaForReport() {
+    // For each preview return { blob, filename, mime, thumbBlob, thumbName }
     const previews = Array.from(
       this.previewContainer.querySelectorAll(".screenshot-preview")
     );
@@ -746,37 +777,121 @@ class ScreenshotManager {
       const img = p.querySelector("img");
       const vid = p.querySelector("video");
       const wrapperVideoUrl = p.getAttribute("data-video-url");
+
+      // helper to create resized thumbnail for an image blob
+      const createImageThumb = (blob, maxW = 320) => {
+        return new Promise((resolve) => {
+          try {
+            const url = URL.createObjectURL(blob);
+            const i = new Image();
+            i.onload = function () {
+              const ratio = i.width ? Math.min(1, maxW / i.width) : 1;
+              const w = Math.round(i.width * ratio);
+              const h = Math.round(i.height * ratio);
+              const c = document.createElement("canvas");
+              c.width = w;
+              c.height = h;
+              const ctx = c.getContext("2d");
+              ctx.drawImage(i, 0, 0, w, h);
+              c.toBlob(
+                (thumbBlob) => {
+                  URL.revokeObjectURL(url);
+                  resolve(thumbBlob);
+                },
+                "image/jpeg",
+                0.8
+              );
+            };
+            i.onerror = function () {
+              URL.revokeObjectURL(url);
+              resolve(null);
+            };
+            i.src = url;
+          } catch (e) {
+            resolve(null);
+          }
+        });
+      };
+
+      const srcUrl =
+        wrapperVideoUrl ||
+        (vid ? vid.getAttribute("data-video-url") || vid.src || "" : "");
+
+      // If preview is a video (has srcUrl or data-type=video), handle video first
+      if (srcUrl || p.getAttribute("data-type") === "video") {
+        // find the thumbnail image inside the preview (we created it earlier in UI)
+        const previewImg = p.querySelector(".thumb-img");
+        let thumbPromise = Promise.resolve(null);
+        if (
+          previewImg &&
+          previewImg.src &&
+          previewImg.src.indexOf("data:") === 0
+        ) {
+          thumbPromise = Promise.resolve(this._dataURLToBlob(previewImg.src));
+        } else if (previewImg && previewImg.src) {
+          thumbPromise = fetch(previewImg.src)
+            .then((r) => r.blob())
+            .catch(() => null);
+        }
+        // prefer using the original blob stored on the wrapper (set in handleRecorded)
+        const origBlob = p.__originalBlob || p.__origBlob || null;
+        if (origBlob) {
+          return Promise.resolve({
+            blob: origBlob,
+            filename: `recording_${idx + 1}.webm`,
+            mime: origBlob.type || "video/webm",
+            thumbBlob: null,
+            thumbName: `recording_${idx + 1}_thumb.jpg`,
+          }).then((obj) => {
+            // attach thumbnail if available
+            return thumbPromise.then((thumbBlob) => {
+              obj.thumbBlob = thumbBlob;
+              return obj;
+            });
+          });
+        }
+        // fallback: fetch the original video blob
+        if (srcUrl) {
+          return fetch(srcUrl)
+            .then((r) => r.blob())
+            .then((blob) => {
+              return thumbPromise.then((thumbBlob) => ({
+                blob: blob,
+                filename: `recording_${idx + 1}.webm`,
+                mime: blob.type || "video/webm",
+                thumbBlob: thumbBlob,
+                thumbName: `recording_${idx + 1}_thumb.jpg`,
+              }));
+            })
+            .catch(() => null);
+        }
+      }
+
+      // IMAGE branch
       if (img) {
         const src = img.src || "";
         if (src.indexOf("data:") === 0) {
           const blob = this._dataURLToBlob(src);
-          return Promise.resolve({
+          return createImageThumb(blob).then((thumbBlob) => ({
             blob: blob,
             filename: `screenshot_${idx + 1}.png`,
             mime: blob.type || "image/png",
-          });
+            thumbBlob: thumbBlob,
+            thumbName: `screenshot_${idx + 1}_thumb.jpg`,
+          }));
         }
-        // if it's an object URL or remote, try fetch
+        // fetch original
         return fetch(src)
           .then((r) => r.blob())
-          .then((blob) => ({
-            blob: blob,
-            filename: `screenshot_${idx + 1}.png`,
-            mime: blob.type || "image/png",
-          }))
-          .catch(() => null);
-      }
-      const srcUrl =
-        wrapperVideoUrl ||
-        (vid ? vid.getAttribute("data-video-url") || vid.src || "" : "");
-      if (srcUrl) {
-        return fetch(srcUrl)
-          .then((r) => r.blob())
-          .then((blob) => ({
-            blob: blob,
-            filename: `recording_${idx + 1}.webm`,
-            mime: blob.type || "video/webm",
-          }))
+          .then((blob) => {
+            return createImageThumb(blob).then((thumbBlob) => ({
+              blob: blob,
+              filename: `screenshot_${idx + 1}.png`,
+              mime: blob.type || "image/png",
+              thumbBlob: thumbBlob,
+              thumbName: `screenshot_${idx + 1}_thumb.jpg`,
+            }));
+          })
           .catch(() => null);
       }
       return Promise.resolve(null);
@@ -797,21 +912,99 @@ class ScreenshotManager {
       form.append("message", message);
       mediaItems.forEach((it, i) => {
         try {
-          // `it.blob` is a Blob
+          // append original
           form.append("attachments[]", it.blob, it.filename || `file_${i}`);
+          // append thumbnail if present
+          if (it.thumbBlob) {
+            // append thumbnail with explicit index so server can map thumbs to originals
+            form.append(
+              `attachments_thumb[${i}]`,
+              it.thumbBlob,
+              it.thumbName || `thumb_${i}.jpg`
+            );
+          }
         } catch (e) {}
       });
-      const res = await fetch("report.php", { method: "POST", body: form });
-      const j = await res.json();
-      if (j && j.ok) {
-        statusEl.textContent = "Report submitted. ID: " + (j.id || "");
-        setTimeout(() => {
-          this._closeReportModal();
-          statusEl.textContent = "";
-        }, 1200);
-      } else {
-        statusEl.textContent = "Error submitting: " + (j.error || "unknown");
+      // Use XMLHttpRequest to track upload progress
+      const progressWrap = this.reportModalEl.querySelector(
+        "#reportUploadProgress"
+      );
+      const progressBar =
+        this.reportModalEl.querySelector("#reportProgressBar");
+      const submitBtn = this.reportModalEl.querySelector("#submitReportBtn");
+      if (progressWrap && progressBar) {
+        progressWrap.style.display = "block";
+        progressBar.style.width = "0%";
+        progressBar.textContent = "0%";
       }
+      if (submitBtn) submitBtn.disabled = true;
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "report.php");
+        xhr.upload.onprogress = function (e) {
+          if (!e.lengthComputable) return;
+          const pct = Math.round((e.loaded / e.total) * 100);
+          try {
+            if (progressBar) {
+              progressBar.style.width = pct + "%";
+              progressBar.textContent = pct + "%";
+            }
+          } catch (e) {}
+        };
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState !== 4) return;
+          try {
+            const j =
+              xhr.status === 200
+                ? JSON.parse(xhr.responseText || "{}")
+                : { ok: false, error: "HTTP " + xhr.status };
+            if (j && j.ok) {
+              try {
+                if (progressBar) {
+                  progressBar.style.width = "100%";
+                  progressBar.textContent = "100%";
+                }
+              } catch (e) {}
+              statusEl.textContent = "Report submitted. ID: " + (j.id || "");
+              // clear previews and modal media list
+              try {
+                this._clearAllPreviews();
+              } catch (e) {}
+              try {
+                const mediaList =
+                  this.reportModalEl.querySelector("#reportMediaList");
+                if (mediaList) mediaList.innerHTML = "";
+              } catch (e) {}
+              setTimeout(() => {
+                if (submitBtn) submitBtn.disabled = false;
+                this._closeReportModal();
+                statusEl.textContent = "";
+                if (progressWrap) progressWrap.style.display = "none";
+                resolve();
+              }, 900);
+            } else {
+              statusEl.textContent =
+                "Error submitting: " + (j.error || "unknown");
+              if (submitBtn) submitBtn.disabled = false;
+              if (progressWrap) progressWrap.style.display = "none";
+              reject(new Error(j.error || "upload failed"));
+            }
+          } catch (err) {
+            statusEl.textContent = "Error parsing server response";
+            if (submitBtn) submitBtn.disabled = false;
+            if (progressWrap) progressWrap.style.display = "none";
+            reject(err);
+          }
+        };
+        xhr.onerror = function () {
+          statusEl.textContent = "Upload error";
+          if (submitBtn) submitBtn.disabled = false;
+          if (progressWrap) progressWrap.style.display = "none";
+          reject(new Error("XHR error"));
+        };
+        xhr.send(form);
+      });
     } catch (err) {
       statusEl.textContent = "Error: " + err.message;
     }
@@ -1054,6 +1247,10 @@ class ScreenshotManager {
         wrapper.setAttribute("data-preview-index", this.previewCount);
         wrapper.setAttribute("data-video-url", url);
         wrapper.setAttribute("data-type", "video");
+        // attach original blob so we can upload it later without fetching the object URL
+        try {
+          wrapper.__originalBlob = blob;
+        } catch (e) {}
 
         const img = document.createElement("img");
         img.src = thumbData;
