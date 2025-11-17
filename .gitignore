@@ -62,9 +62,9 @@ wp-content/uploads/
 wp-content/cache/
 
 # Database
-*.sql
-*.sqlite
-*.db
+# *.sql
+# *.sqlite
+# *.db
 
 # Backup files
 *.bak

@@ -678,7 +678,7 @@ class ScreenshotManager {
       const item = document.createElement("div");
       item.className = "card p-1";
       item.style.width = "120px";
-      item.style.height = "90px";
+      item.style.height = "120px";
       item.style.display = "flex";
       item.style.flexDirection = "column";
       item.style.alignItems = "stretch";
