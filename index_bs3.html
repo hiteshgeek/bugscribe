@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bugscribe (Bootstrap 3)</title>
+    <!-- Bootstrap 3 CDN -->
+    <link
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome CDN -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Swiper CSS (carousel) -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.css"
+    />
+    <link rel="stylesheet" href="src/css/screenshot.css" />
+    <link rel="stylesheet" href="src/css/bug-footer.css" />
+    <!-- Small helper CSS for spacing and BS3-specific helpers -->
+    <style>
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+      }
+      .mb-4 {
+        margin-bottom: 24px;
+      }
+      .mb-2 {
+        margin-bottom: 8px;
+      }
+      .mt-5 {
+        margin-top: 30px;
+      }
+      /* Sidebar sticky behaviour on wider screens */
+      @media (min-width: 992px) {
+        .sidebar-sticky {
+          position: fixed;
+          top: 2rem;
+          right: 15px;
+        }
+      }
+      /* Footer layout overrides (keep it fixed at bottom) */
+      .fixed-footer {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #fff;
+        border-top: 1px solid #e5e5e5;
+        padding: 10px 15px;
+      }
+      .fixed-footer .btn + .btn {
+        margin-left: 8px;
+      }
+      .screenshot-preview {
+        display: inline-block;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="page-header">
+        <h1>Large Dummy Data Page</h1>
+      </div>
+      <p class="lead">
+        This page contains a large amount of dummy content to demonstrate
+        vertical scrolling and Bootstrap 3 layout.
+      </p>
+      <!-- Repeat sections to create a large file -->
+      <div class="row">
+        <div class="col-md-8">
+          <div class="dummy-section">
+            <div class="alert alert-primary">
+              <h2 class="alert-heading">Section 1</h2>
+              <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                Pellentesque euismod, urna eu tincidunt consectetur, nisi nisl
+                aliquam enim, nec dictum nisi nisl eget sapien. Mauris euismod,
+                nisl eget consectetur sagittis, nisl nunc euismod nisi, euismod
+                aliquam nisl nunc euismod nisi.
+              </p>
+              <ul>
+                <li>Dummy item 1</li>
+                <li>Dummy item 2</li>
+                <li>Dummy item 3</li>
+                <li>Dummy item 4</li>
+                <li>Dummy item 5</li>
+              </ul>
+            </div>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 2</h2>
+            <p>
+              Vestibulum ante ipsum primis in faucibus orci luctus et ultrices
+              posuere cubilia curae; Integer nec odio. Praesent libero. Sed
+              cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh
+              elementum imperdiet.
+            </p>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Name</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Alpha</td>
+                  <td>123</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Beta</td>
+                  <td>456</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>Gamma</td>
+                  <td>789</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>Delta</td>
+                  <td>101</td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>Epsilon</td>
+                  <td>112</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 3</h2>
+            <p>
+              Curabitur blandit tempus porttitor. Integer posuere erat a ante
+              venenatis dapibus posuere velit aliquet. Cras justo odio, dapibus
+              ac facilisis in, egestas eget quam.
+            </p>
+            <div class="row">
+              <div class="col-xs-6">
+                <img
+                  src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80"
+                  class="img-responsive"
+                  alt="Nature reference"
+                />
+              </div>
+              <div class="col-xs-6">
+                <img
+                  src="https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80"
+                  class="img-responsive"
+                  alt="City reference"
+                />
+              </div>
+            </div>
+          </div>
+          <!-- Repeat more sections for vertical scrolling -->
+          <div class="dummy-section">
+            <div class="panel panel-success">
+              <div class="panel-heading">
+                <h3 class="panel-title">Section 4</h3>
+              </div>
+              <div class="panel-body">
+                <p>
+                  Morbi leo risus, porta ac consectetur ac, vestibulum at eros.
+                  Etiam porta sem malesuada magna mollis euismod.
+                </p>
+                <ol>
+                  <li>Step one</li>
+                  <li>Step two</li>
+                  <li>Step three</li>
+                  <li>Step four</li>
+                  <li>Step five</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 5</h2>
+            <p>
+              Donec ullamcorper nulla non metus auctor fringilla. Nullam quis
+              risus eget urna mollis ornare vel eu leo.
+            </p>
+            <div class="alert alert-info">
+              This is a Bootstrap info alert for demonstration.
+            </div>
+          </div>
+          <!-- Add more dummy sections to make the file large -->
+          <div class="dummy-section">
+            <h2>Section 6</h2>
+            <p>
+              Sed posuere consectetur est at lobortis. Aenean eu leo quam.
+              Pellentesque ornare sem lacinia quam venenatis vestibulum.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <div class="panel panel-warning">
+              <div class="panel-heading">
+                <h3 class="panel-title">Section 7</h3>
+              </div>
+              <div class="panel-body">
+                <p>
+                  Maecenas sed diam eget risus varius blandit sit amet non
+                  magna. Nullam id dolor id nibh ultricies vehicula ut id elit.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 8</h2>
+            <p>
+              Morbi leo risus, porta ac consectetur ac, vestibulum at eros.
+              Etiam porta sem malesuada magna mollis euismod.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 9</h2>
+            <p>
+              Praesent commodo cursus magna, vel scelerisque nisl consectetur
+              et. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor
+              auctor.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <div class="alert alert-danger">
+              <h2 class="alert-heading">Section 10</h2>
+              <p>
+                Integer posuere erat a ante venenatis dapibus posuere velit
+                aliquet. Cras justo odio, dapibus ac facilisis in, egestas eget
+                quam.
+              </p>
+            </div>
+          </div>
+          <!-- More sections for even more content -->
+          <div class="dummy-section">
+            <h2>Section 11</h2>
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+              Pellentesque euismod, urna eu tincidunt consectetur, nisi nisl
+              aliquam enim, nec dictum nisi nisl eget sapien.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 12</h2>
+            <p>
+              Vestibulum ante ipsum primis in faucibus orci luctus et ultrices
+              posuere cubilia curae; Integer nec odio. Praesent libero. Sed
+              cursus ante dapibus diam.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 13</h2>
+            <p>
+              Curabitur blandit tempus porttitor. Integer posuere erat a ante
+              venenatis dapibus posuere velit aliquet.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 14</h2>
+            <p>
+              Morbi leo risus, porta ac consectetur ac, vestibulum at eros.
+              Etiam porta sem malesuada magna mollis euismod.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 15</h2>
+            <p>
+              Donec ullamcorper nulla non metus auctor fringilla. Nullam quis
+              risus eget urna mollis ornare vel eu leo.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 16</h2>
+            <p>
+              Sed posuere consectetur est at lobortis. Aenean eu leo quam.
+              Pellentesque ornare sem lacinia quam venenatis vestibulum.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 17</h2>
+            <p>
+              Maecenas sed diam eget risus varius blandit sit amet non magna.
+              Nullam id dolor id nibh ultricies vehicula ut id elit.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 18</h2>
+            <p>
+              Morbi leo risus, porta ac consectetur ac, vestibulum at eros.
+              Etiam porta sem malesuada magna mollis euismod.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 19</h2>
+            <p>
+              Praesent commodo cursus magna, vel scelerisque nisl consectetur
+              et. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor
+              auctor.
+            </p>
+          </div>
+          <div class="dummy-section">
+            <h2>Section 20</h2>
+            <p>
+              Integer posuere erat a ante venenatis dapibus posuere velit
+              aliquet. Cras justo odio, dapibus ac facilisis in, egestas eget
+              quam.
+            </p>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="sidebar-sticky">
+            <h4>Quick Navigation</h4>
+            <ul class="list-group">
+              <li class="list-group-item"><a href="#">Top</a></li>
+              <li class="list-group-item"><a href="#">Section 1</a></li>
+              <li class="list-group-item"><a href="#">Section 5</a></li>
+              <li class="list-group-item"><a href="#">Section 10</a></li>
+              <li class="list-group-item"><a href="#">Section 15</a></li>
+              <li class="list-group-item"><a href="#">Section 20</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <footer class="mt-5">
+        <hr />
+        <p class="text-center">
+          &copy; 2025 Dummy Data Page. Powered by Bootstrap 3.
+        </p>
+      </footer>
+      <!-- Fixed Footer for Bug Reporting -->
+      <footer class="fixed-footer">
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-xs-8">
+              <button class="btn btn-danger report-btn" id="reportBtn">
+                <i class="fa fa-bug"></i> Report Bug
+              </button>
+
+              <div class="btn-group dropup">
+                <button
+                  type="button"
+                  class="btn btn-default screenshot-btn"
+                  id="takeScreenshotBtn"
+                >
+                  <i class="fa fa-camera"></i> Screenshot
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-default dropdown-toggle"
+                  data-toggle="dropdown"
+                >
+                  <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                  <li>
+                    <a href="#" id="screenshotVisibleBtn"
+                      >Only Visible Page Screenshot</a
+                    >
+                  </li>
+                  <li><a href="#" id="screenshotAreaBtn">Select Area...</a></li>
+                </ul>
+              </div>
+
+              <button type="button" class="btn btn-danger" id="recordBtn">
+                <i class="fa fa-circle"></i> Record
+              </button>
+            </div>
+            <div class="col-xs-4 text-right">
+              <div
+                id="screenshotPreviewContainer"
+                class="screenshot-preview"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+    <!-- jQuery (required for Bootstrap 3 dropdowns, etc.) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <!-- Swiper JS -->
+    <script src="https://cdn.jsdelivr.net/npm/swiper@9/swiper-bundle.min.js"></script>
+    <script src="src/js/screenshot.js"></script>
+  </body>
+</html>

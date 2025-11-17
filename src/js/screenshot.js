@@ -81,7 +81,7 @@ class ScreenshotManager {
     this.fullscreenModal.innerHTML =
       '<div id="screenshotModalInner" class="screenshot-modal-inner">' +
       '  <button id="closeScreenshotModal" class="screenshot-close" aria-label="Close">&times;</button>' +
-      '  <div class="carousel-main" style="display:flex;align-items:center;gap:12px;">' +
+      '  <div class="carousel-main">' +
       '    <button id="carouselPrev" class="screenshot-nav prev" aria-label="Previous">&#9664;</button>' +
       '    <div id="screenshotSlides" class="screenshot-slides" role="region" aria-label="Preview carousel"></div>' +
       '    <button id="carouselNext" class="screenshot-nav next" aria-label="Next">&#9654;</button>' +
@@ -89,28 +89,7 @@ class ScreenshotManager {
       '  <div id="screenshotThumbnailStrip" class="screenshot-thumbs" aria-label="Thumbnails"></div>' +
       "</div>";
     document.body.appendChild(this.fullscreenModal);
-    // Minimal styles for the modal/carousel (scoped here for simplicity)
-    if (!document.getElementById("screenshot-carousel-style")) {
-      const style = document.createElement("style");
-      style.id = "screenshot-carousel-style";
-      style.textContent =
-        "\n" +
-        "#screenshotModal{display:none;position:fixed;inset:0;align-items:center;justify-content:center;background:rgba(0,0,0,0.78);z-index:2147483646} " +
-        "#screenshotModal .screenshot-modal-inner{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:94vw;max-height:94vh;padding:12px;border-radius:8px} " +
-        ".carousel-main{width:100%;display:flex;align-items:center;justify-content:center} " +
-        "#screenshotSlides{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;min-width:360px;min-height:200px} " +
-        ".carousel-slide{display:none;align-items:center;justify-content:center;width:100%;height:100%} " +
-        ".carousel-slide.active{display:flex} " +
-        ".carousel-slide img,.carousel-slide video{max-width:86vw;max-height:68vh;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,0.6);background:#111} " +
-        ".screenshot-close{position:absolute;top:8px;right:8px;background:transparent;border:none;color:#fff;font-size:30px;cursor:pointer;z-index:3} " +
-        ".screenshot-nav{background:rgba(0,0,0,0.45);border:none;color:#fff;padding:8px 12px;border-radius:8px;cursor:pointer;margin:0 6px} " +
-        ".screenshot-nav:hover{background:rgba(0,0,0,0.65)} " +
-        "#screenshotThumbnailStrip{display:flex;gap:8px;overflow-x:auto;padding:8px 6px;margin-top:8px;justify-content:center;width:100%;box-sizing:border-box} " +
-        ".screenshot-thumb{width:96px;height:64px;object-fit:cover;border-radius:6px;opacity:0.75;cursor:pointer;border:2px solid transparent;transition:transform .12s,opacity .12s,box-shadow .12s} " +
-        ".screenshot-thumb:hover{opacity:1;transform:translateY(-4px)} " +
-        ".screenshot-thumb.active{opacity:1;border-color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.6);transform:translateY(-6px)}\n";
-      document.head.appendChild(style);
-    }
+    // Modal/carousel CSS moved to `src/css/screenshot.css` for maintainability.
     // Revoke recorded object URLs on page unload to free memory
     window.addEventListener("beforeunload", () => {
       try {
@@ -287,8 +266,7 @@ class ScreenshotManager {
         const v = document.createElement("video");
         v.src = url;
         v.controls = true;
-        v.style.maxWidth = "90vw";
-        v.style.maxHeight = "82vh";
+        // sizing handled by CSS (.carousel-slide video)
         slide.appendChild(v);
       } else {
         const img = document.createElement("img");
@@ -323,7 +301,8 @@ class ScreenshotManager {
         thumbs.appendChild(thumbImg);
       });
     }
-    this.fullscreenModal.style.display = "flex";
+    // show modal by toggling CSS class
+    this.fullscreenModal.classList.add("open");
     this._showCarouselSlide(this._carouselIndex);
   }
 
@@ -379,54 +358,25 @@ class ScreenshotManager {
   // Create and show a cursor highlight overlay that follows the cursor.
   createCursorOverlay() {
     if (this.cursorOverlayElement) return;
-    // inject style for pulse animation if not present
-    if (!document.getElementById("screenshot-cursor-style")) {
-      const style = document.createElement("style");
-      style.id = "screenshot-cursor-style";
-      style.textContent =
-        "@keyframes cursorPulse { 0% { transform: scale(1); opacity: 0.9 } 50% { transform: scale(1.35); opacity: 0.5 } 100% { transform: scale(1); opacity: 0.9 } }";
-      document.head.appendChild(style);
-    }
+    // Use CSS classes defined in `src/css/screenshot.css` for cursor overlay
     const overlay = document.createElement("div");
-    overlay.id = "screenshot-cursor-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.left = "0";
-    overlay.style.top = "0";
-    overlay.style.width = "100%";
-    overlay.style.height = "100%";
-    overlay.style.pointerEvents = "none";
-    overlay.style.zIndex = "2147483647"; // very top
+    overlay.className = "screenshot-cursor-overlay";
 
-    const size = 48;
     const circle = document.createElement("div");
-    circle.id = "screenshot-cursor-circle";
-    // Use fixed positioning so the highlight stays tied to the viewport
-    // and follows the native cursor even when elements have transforms.
-    circle.style.position = "fixed";
-    circle.style.width = size + "px";
-    circle.style.height = size + "px";
-    circle.style.borderRadius = "50%";
-    // Semi-transparent filled highlight so the cursor remains visible
-    circle.style.background = "rgba(255,85,0,0.28)";
-    circle.style.boxShadow = "0 6px 18px rgba(255,85,0,0.35)";
-    circle.style.willChange = "left, top";
-    circle.style.left = "-9999px";
-    circle.style.top = "-9999px";
-    // No transition so the circle follows the cursor instantly
-    circle.style.transition = "none";
-    circle.style.pointerEvents = "none";
-    circle.style.animation = "cursorPulse 1s infinite";
+    circle.className = "screenshot-cursor-circle";
 
     overlay.appendChild(circle);
     document.body.appendChild(overlay);
 
     // mousemove / pointer listener
     const onMove = (e) => {
+      const rect = circle.getBoundingClientRect();
+      const size = rect.width || 48;
       const x = e.clientX - size / 2;
       const y = e.clientY - size / 2;
-      // position via left/top for maximum compatibility
-      circle.style.left = x + "px";
-      circle.style.top = y + "px";
+      // position via CSS variables for maximum compatibility
+      circle.style.setProperty("--cursor-left", x + "px");
+      circle.style.setProperty("--cursor-top", y + "px");
       // make highlight darker while moving
       try {
         if (typeof setActive === "function") setActive();
@@ -436,10 +386,12 @@ class ScreenshotManager {
     const onTouch = (e) => {
       const t = e.touches && e.touches[0];
       if (!t) return;
+      const rect = circle.getBoundingClientRect();
+      const size = rect.width || 48;
       const x = t.clientX - size / 2;
       const y = t.clientY - size / 2;
-      circle.style.left = x + "px";
-      circle.style.top = y + "px";
+      circle.style.setProperty("--cursor-left", x + "px");
+      circle.style.setProperty("--cursor-top", y + "px");
       try {
         if (typeof setActive === "function") setActive();
       } catch (e) {}
@@ -448,14 +400,12 @@ class ScreenshotManager {
     // make it darker while moving, and revert after idle
     let idleTimer = null;
     const setActive = () => {
-      // darker fill and stronger shadow
-      circle.style.background = "rgba(255,85,0,0.92)";
-      circle.style.boxShadow = "0 8px 26px rgba(255,85,0,0.55)";
+      // toggle active appearance via CSS class
+      circle.classList.add("active");
       if (idleTimer) clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         // revert to lighter appearance
-        circle.style.background = "rgba(255,85,0,0.28)";
-        circle.style.boxShadow = "0 6px 18px rgba(255,85,0,0.35)";
+        circle.classList.remove("active");
         idleTimer = null;
       }, 350);
       // store timer so cleanup can clear it
@@ -618,8 +568,8 @@ class ScreenshotManager {
     try {
       if (
         this.fullscreenModal &&
-        this.fullscreenModal.style &&
-        this.fullscreenModal.style.display === "flex"
+        this.fullscreenModal.classList &&
+        this.fullscreenModal.classList.contains("open")
       ) {
         this.closeFullscreen(true);
       }
@@ -676,13 +626,7 @@ class ScreenshotManager {
     );
     previews.forEach((p, idx) => {
       const item = document.createElement("div");
-      item.className = "card p-1";
-      item.style.width = "120px";
-      item.style.height = "120px";
-      item.style.display = "flex";
-      item.style.flexDirection = "column";
-      item.style.alignItems = "stretch";
-      item.style.justifyContent = "space-between";
+      item.className = "card p-1 report-media-item";
       item.dataset.previewIndex = idx;
       const thumb = p.querySelector("img, video");
       // If this preview is a video, show a small video element (with poster if available)
@@ -692,9 +636,7 @@ class ScreenshotManager {
         p.getAttribute("data-video-url");
       if (isVideo) {
         const videoEl = document.createElement("video");
-        videoEl.style.width = "100%";
-        videoEl.style.height = "64px";
-        videoEl.style.objectFit = "cover";
+        videoEl.className = "report-media-thumb";
         videoEl.controls = true;
         // prefer original blob attached to wrapper, else use data-video-url
         const origBlob = p.__originalBlob || p.__origBlob || null;
@@ -712,17 +654,14 @@ class ScreenshotManager {
         mediaEl = videoEl;
       } else {
         const img = document.createElement("img");
-        img.style.width = "100%";
-        img.style.height = "64px";
-        img.style.objectFit = "cover";
+        img.className = "report-media-thumb";
         if (thumb && thumb.tagName === "IMG") img.src = thumb.src || "";
         else if (thumb && thumb.tagName === "VIDEO")
           img.src = thumb.dataset.thumb || "";
         mediaEl = img;
       }
       const btnRow = document.createElement("div");
-      btnRow.style.display = "flex";
-      btnRow.style.justifyContent = "space-between";
+      btnRow.className = "report-media-btnrow";
       const viewBtn = document.createElement("button");
       viewBtn.className = "btn btn-sm btn-outline-primary";
       viewBtn.textContent = "View";
@@ -933,8 +872,9 @@ class ScreenshotManager {
         this.reportModalEl.querySelector("#reportProgressBar");
       const submitBtn = this.reportModalEl.querySelector("#submitReportBtn");
       if (progressWrap && progressBar) {
-        progressWrap.style.display = "block";
-        progressBar.style.width = "0%";
+        progressWrap.classList.add("visible");
+        // initialize via CSS variable
+        progressBar.style.setProperty("--progress", "0%");
         progressBar.textContent = "0%";
       }
       if (submitBtn) submitBtn.disabled = true;
@@ -947,7 +887,8 @@ class ScreenshotManager {
           const pct = Math.round((e.loaded / e.total) * 100);
           try {
             if (progressBar) {
-              progressBar.style.width = pct + "%";
+              // drive width via CSS variable for separation of concerns
+              progressBar.style.setProperty("--progress", pct + "%");
               progressBar.textContent = pct + "%";
             }
           } catch (e) {}
@@ -962,7 +903,7 @@ class ScreenshotManager {
             if (j && j.ok) {
               try {
                 if (progressBar) {
-                  progressBar.style.width = "100%";
+                  progressBar.style.setProperty("--progress", "100%");
                   progressBar.textContent = "100%";
                 }
               } catch (e) {}
@@ -980,27 +921,27 @@ class ScreenshotManager {
                 if (submitBtn) submitBtn.disabled = false;
                 this._closeReportModal();
                 statusEl.textContent = "";
-                if (progressWrap) progressWrap.style.display = "none";
+                if (progressWrap) progressWrap.classList.remove("visible");
                 resolve();
               }, 900);
             } else {
               statusEl.textContent =
                 "Error submitting: " + (j.error || "unknown");
               if (submitBtn) submitBtn.disabled = false;
-              if (progressWrap) progressWrap.style.display = "none";
+              if (progressWrap) progressWrap.classList.remove("visible");
               reject(new Error(j.error || "upload failed"));
             }
           } catch (err) {
             statusEl.textContent = "Error parsing server response";
             if (submitBtn) submitBtn.disabled = false;
-            if (progressWrap) progressWrap.style.display = "none";
+            if (progressWrap) progressWrap.classList.remove("visible");
             reject(err);
           }
         };
         xhr.onerror = function () {
           statusEl.textContent = "Upload error";
           if (submitBtn) submitBtn.disabled = false;
-          if (progressWrap) progressWrap.style.display = "none";
+          if (progressWrap) progressWrap.classList.remove("visible");
           reject(new Error("XHR error"));
         };
         xhr.send(form);
@@ -1046,28 +987,21 @@ class ScreenshotManager {
   startAreaSelection() {
     // Overlay for selection
     const overlay = document.createElement("div");
-    overlay.style.position = "fixed";
-    overlay.style.left = 0;
-    overlay.style.top = 0;
-    overlay.style.width = "100vw";
-    overlay.style.height = "100vh";
-    overlay.style.zIndex = 3000;
-    overlay.style.cursor = "crosshair";
-    overlay.style.background = "rgba(0,0,0,0.05)";
+    // class-based styles live in `src/css/screenshot.css` as .screenshot-selection-overlay
+    overlay.className = "screenshot-selection-overlay";
     document.body.appendChild(overlay);
 
     let startX, startY, endX, endY, rect;
     const selectionBox = document.createElement("div");
-    selectionBox.style.position = "absolute";
-    selectionBox.style.border = "2px dashed #007bff";
-    selectionBox.style.background = "rgba(0,123,255,0.1)";
+    selectionBox.className = "screenshot-selection-box";
     overlay.appendChild(selectionBox);
 
     function setBox(x, y, w, h) {
-      selectionBox.style.left = x + "px";
-      selectionBox.style.top = y + "px";
-      selectionBox.style.width = w + "px";
-      selectionBox.style.height = h + "px";
+      // use CSS variables to avoid inline geometry writes
+      selectionBox.style.setProperty("--sel-left", x + "px");
+      selectionBox.style.setProperty("--sel-top", y + "px");
+      selectionBox.style.setProperty("--sel-width", w + "px");
+      selectionBox.style.setProperty("--sel-height", h + "px");
     }
 
     function cleanup() {
@@ -1238,12 +1172,6 @@ class ScreenshotManager {
         this.previewCount += 1;
         const wrapper = document.createElement("div");
         wrapper.className = "screenshot-preview position-relative";
-        // layout: stack media above controls
-        wrapper.style.display = "flex";
-        wrapper.style.flexDirection = "column";
-        wrapper.style.alignItems = "center";
-        wrapper.style.justifyContent = "flex-start";
-        wrapper.style.gap = "6px";
         wrapper.setAttribute("data-preview-index", this.previewCount);
         wrapper.setAttribute("data-video-url", url);
         wrapper.setAttribute("data-type", "video");
@@ -1273,9 +1201,6 @@ class ScreenshotManager {
         // content block: media + delete button (horizontal)
         const content = document.createElement("div");
         content.className = "preview-content";
-        content.style.display = "flex";
-        content.style.alignItems = "center";
-        content.style.gap = "8px";
         // add media
         content.appendChild(img);
         // delete button to the right of media
@@ -1328,12 +1253,6 @@ class ScreenshotManager {
     this.previewCount += 1;
     const wrapper = document.createElement("div");
     wrapper.className = "screenshot-preview position-relative";
-    // layout: stack media above controls
-    wrapper.style.display = "flex";
-    wrapper.style.flexDirection = "column";
-    wrapper.style.alignItems = "center";
-    wrapper.style.justifyContent = "flex-start";
-    wrapper.style.gap = "6px";
     wrapper.setAttribute("data-preview-index", this.previewCount);
     wrapper.setAttribute("data-type", "image");
     const img = document.createElement("img");
@@ -1353,9 +1272,6 @@ class ScreenshotManager {
     // content block: media + delete button (horizontal)
     const content = document.createElement("div");
     content.className = "preview-content";
-    content.style.display = "flex";
-    content.style.alignItems = "center";
-    content.style.gap = "8px";
     content.appendChild(img);
     // delete button to the right of media
     const del = document.createElement("button");
@@ -1383,13 +1299,11 @@ class ScreenshotManager {
       // replace existing element with an img
       const newImg = document.createElement("img");
       newImg.id = "fullscreenScreenshotImg";
-      newImg.style.maxWidth = "90vw";
-      newImg.style.maxHeight = "90vh";
       newImg.src = dataUrl;
       if (imgEl) imgEl.replaceWith(newImg);
       else this.fullscreenModal.appendChild(newImg);
     }
-    this.fullscreenModal.style.display = "flex";
+    this.fullscreenModal.classList.add("open");
   }
 
   // Open modal and play a video URL
@@ -1403,14 +1317,12 @@ class ScreenshotManager {
     v.src = url;
     v.controls = true;
     v.autoplay = true;
-    v.style.maxWidth = "90vw";
-    v.style.maxHeight = "90vh";
     // replace img element
     if (imgEl) imgEl.replaceWith(v);
     else this.fullscreenModal.appendChild(v);
     this.currentPlayingVideoElement = v;
     this.currentPlayingVideoUrl = url;
-    this.fullscreenModal.style.display = "flex";
+    this.fullscreenModal.classList.add("open");
   }
 
   // Close fullscreen modal and cleanup any playing video. If hideModal is true (default) hide the modal.
@@ -1443,8 +1355,6 @@ class ScreenshotManager {
         this.currentPlayingVideoElement = null;
         const newImg = document.createElement("img");
         newImg.id = "fullscreenScreenshotImg";
-        newImg.style.maxWidth = "90vw";
-        newImg.style.maxHeight = "90vh";
         if (el.parentNode) el.parentNode.replaceChild(newImg, el);
       }
     } catch (err) {
@@ -1452,7 +1362,7 @@ class ScreenshotManager {
     }
     if (hideModal) {
       try {
-        this.fullscreenModal.style.display = "none";
+        this.fullscreenModal.classList.remove("open");
       } catch (e) {}
       // clear slides to free memory
       try {
