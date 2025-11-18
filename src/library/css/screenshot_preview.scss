@@ -1,0 +1,90 @@
+/* Screenshot preview and capture state styles
+   - `.bugscribe-preview` : pill-like bottom-centered preview container
+   - `.bugscribe-preview__item` : thumbnail tiles
+   - `.capture` : helper class to indicate capture mode (visual cue)
+
+   Note: This file is intentionally separate so it can be imported into
+   the library entrypoint (e.g. `bugscribe.scss`) or built as a standalone
+   component stylesheet.
+*/
+
+$visible_preview: 4;
+$preview_width: 100px;
+$preview_padding: 8px;
+
+.bugscribe-preview {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 90px;
+  max-width: calc(
+    ($preview_width + $preview_padding) * $visible_preview + $preview_padding
+  );
+  overflow: auto;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 5px $preview_padding;
+  /* inherit theming vars from the button wrapper or :root */
+  background: var(--bs-btn-bg, #ff4757);
+  color: var(--bs-btn-color, #fff);
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  z-index: calc(var(--bs-btn-z, 9999) + 20);
+}
+
+.bugscribe-preview__item {
+  min-width: 100px;
+  width: 100px;
+  max-width: 100px;
+  height: 60px;
+  overflow: hidden;
+  border-radius: 8px;
+  //   background: var(--bs-btn-action-bg, rgba(255, 255, 255, 0.92));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bugscribe-preview__item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bugscribe-preview__error {
+  color: var(--bs-btn-color, #fff);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+/* .capture is a visual helper that indicates the page is in "capture"
+   mode. JS can add/remove this class on `body` (or another container)
+   while asking for getDisplayMedia permission or while the user selects
+   a region. It does not implement capture behavior by itself. */
+.capture {
+  cursor: crosshair;
+}
+
+/* Optional overlay used during capture to dim the page and show an
+   instruction label. Add/remove `.capture--active` on `body` to toggle.
+*/
+.capture--overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: calc(var(--bs-btn-z, 9999) + 10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.capture--overlay .capture__label {
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+}

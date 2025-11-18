@@ -1,4 +1,5 @@
 import { bug_svg, screenshot_svg, record_svg, settings } from "./helpers.js";
+import CaptureMedia from "./capture_media.js";
 
 class BugscribeButton {
   constructor(opts = {}, onClick = null) {
@@ -24,6 +25,7 @@ class BugscribeButton {
     this._mounted = false;
     this._createdByMe = false;
     this._boundClick = null;
+    this.captureMedia = new CaptureMedia();
     this.create();
   }
 
@@ -168,6 +170,32 @@ class BugscribeButton {
         this.mainBtn.addEventListener("click", this._boundClick);
     }
 
+    // Attach action handlers (screenshot, record, settings). These are
+    // optional behaviors; we only wire screenshot handler here to create
+    // thumbnails in a preview area. Consumers can override or add their
+    // own handlers later.
+    try {
+      const shotBtn = this.el.querySelector(".bug-btn__action--screenshot");
+      if (shotBtn) {
+        shotBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (
+            this.captureMedia &&
+            typeof this.captureMedia.captureFullPage === "function"
+          ) {
+            this.captureMedia.captureFullPage();
+          } else if (
+            this.captureMedia &&
+            typeof this.captureMedia.captureAny === "function"
+          ) {
+            this.captureMedia.captureAny();
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Error attaching screenshot handler", err);
+    }
+
     // Add internal toggle behavior: clicking the main button reveals the
     // icon-only actions. Keep this separate from user-provided onClick.
     this._boundToggle = (e) => {
@@ -179,6 +207,38 @@ class BugscribeButton {
     // Apply CSS variables and attributes instead of inline layout styles
     this.applyStyles();
     this._mounted = true;
+  }
+
+  // Create or return the preview container for thumbnails. This container
+  // is fixed to the bottom of the viewport and styled to match the button.
+  getPreviewContainer() {
+    // preview container is handled by CaptureMedia; keep a shim for
+    // backwards-compatibility that forwards to the captureMedia instance.
+    if (
+      this.captureMedia &&
+      typeof this.captureMedia.getPreviewContainer === "function"
+    ) {
+      return this.captureMedia.getPreviewContainer();
+    }
+    return document.querySelector(".bugscribe-preview");
+  }
+
+  _appendThumbnail(preview, dataUrl) {
+    // forward to captureMedia if available
+    if (
+      this.captureMedia &&
+      typeof this.captureMedia._appendThumbnail === "function"
+    ) {
+      return this.captureMedia._appendThumbnail(preview, dataUrl);
+    }
+    const tile = document.createElement("div");
+    tile.className = "bugscribe-preview__item";
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = "Screenshot thumbnail";
+    tile.appendChild(img);
+    preview.appendChild(tile);
+    while (preview.children.length > 6) preview.removeChild(preview.firstChild);
   }
 
   applyStyles() {
