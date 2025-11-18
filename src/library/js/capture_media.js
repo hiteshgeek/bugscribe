@@ -21,6 +21,16 @@ export default class CaptureMedia {
           ? this.captureVisible.bind(this)
           : () => {},
       },
+      selected_area: {
+        combo: "Control+Alt+3",
+        key: "3",
+        ctrl: true,
+        alt: true,
+        shift: false,
+        handler: this.captureSelectedArea
+          ? this.captureSelectedArea.bind(this)
+          : () => {},
+      },
     };
 
     // Keydown handler for hotkeys - checks all configured hotkeys
@@ -436,6 +446,314 @@ export default class CaptureMedia {
         this.getPreviewContainer().appendChild(tile);
       }
     }
+  }
+
+  // Allow the user to draw a rectangle on screen and capture only that area.
+  async captureSelectedArea() {
+    const preview = this.getPreviewContainer();
+    // Create selection overlay that covers the entire document (backdrop)
+    const overlay = document.createElement("div");
+    const docW = Math.max(
+      document.documentElement.scrollWidth || 0,
+      window.innerWidth || 0
+    );
+    const docH = Math.max(
+      document.documentElement.scrollHeight || 0,
+      window.innerHeight || 0
+    );
+    overlay.style.position = "absolute";
+    overlay.style.top = "0";
+    overlay.style.left = "0";
+    overlay.style.width = docW + "px";
+    overlay.style.height = docH + "px";
+    overlay.style.zIndex = "2147483646";
+    overlay.style.cursor = "crosshair";
+    // overlay stays transparent; the selection `box` uses a large outer
+    // shadow to dim the rest of the page while keeping the selected area
+    // fully transparent so captures don't include any fill behind it.
+    overlay.style.background = "transparent";
+    overlay.setAttribute("role", "application");
+    overlay.setAttribute("aria-hidden", "false");
+    document.body.appendChild(overlay);
+
+    const box = document.createElement("div");
+    box.style.position = "absolute";
+    // compute a very light version of the bug button bg color for selection fill
+    try {
+      const btn = document.querySelector(".bug-btn-wrapper");
+      const cs = btn
+        ? window.getComputedStyle(btn)
+        : window.getComputedStyle(document.documentElement);
+      let bg =
+        (cs && (cs.getPropertyValue("--bs-btn-bg") || cs.backgroundColor)) ||
+        "#ff4757";
+      let r = 255,
+        g = 71,
+        b = 87;
+      const m = String(bg).match(/rgba?\(([^)]+)\)/);
+      if (m) {
+        const parts = m[1].split(",").map((p) => parseFloat(p));
+        r = parts[0] || r;
+        g = parts[1] || g;
+        b = parts[2] || b;
+      } else if (bg && bg[0] === "#") {
+        const hex = bg.replace("#", "");
+        if (hex.length === 3) {
+          r = parseInt(hex[0] + hex[0], 16);
+          g = parseInt(hex[1] + hex[1], 16);
+          b = parseInt(hex[2] + hex[2], 16);
+        } else if (hex.length >= 6) {
+          r = parseInt(hex.substring(0, 2), 16);
+          g = parseInt(hex.substring(2, 4), 16);
+          b = parseInt(hex.substring(4, 6), 16);
+        }
+      }
+      const mix = (v, amount = 0.9) => Math.round(v + (255 - v) * amount);
+      const lr = mix(r, 0.9),
+        lg = mix(g, 0.9),
+        lb = mix(b, 0.9);
+      const borderColor = `rgba(${Math.max(0, lr - 40)}, ${Math.max(
+        0,
+        lg - 40
+      )}, ${Math.max(0, lb - 40)}, 0.95)`;
+      // Use a transparent box with a large outer shadow to dim the rest
+      // of the page so the selected area remains clearly visible.
+      box.style.background = "transparent";
+      box.style.boxShadow = "0 0 0 9999px rgba(0,0,0,0.35)";
+      box.style.border = `2px dashed ${borderColor}`;
+      box.style.pointerEvents = "none";
+    } catch (e) {
+      box.style.background = "transparent";
+      box.style.boxShadow = "0 0 0 9999px rgba(0,0,0,0.35)";
+      box.style.border = "2px dashed rgba(255,255,255,0.9)";
+      box.style.pointerEvents = "none";
+    }
+    overlay.appendChild(box);
+
+    let startX = 0,
+      startY = 0,
+      curX = 0,
+      curY = 0,
+      dragging = false;
+
+    const onDown = (ev) => {
+      ev.preventDefault();
+      dragging = true;
+      const scrollX = window.scrollX || window.pageXOffset || 0;
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      startX = ev.pageX !== undefined ? ev.pageX : ev.clientX + scrollX;
+      startY = ev.pageY !== undefined ? ev.pageY : ev.clientY + scrollY;
+      box.style.left = `${startX}px`;
+      box.style.top = `${startY}px`;
+      box.style.width = "0px";
+      box.style.height = "0px";
+    };
+    const onMove = (ev) => {
+      if (!dragging) return;
+      const scrollX = window.scrollX || window.pageXOffset || 0;
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      curX = ev.pageX !== undefined ? ev.pageX : ev.clientX + scrollX;
+      curY = ev.pageY !== undefined ? ev.pageY : ev.clientY + scrollY;
+      const left = Math.min(startX, curX);
+      const top = Math.min(startY, curY);
+      const w = Math.abs(curX - startX);
+      const h = Math.abs(curY - startY);
+      box.style.left = `${left}px`;
+      box.style.top = `${top}px`;
+      box.style.width = `${w}px`;
+      box.style.height = `${h}px`;
+    };
+    const onUp = async (ev) => {
+      try {
+        ev.preventDefault();
+        dragging = false;
+        const scrollX = window.scrollX || window.pageXOffset || 0;
+        const scrollY = window.scrollY || window.pageYOffset || 0;
+        curX = ev.pageX !== undefined ? ev.pageX : ev.clientX + scrollX;
+        curY = ev.pageY !== undefined ? ev.pageY : ev.clientY + scrollY;
+        const left = Math.min(startX, curX);
+        const top = Math.min(startY, curY);
+        const w = Math.abs(curX - startX);
+        const h = Math.abs(curY - startY);
+
+        // remove overlay early so it doesn't interfere with capture
+        cleanupListeners();
+        if (overlay && overlay.parentNode)
+          overlay.parentNode.removeChild(overlay);
+
+        // small selections are ignored
+        if (w < 6 || h < 6) {
+          return;
+        }
+
+        // proceed to capture the selected region
+        try {
+          const h2c =
+            typeof window !== "undefined" && window.html2canvas
+              ? window.html2canvas
+              : typeof html2canvas === "function"
+              ? html2canvas
+              : null;
+          if (!h2c) await this.ensureHtml2Canvas();
+          const runner =
+            window.html2canvas ||
+            (typeof html2canvas === "function" ? html2canvas : null);
+          if (!runner) throw new Error("html2canvas not available");
+
+          // Hide the preview and toolbar before capture
+          const restoreHidden = this._hideElementsForCapture();
+          try {
+            const fullCanvas = await runner(document.documentElement, {
+              useCORS: true,
+              scale: window.devicePixelRatio || 1,
+            });
+            // `left` and `top` are page coordinates (include scroll),
+            // so do not add `scrollX/scrollY` again here — just apply DPR.
+            const sx = left * (window.devicePixelRatio || 1);
+            const sy = top * (window.devicePixelRatio || 1);
+            const sw = w * (window.devicePixelRatio || 1);
+            const sh = h * (window.devicePixelRatio || 1);
+            const out = document.createElement("canvas");
+            out.width = sw;
+            out.height = sh;
+            const ctx = out.getContext("2d");
+            ctx.drawImage(fullCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+            const dataUrl = out.toDataURL("image/png");
+            this._appendThumbnail(preview, dataUrl);
+          } finally {
+            try {
+              if (typeof restoreHidden === "function") restoreHidden();
+            } catch (e) {}
+          }
+        } catch (err) {
+          // attempt fallback path similar to other methods
+          try {
+            const msg = String(
+              (err && (err.message || err.name)) || err || ""
+            ).toLowerCase();
+            if (
+              msg.indexOf("unsupported color function") !== -1 ||
+              msg.indexOf("color-mix") !== -1
+            ) {
+              const restoreSheets = this._disableProblematicStylesheets();
+              const cleanupInline = this._patchInlineColorsForHtml2Canvas();
+              try {
+                const runner2 =
+                  window.html2canvas ||
+                  (typeof html2canvas === "function" ? html2canvas : null);
+                if (!runner2) await this.ensureHtml2Canvas();
+                const restoredRunner =
+                  window.html2canvas ||
+                  (typeof html2canvas === "function" ? html2canvas : null);
+                if (!restoredRunner) throw err;
+                const fullCanvas2 = await restoredRunner(
+                  document.documentElement,
+                  { useCORS: true, scale: window.devicePixelRatio || 1 }
+                );
+                // `left` and `top` are page coordinates (include scroll),
+                // so do not add `scrollX/scrollY` again here — just apply DPR.
+                const sx = left * (window.devicePixelRatio || 1);
+                const sy = top * (window.devicePixelRatio || 1);
+                const sw = w * (window.devicePixelRatio || 1);
+                const sh = h * (window.devicePixelRatio || 1);
+                const out2 = document.createElement("canvas");
+                out2.width = sw;
+                out2.height = sh;
+                const ctx2 = out2.getContext("2d");
+                ctx2.drawImage(fullCanvas2, sx, sy, sw, sh, 0, 0, sw, sh);
+                const dataUrl2 = out2.toDataURL("image/png");
+                this._appendThumbnail(preview, dataUrl2);
+              } finally {
+                try {
+                  if (typeof cleanupInline === "function") cleanupInline();
+                } catch (e) {}
+                try {
+                  if (typeof restoreSheets === "function") restoreSheets();
+                } catch (e) {}
+              }
+            } else {
+              // fallback to interactive capture
+              await this.captureAny();
+            }
+          } catch (e2) {
+            console.error("Selected area capture failed", e2);
+            const tile = document.createElement("div");
+            tile.className = "bugscribe-preview__item bugscribe-preview__error";
+            tile.textContent = "Unable to capture selection";
+            this.getPreviewContainer().appendChild(tile);
+          }
+        }
+      } finally {
+        // ensure listeners cleaned up and overlay removed
+        cleanupListeners();
+        if (overlay && overlay.parentNode)
+          overlay.parentNode.removeChild(overlay);
+      }
+    };
+
+    const onKeyDown = (ev) => {
+      if (
+        ev &&
+        (ev.key === "Escape" || ev.key === "Esc" || ev.keyCode === 27)
+      ) {
+        // cancel selection
+        try {
+          dragging = false;
+          cleanupListeners();
+          if (overlay && overlay.parentNode)
+            overlay.parentNode.removeChild(overlay);
+        } catch (e) {}
+      }
+    };
+
+    const cleanupListeners = () => {
+      overlay.removeEventListener("mousedown", onDown);
+      overlay.removeEventListener("mousemove", onMove);
+      overlay.removeEventListener("mouseup", onUp);
+      overlay.removeEventListener("mouseleave", onUp);
+      overlay.removeEventListener("touchstart", onTouchStart);
+      overlay.removeEventListener("touchmove", onTouchMove);
+      overlay.removeEventListener("touchend", onUp);
+      try {
+        window.removeEventListener("keydown", onKeyDown);
+      } catch (e) {}
+    };
+
+    // touch support
+    const onTouchStart = (ev) => {
+      ev.preventDefault();
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      const scrollX = window.scrollX || window.pageXOffset || 0;
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      onDown({
+        pageX: t.pageX !== undefined ? t.pageX : t.clientX + scrollX,
+        pageY: t.pageY !== undefined ? t.pageY : t.clientY + scrollY,
+        preventDefault: () => {},
+      });
+    };
+    const onTouchMove = (ev) => {
+      const t = ev.touches && ev.touches[0];
+      if (!t) return;
+      const scrollX = window.scrollX || window.pageXOffset || 0;
+      const pageX = t.pageX !== undefined ? t.pageX : t.clientX + scrollX;
+      const pageY =
+        t.pageY !== undefined
+          ? t.pageY
+          : t.clientY + (window.scrollY || window.pageYOffset || 0);
+      onMove({ pageX, pageY });
+    };
+
+    // listen for Escape to cancel selection
+    window.addEventListener("keydown", onKeyDown);
+
+    overlay.addEventListener("mousedown", onDown);
+    overlay.addEventListener("mousemove", onMove);
+    overlay.addEventListener("mouseup", onUp);
+    overlay.addEventListener("mouseleave", onUp);
+    overlay.addEventListener("touchstart", onTouchStart, { passive: false });
+    overlay.addEventListener("touchmove", onTouchMove, { passive: false });
+    overlay.addEventListener("touchend", onUp);
   }
 
   _patchInlineColorsForHtml2Canvas() {
