@@ -1,9 +1,12 @@
+import { bug_svg, screenshot_svg, record_svg } from "./helpers.js";
+
 class BugscribeButton {
   constructor(opts = {}, onClick = null) {
     const defaults = {
       selector: null,
       text: "Report",
-      icon: "🐞",
+      // default icon is null so the library falls back to the bundled SVG
+      icon: null,
       id: "bugReportBtn",
       className: "bug-btn-wrapper",
       container: typeof document !== "undefined" ? document.body : null,
@@ -43,12 +46,55 @@ class BugscribeButton {
       // main interactive button inside the inner element
       const main = document.createElement("button");
       main.type = "button";
-      main.className = "bug-btn__main";
+      // Add a small utility class so consumers / library styles can target
+      // the interactive button easily (and share baseline button styles).
+      main.className = "bug-btn__main bug-btn";
       main.setAttribute("aria-expanded", "false");
-      const mainIcon = this.opts.icon ? String(this.opts.icon) + " " : "";
-      main.textContent = mainIcon + (this.opts.text || "");
+      // build icon + label: icon is SVG (from helpers), label is visible text
+      const iconWrap = document.createElement("span");
+      iconWrap.className = "bug-btn__icon";
+      iconWrap.innerHTML = bug_svg;
+
+      const label = document.createElement("span");
+      label.className = "bug-btn__label";
+      label.textContent = this.opts.text || "";
+
+      main.appendChild(iconWrap);
+      main.appendChild(label);
+
+      // Create actions container with two icon-only buttons (screenshot, record).
+      // These buttons are purely presentational here; consumers may attach
+      // event handlers later if desired.
+      const actions = document.createElement("div");
+      actions.className = "bug-btn-actions";
+
+      const makeAction = (type, labelText) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = `bug-btn__action bug-btn bug-btn__action--${type}`;
+
+        const iconWrap = document.createElement("span");
+        iconWrap.className = "bug-btn__icon";
+        iconWrap.innerHTML =
+          type === "screenshot" ? screenshot_svg : record_svg;
+
+        const s = document.createElement("span");
+        s.className = "sr-only";
+        s.textContent = labelText;
+
+        b.appendChild(iconWrap);
+        b.appendChild(s);
+        return b;
+      };
+
+      const screenshotBtn = makeAction("screenshot", "Screenshot");
+      const recordBtn = makeAction("record", "Record");
+
+      actions.appendChild(screenshotBtn);
+      actions.appendChild(recordBtn);
 
       inner.appendChild(main);
+      inner.appendChild(actions);
       wrapper.appendChild(inner);
 
       const container = this.opts.container || document.body;
@@ -72,10 +118,21 @@ class BugscribeButton {
       this.mainBtn = this.el.querySelector(".bug-btn__main");
     }
 
-    // set initial label (icon + text) on the main button
+    // set initial icon + label on the main button (icon is SVG)
     if (this.mainBtn) {
-      const icon = this.opts.icon ? String(this.opts.icon) + " " : "";
-      this.mainBtn.textContent = icon + (this.opts.text || "");
+      const iconWrap = this.mainBtn.querySelector(".bug-btn__icon");
+      const labelEl = this.mainBtn.querySelector(".bug-btn__label");
+      if (iconWrap) {
+        if (
+          typeof this.opts.icon === "string" &&
+          this.opts.icon.trim().startsWith("<svg")
+        ) {
+          iconWrap.innerHTML = this.opts.icon;
+        } else {
+          iconWrap.innerHTML = bug_svg;
+        }
+      }
+      if (labelEl) labelEl.textContent = this.opts.text || "";
     }
 
     // attach click handler if provided (bound by caller to preserve 'this')
@@ -159,24 +216,27 @@ class BugscribeButton {
       }
     }
 
-    // z-index
-    if (o.zIndex !== undefined && o.zIndex !== null) {
-      this.el.style.setProperty("--bs-btn-z", String(o.zIndex));
-    } else {
-      this.el.style.removeProperty("--bs-btn-z");
-    }
+    // Note: colors and z-index are controlled entirely via SCSS variables
+    // and theme classes. We no longer write these as inline CSS variables
+    // on the wrapper to keep styling centralized in CSS.
 
-    // Colors
-    if (o.bgColor) this.el.style.setProperty("--bs-btn-bg", o.bgColor);
-    else this.el.style.removeProperty("--bs-btn-bg");
-    if (o.textColor) this.el.style.setProperty("--bs-btn-color", o.textColor);
-    else this.el.style.removeProperty("--bs-btn-color");
-
-    // Icon/text
+    // Icon/text: update SVG icon and label if options changed
     if (o.icon !== undefined || o.text !== undefined) {
-      const icon = o.icon ? String(o.icon) + " " : "";
-      if (this.mainBtn) this.mainBtn.textContent = icon + (o.text || "");
-      else this.el.textContent = icon + (o.text || "");
+      if (this.mainBtn) {
+        const iconWrap = this.mainBtn.querySelector(".bug-btn__icon");
+        const labelEl = this.mainBtn.querySelector(".bug-btn__label");
+        if (iconWrap) {
+          if (typeof o.icon === "string" && o.icon.trim().startsWith("<svg")) {
+            iconWrap.innerHTML = o.icon;
+          } else if (typeof o.icon === "string" && o.icon.trim().length > 0) {
+            // fallback: wrap text icon in a small span
+            iconWrap.textContent = o.icon;
+          } else {
+            iconWrap.innerHTML = bug_svg;
+          }
+        }
+        if (labelEl) labelEl.textContent = o.text || "";
+      }
     }
   }
 

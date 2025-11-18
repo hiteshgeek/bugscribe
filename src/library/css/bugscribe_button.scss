@@ -7,7 +7,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.4rem 0.75rem;
   border: none;
   border-radius: 999px;
   font-size: 0.95rem;
@@ -50,5 +50,114 @@
   .bug-btn-wrapper {
     padding: 0.45rem 0.65rem;
     font-size: 0.92rem;
+  }
+}
+
+/* Styles for the interactive main button inside the wrapper. We add
+   a small utility class (`btn`) to make baseline button styling simple
+   and consistent with the wrapper (inherits colors). */
+.bug-btn__main.bug-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 120ms ease,
+    opacity 120ms ease;
+}
+
+.bug-btn__main.bug-btn:active {
+  transform: translateY(1px);
+}
+
+.bug-btn__main.bug-btn:focus {
+  outline: 3px solid rgba(255, 255, 255, 0.12);
+  outline-offset: 2px;
+}
+
+@media (max-width: 420px) {
+  .bug-btn__main.bug-btn {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* Actions group that sits beside the main button. These are icon-only
+   buttons (no visible text). JS may create them; styles are provided here
+   so they look consistent inside the wrapper. */
+.bug-btn-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bug-btn__action.bug-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  padding: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: #333;
+  border: none;
+  cursor: pointer;
+  font-size: 1.05rem;
+  transition: background-color 120ms ease, transform 120ms ease,
+    opacity 120ms ease;
+}
+
+.bug-btn__action.bug-btn:active {
+  transform: translateY(1px);
+}
+
+/* Icon-only: prefer pseudo-elements so authors can omit text labels,
+   but if text is present we visually hide it while keeping it available
+   to screen readers (expecting markup to include a visually-hidden span). */
+.bug-btn__action.bug-btn::before {
+  /* removed: we now insert real SVG icons from helpers.js */
+  display: none;
+}
+
+/* SVG sizing inside action buttons */
+.bug-btn__action .bug-btn__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+
+/* main button icon sizing */
+.bug-btn__main .bug-btn__icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: block;
+}
+
+/* visually-hidden helper for accessible labels inside the button */
+.visually-hidden,
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 420px) {
+  .bug-btn__action.bug-btn {
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 1rem;
   }
 }
