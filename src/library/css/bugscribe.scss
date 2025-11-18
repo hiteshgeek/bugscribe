@@ -4,6 +4,7 @@
 
 @use "variables" as *;
 @use "mixins" as *;
+@use "bugscribe_button" as *;
 
 // Example theme helpers
 .bs-theme-blue {

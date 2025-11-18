@@ -8,6 +8,7 @@ require_once __DIR__ . '/includes/functions.php';
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>BugScribe — Visual Bug Reporting</title>
+      <link rel="stylesheet" href="<?= asset('bugscribe.css') ?>">
       <link rel="stylesheet" href="<?= asset('main.css') ?>">
 </head>
 
