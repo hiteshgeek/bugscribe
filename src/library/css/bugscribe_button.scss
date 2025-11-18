@@ -1,0 +1,64 @@
+/* Bugscribe button styles - per-instance and themeable via CSS variables.
+   This file contains only button-related visual rules. JS sets CSS variables
+   on the element for per-instance overrides (position, colors, z-index).
+*/
+
+:root {
+  --bs-btn-bg: #ff4757;
+  --bs-btn-color: #ffffff;
+  --bs-btn-z: 9999;
+  --bs-pos-top: auto;
+  --bs-pos-right: 24px;
+  --bs-pos-bottom: 24px;
+  --bs-pos-left: auto;
+}
+
+.bug-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  background-color: var(--bs-btn-bg);
+  color: var(--bs-btn-color);
+  z-index: var(--bs-btn-z);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  transition: transform 120ms ease, opacity 120ms ease;
+
+  /* default fixed positioning using CSS variables */
+  position: fixed;
+  top: var(--bs-pos-top);
+  right: var(--bs-pos-right);
+  bottom: var(--bs-pos-bottom);
+  left: var(--bs-pos-left);
+}
+
+/* Allow JS to disable fixed positioning by setting data-fixed="false" */
+.bug-btn[data-fixed="false"] {
+  position: static;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+}
+
+.bug-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(6px) scale(0.98);
+}
+
+.bug-btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+@media (max-width: 420px) {
+  .bug-btn {
+    padding: 0.45rem 0.65rem;
+    font-size: 0.92rem;
+  }
+}

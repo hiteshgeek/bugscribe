@@ -17,8 +17,8 @@ const rev = require("gulp-rev");
 const config = {
   assetsCssDir: "src/assets/css",
   assetsJsDir: "src/assets/js",
-  libCssDir: "src/uibuilder/css",
-  libJsDir: "src/uibuilder/js",
+  libCssDir: "src/library/css",
+  libJsDir: "src/library/js",
   nodeDir: "node_modules",
   sassPattern: "css/**/*.scss",
   jsPattern: "js/**/*.js",
@@ -62,11 +62,22 @@ gulp.task(
   cleanupOldFiles(config.cssOutDir, config.cssManifestPath, ".css")
 );
 
-// Detect production mode via NODE_ENV or --production
-const isProduction =
-  process.env.NODE_ENV === "production" ||
-  process.argv.includes("--production");
-const useSourceMaps = !isProduction; // Enable sourcemaps in dev, disable in production
+// Detect production mode at runtime via NODE_ENV or --production
+function isProduction() {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.argv.includes("--production")
+  );
+}
+function useSourceMaps() {
+  return !isProduction(); // Enable sourcemaps in dev, disable in production
+}
+
+// Helper to set production env when running the `prod` task so behaviour is deterministic
+function setProdEnv(done) {
+  process.env.NODE_ENV = "production";
+  done && done();
+}
 
 // Utility: Run a series of tasks in sequence (replaces Pipeline/Q)
 async function runPipeline(entries, taskFn) {
@@ -86,12 +97,12 @@ function addAllStyles(done) {
     gulp
       .src(srcArr)
       .pipe(plugins.plumber({ errorHandler: onError }))
-      .pipe(useSourceMaps ? plugins.sourcemaps.init() : noop())
+      .pipe(useSourceMaps() ? plugins.sourcemaps.init() : noop())
       .pipe(sass())
       .pipe(plugins.concat(outName))
-      .pipe(isProduction ? plugins.cleanCss() : noop())
+      .pipe(isProduction() ? plugins.cleanCss() : noop())
       .pipe(rev())
-      .pipe(useSourceMaps ? plugins.sourcemaps.write(".") : noop())
+      .pipe(useSourceMaps() ? plugins.sourcemaps.write(".") : noop())
       .pipe(gulp.dest(config.cssOutDir))
   );
   return require("merge-stream")(...entries)
@@ -106,7 +117,7 @@ function addAllScriptsESM() {
     gulp
       .src(srcArr)
       .pipe(plugins.plumber({ errorHandler: onError }))
-      .pipe(useSourceMaps ? plugins.sourcemaps.init() : noop())
+      .pipe(useSourceMaps() ? plugins.sourcemaps.init() : noop())
       .pipe(
         rollup(
           { plugins: [rollupBabel({ babelHelpers: "bundled" })] },
@@ -114,10 +125,10 @@ function addAllScriptsESM() {
         )
       )
       .pipe(plugins.concat(outName))
-      .pipe(isProduction ? uglify() : noop())
-      .pipe(isProduction ? javascriptObfuscator() : noop())
+      .pipe(isProduction() ? uglify() : noop())
+      .pipe(isProduction() ? javascriptObfuscator() : noop())
       .pipe(rev())
-      .pipe(useSourceMaps ? plugins.sourcemaps.write(".") : noop())
+      .pipe(useSourceMaps() ? plugins.sourcemaps.write(".") : noop())
       .pipe(gulp.dest(config.jsOutDir))
   );
   return require("merge-stream")(...entries)
@@ -132,7 +143,7 @@ function addAllScriptsIIFE() {
     gulp
       .src(srcArr)
       .pipe(plugins.plumber({ errorHandler: onError }))
-      .pipe(useSourceMaps ? plugins.sourcemaps.init() : noop())
+      .pipe(useSourceMaps() ? plugins.sourcemaps.init() : noop())
       .pipe(
         rollup(
           { plugins: [rollupBabel({ babelHelpers: "bundled" })] },
@@ -140,10 +151,10 @@ function addAllScriptsIIFE() {
         )
       )
       .pipe(plugins.concat(outName.replace(/\.js$/, ".iife.js")))
-      .pipe(isProduction ? uglify() : noop())
-      .pipe(isProduction ? javascriptObfuscator() : noop())
+      .pipe(isProduction() ? uglify() : noop())
+      .pipe(isProduction() ? javascriptObfuscator() : noop())
       .pipe(rev())
-      .pipe(useSourceMaps ? plugins.sourcemaps.write(".") : noop())
+      .pipe(useSourceMaps() ? plugins.sourcemaps.write(".") : noop())
       .pipe(gulp.dest(config.jsOutDir))
   );
   return require("merge-stream")(...entries)
@@ -170,8 +181,8 @@ gulp.task("clean", async function () {
 });
 
 const styleEntries = [
-  [[config.libCssDir + "/ui-builder.scss"], "ui-builder.css"],
-  [[config.assetsCssDir + "/sidebar.scss"], "sidebar.css"],
+  [[config.libCssDir + "/bugscribe.scss"], "bugscribe.css"],
+  [[config.assetsCssDir + "/main.scss"], "main.css"],
 ];
 gulp.task("styles", gulp.series("clean-css", addAllStyles));
 
@@ -179,16 +190,8 @@ gulp.task("styles", gulp.series("clean-css", addAllStyles));
 gulp.task("styles-clean", gulp.series("styles", "clean-old-css"));
 
 const scriptEntries = [
-  [
-    [
-      config.libJsDir + "/index.js",
-      config.libJsDir + "/ui-utils.js",
-      config.libJsDir + "/ui-buttons.js",
-    ],
-    "ui-builder.js",
-  ],
-  [[config.assetsJsDir + "/modal.js"], "modal.js"],
-  [[config.assetsJsDir + "/tabs.js"], "tabs.js"],
+  [[config.libJsDir + "/bugscribe.js"], "bugscribe.js"],
+  [[config.assetsJsDir + "/main.js"], "main.js"],
 ];
 
 gulp.task(
@@ -212,12 +215,14 @@ gulp.task("watch", function () {
   );
 });
 
-// Minimal test watcher for debugging (no polling)
-
 // Default and dev/prod tasks (must be last)
 gulp.task(
   "dev",
   gulp.series("clean", "styles-clean", "scripts-clean", "watch")
 );
-gulp.task("prod", gulp.series("clean", "styles-clean", "scripts-clean"));
+// Prod task: set NODE_ENV and run the full clean/build without sourcemaps
+gulp.task(
+  "prod",
+  gulp.series(setProdEnv, "clean", "styles-clean", "scripts-clean")
+);
 gulp.task("default", gulp.series("dev"));

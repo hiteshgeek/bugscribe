@@ -1,0 +1,46 @@
+/* SCSS mixins for Bugscribe
+   Keep reusable mixins separate so they can be imported where needed.
+*/
+
+// Mixin: emit CSS custom properties into the selector
+@mixin bs-emit-vars($map) {
+  @each $name, $val in $map {
+    --#{$name}: #{$val};
+  }
+}
+
+// Mixin: set button theme variables inside a selector
+@mixin bs-button-variant($bg, $color, $z) {
+  --bs-btn-bg: #{$bg};
+  --bs-btn-color: #{$color};
+  --bs-btn-z: #{$z};
+}
+
+// Mixin: produce position variables for a selector
+@mixin bs-button-position(
+  $top: null,
+  $right: null,
+  $bottom: null,
+  $left: null
+) {
+  @if $top != null {
+    --bs-pos-top: #{$top};
+  } @else {
+    --bs-pos-top: auto;
+  }
+  @if $right != null {
+    --bs-pos-right: #{$right};
+  } @else {
+    --bs-pos-right: auto;
+  }
+  @if $bottom != null {
+    --bs-pos-bottom: #{$bottom};
+  } @else {
+    --bs-pos-bottom: auto;
+  }
+  @if $left != null {
+    --bs-pos-left: #{$left};
+  } @else {
+    --bs-pos-left: auto;
+  }
+}

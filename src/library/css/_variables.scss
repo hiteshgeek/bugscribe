@@ -1,0 +1,40 @@
+/* SCSS variables for Bugscribe
+   Place project-level defaults here. This partial emits the :root
+   CSS custom properties used by the button styles.
+*/
+
+// SCSS-level defaults (used to output CSS variables)
+$bs-btn-bg: #ff4757 !default;
+$bs-btn-color: #ffffff !default;
+$bs-btn-z: 9999 !default;
+$bs-pos-top: null !default;
+$bs-pos-right: 24px !default;
+$bs-pos-bottom: 24px !default;
+$bs-pos-left: null !default;
+
+/* Emit global CSS custom properties based on the SCSS defaults */
+:root {
+  --bs-btn-bg: #{$bs-btn-bg};
+  --bs-btn-color: #{$bs-btn-color};
+  --bs-btn-z: #{$bs-btn-z};
+  @if $bs-pos-top != null {
+    --bs-pos-top: #{$bs-pos-top};
+  } @else {
+    --bs-pos-top: auto;
+  }
+  @if $bs-pos-right != null {
+    --bs-pos-right: #{$bs-pos-right};
+  } @else {
+    --bs-pos-right: auto;
+  }
+  @if $bs-pos-bottom != null {
+    --bs-pos-bottom: #{$bs-pos-bottom};
+  } @else {
+    --bs-pos-bottom: auto;
+  }
+  @if $bs-pos-left != null {
+    --bs-pos-left: #{$bs-pos-left};
+  } @else {
+    --bs-pos-left: auto;
+  }
+}

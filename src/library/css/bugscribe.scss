@@ -1,0 +1,19 @@
+/* Library-level SCSS entry.
+   Imports variables and mixins kept in partials. This file provides
+   example helpers for theming and positioning the button. */
+
+@use "variables" as *;
+@use "mixins" as *;
+
+// Example theme helpers
+.bs-theme-blue {
+  @include bs-button-variant(#0a84ff, #ffffff, 10010);
+}
+.bs-theme-dark {
+  @include bs-button-variant(#222, #fff, 20000);
+}
+
+// Example utility: pin bottom-left
+.bs-pos-bottom-left {
+  @include bs-button-position(null, auto, 24px, 24px);
+}
