@@ -27,6 +27,24 @@ class BugscribeButton {
     this.create();
   }
 
+  toggle() {
+    if (!this.el) return;
+    if (this.el.classList.contains("expanded")) this.collapse();
+    else this.expand();
+  }
+
+  expand() {
+    if (!this.el) return;
+    this.el.classList.add("expanded");
+    if (this.mainBtn) this.mainBtn.setAttribute("aria-expanded", "true");
+  }
+
+  collapse() {
+    if (!this.el) return;
+    this.el.classList.remove("expanded");
+    if (this.mainBtn) this.mainBtn.setAttribute("aria-expanded", "false");
+  }
+
   create() {
     if (this.opts.selector) {
       this.el = document.querySelector(this.opts.selector);
@@ -34,14 +52,10 @@ class BugscribeButton {
     }
 
     if (!this.el && this.opts.createIfMissing) {
-      // create an outer wrapper so we can attach other components later
-      const wrapper = document.createElement("div");
-      wrapper.className = "bug-btn-container";
-
       // inner element that receives the library styles/vars
       const inner = document.createElement("div");
       inner.id = this.opts.id;
-      inner.className = this.opts.className; // "bug-btn"
+      inner.className = this.opts.className; // "bug-btn-wrapper"
 
       // main interactive button inside the inner element
       const main = document.createElement("button");
@@ -95,13 +109,11 @@ class BugscribeButton {
 
       inner.appendChild(main);
       inner.appendChild(actions);
-      wrapper.appendChild(inner);
 
       const container = this.opts.container || document.body;
-      container.appendChild(wrapper);
+      container.appendChild(inner);
 
       this._createdByMe = true;
-      this.wrapper = wrapper;
       this.el = inner; // keep this.el pointing at the element that has .bug-btn
       this.mainBtn = main;
     }
@@ -141,6 +153,14 @@ class BugscribeButton {
       if (this.mainBtn)
         this.mainBtn.addEventListener("click", this._boundClick);
     }
+
+    // Add internal toggle behavior: clicking the main button reveals the
+    // icon-only actions. Keep this separate from user-provided onClick.
+    this._boundToggle = (e) => {
+      // prevent double-toggle if user handler calls stopPropagation
+      this.toggle();
+    };
+    if (this.mainBtn) this.mainBtn.addEventListener("click", this._boundToggle);
 
     // Apply CSS variables and attributes instead of inline layout styles
     this.applyStyles();
@@ -264,10 +284,11 @@ class BugscribeButton {
         this.mainBtn.removeEventListener("click", this._boundClick);
       else this.el.removeEventListener("click", this._boundClick);
     }
+    if (this._boundToggle && this.mainBtn) {
+      this.mainBtn.removeEventListener("click", this._boundToggle);
+    }
     if (this._createdByMe) {
-      if (this.wrapper && this.wrapper.parentNode)
-        this.wrapper.parentNode.removeChild(this.wrapper);
-      else if (this.el && this.el.parentNode)
+      if (this.el && this.el.parentNode)
         this.el.parentNode.removeChild(this.el);
     }
     this.el = null;
