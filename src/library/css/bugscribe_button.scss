@@ -17,6 +17,13 @@
   background-color: var(--bs-btn-bg);
   color: var(--bs-btn-color);
   z-index: var(--bs-btn-z);
+  /* Derived colors from the button background. These follow the
+      instance `--bs-btn-bg` set by SCSS or JS. Uses CSS `color-mix()`
+      where available; browsers without support will ignore these.
+    */
+  --bs-btn-border: color-mix(in srgb, var(--bs-btn-bg) 65%, black 35%);
+  --bs-btn-action-bg: color-mix(in srgb, var(--bs-btn-bg) 92%, white 8%);
+  --bs-btn-action-color: color-mix(in srgb, var(--bs-btn-bg) 20%, black 80%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   /* animate padding and box-shadow to create a smooth pill morph on expand */
   transition: transform 120ms ease, opacity 120ms ease,
@@ -31,6 +38,36 @@
   left: var(--bs-pos-left);
 
   overflow: hidden;
+}
+
+/* When the wrapper is anchored to the right edge, actions should appear
+   to the left of the main button. JS sets `data-action-side` to 'left'
+   in that case — use that to flip collapsed/expanded positions. */
+.bug-btn-wrapper[data-action-side="left"] .bug-btn-actions {
+  left: auto;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%) translateX(-7px);
+}
+
+.bug-btn-wrapper.expanded[data-action-side="left"] {
+  /* swap padding sides so the actions fit inside the pill on the left */
+  padding-left: 9rem;
+  padding-right: 0.25rem;
+
+  .bug-btn__main {
+    border-left: 1px solid #fff;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .bug-btn-actions {
+    opacity: 1;
+    right: auto;
+    left: 0.6rem;
+    transform: translateY(-50%) translateX(-6px);
+    pointer-events: auto;
+  }
 }
 
 /* Allow JS to disable fixed positioning by setting data-fixed="false" */
@@ -67,9 +104,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  padding: 0.45rem 0.65rem;
+  padding: 0.65rem 0.65rem;
   border-radius: 999px;
-  background: transparent;
+  background-color: var(--bs-btn-bg);
   color: inherit;
   border: none;
   font-weight: 600;
@@ -77,12 +114,12 @@
   transition: background-color 120ms ease, transform 120ms ease,
     opacity 120ms ease;
   position: relative;
-  z-index: 2;
+  z-index: 3;
 }
 
-.bug-btn__main.bug-btn:active {
-  transform: translateY(1px);
-}
+// .bug-btn__main.bug-btn:active {
+//   transform: translateY(1px);
+// }
 
 // .bug-btn__main.bug-btn:focus {
 //   outline: 3px solid rgba(255, 255, 255, 0.12);
@@ -100,7 +137,7 @@
 */
 .bug-btn-wrapper.expanded {
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
-  padding-right: calc(7.5rem + 5px);
+  padding-right: 9rem;
   padding-left: 0.25rem;
 }
 
@@ -118,18 +155,29 @@
   /* collapsed: sit just to the right of the pill */
   left: 100%;
   top: 50%;
-  transform: translateY(-50%) translateX(6px);
+  transform: translateY(-50%) translateX(7px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms cubic-bezier(0.2, 0.9, 0.2, 1),
     transform 180ms cubic-bezier(0.2, 0.9, 0.2, 1), right 180ms ease,
     left 180ms ease;
-  z-index: 3;
+  z-index: 2;
 }
 
 /* When expanded, bring the actions inside the pill on the right side. */
 
 .bug-btn-wrapper.expanded {
+  &[data-action-side="right"] .bug-btn__main {
+    border-right: 1px solid var(--bs-btn-border);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  &[data-action-side="left"] .bug-btn__main {
+    border-left: 1px solid var(--bs-btn-border);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
   .bug-btn-actions {
     opacity: 1;
     left: auto;
@@ -143,12 +191,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
+  width: 2.5rem;
+  height: 2.5rem;
   padding: 0;
   border-radius: 999px;
-  background: #fff;
-  color: #333;
+  background: rgba(255, 255, 255, 0.4);
+  color: var(--bs-btn-action-color);
   border: none;
   cursor: pointer;
   font-size: 1.05rem;
@@ -156,6 +204,11 @@
     opacity 120ms ease;
   position: relative;
   z-index: 3;
+
+  &:hover,
+  &:focus {
+    background: rgba(255, 255, 255, 0.8);
+  }
 }
 
 .bug-btn__action.bug-btn:active {

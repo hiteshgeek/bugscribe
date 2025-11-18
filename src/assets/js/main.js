@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
             onClick: (e, inst) => {
               // Default behavior delegated to the library (toggle modal or prompt).
             },
-            position: { bottom: "24px", right: "24px" },
+            position: { bottom: "24px", left: "24px" },
           });
           instantiated = true;
         } catch (err) {

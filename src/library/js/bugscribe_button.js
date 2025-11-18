@@ -250,6 +250,20 @@ class BugscribeButton {
       }
     }
 
+    // Decide which side the action buttons should appear on relative to
+    // the main button. If the wrapper is anchored to the right edge (a
+    // `right` value is provided and not 'auto') then actions should sit
+    // to the left of the main button. If anchored to the left, actions
+    // sit to the right. Expose this to CSS via a data attribute so
+    // styles can adjust positioning responsively.
+    let actionSide = "right";
+    if (right !== undefined && right !== null && String(right) !== "auto") {
+      actionSide = "left";
+    } else if (left !== undefined && left !== null && String(left) !== "auto") {
+      actionSide = "right";
+    }
+    this.el.setAttribute("data-action-side", actionSide);
+
     // Note: colors and z-index are controlled entirely via SCSS variables
     // and theme classes. We no longer write these as inline CSS variables
     // on the wrapper to keep styling centralized in CSS.
