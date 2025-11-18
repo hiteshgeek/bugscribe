@@ -1,4 +1,4 @@
-import { bug_svg, screenshot_svg, record_svg } from "./helpers.js";
+import { bug_svg, screenshot_svg, record_svg, settings } from "./helpers.js";
 
 class BugscribeButton {
   constructor(opts = {}, onClick = null) {
@@ -67,14 +67,13 @@ class BugscribeButton {
       // build icon + label: icon is SVG (from helpers), label is visible text
       const iconWrap = document.createElement("span");
       iconWrap.className = "bug-btn__icon";
+      // default main icon is the bug icon (library brand)
       iconWrap.innerHTML = bug_svg;
 
-      const label = document.createElement("span");
-      label.className = "bug-btn__label";
-      label.textContent = this.opts.text || "";
+      // accessible label on the button (visually no text)
+      main.setAttribute("aria-label", this.opts.text || "Report");
 
       main.appendChild(iconWrap);
-      main.appendChild(label);
 
       // Create actions container with two icon-only buttons (screenshot, record).
       // These buttons are purely presentational here; consumers may attach
@@ -90,7 +89,13 @@ class BugscribeButton {
         const iconWrap = document.createElement("span");
         iconWrap.className = "bug-btn__icon";
         iconWrap.innerHTML =
-          type === "screenshot" ? screenshot_svg : record_svg;
+          type === "screenshot"
+            ? screenshot_svg
+            : type === "record"
+            ? record_svg
+            : type === "settings"
+            ? settings
+            : "";
 
         const s = document.createElement("span");
         s.className = "sr-only";
@@ -103,9 +108,11 @@ class BugscribeButton {
 
       const screenshotBtn = makeAction("screenshot", "Screenshot");
       const recordBtn = makeAction("record", "Record");
+      const settingsBtn = makeAction("settings", "Settings");
 
       actions.appendChild(screenshotBtn);
       actions.appendChild(recordBtn);
+      actions.appendChild(settingsBtn);
 
       inner.appendChild(main);
       inner.appendChild(actions);
@@ -133,18 +140,25 @@ class BugscribeButton {
     // set initial icon + label on the main button (icon is SVG)
     if (this.mainBtn) {
       const iconWrap = this.mainBtn.querySelector(".bug-btn__icon");
-      const labelEl = this.mainBtn.querySelector(".bug-btn__label");
       if (iconWrap) {
         if (
           typeof this.opts.icon === "string" &&
           this.opts.icon.trim().startsWith("<svg")
         ) {
           iconWrap.innerHTML = this.opts.icon;
+        } else if (
+          typeof this.opts.icon === "string" &&
+          this.opts.icon.trim().length > 0
+        ) {
+          // fallback: use text inside iconWrap
+          iconWrap.textContent = this.opts.icon;
         } else {
+          // default to bug icon for collapsed state
           iconWrap.innerHTML = bug_svg;
         }
       }
-      if (labelEl) labelEl.textContent = this.opts.text || "";
+      // keep an accessible label on the button
+      this.mainBtn.setAttribute("aria-label", this.opts.text || "Report");
     }
 
     // attach click handler if provided (bound by caller to preserve 'this')
@@ -240,22 +254,22 @@ class BugscribeButton {
     // and theme classes. We no longer write these as inline CSS variables
     // on the wrapper to keep styling centralized in CSS.
 
-    // Icon/text: update SVG icon and label if options changed
+    // Icon/text: update SVG icon and accessible label if options changed
     if (o.icon !== undefined || o.text !== undefined) {
       if (this.mainBtn) {
         const iconWrap = this.mainBtn.querySelector(".bug-btn__icon");
-        const labelEl = this.mainBtn.querySelector(".bug-btn__label");
         if (iconWrap) {
           if (typeof o.icon === "string" && o.icon.trim().startsWith("<svg")) {
             iconWrap.innerHTML = o.icon;
           } else if (typeof o.icon === "string" && o.icon.trim().length > 0) {
-            // fallback: wrap text icon in a small span
             iconWrap.textContent = o.icon;
           } else {
+            // default to bug icon for collapsed state
             iconWrap.innerHTML = bug_svg;
           }
         }
-        if (labelEl) labelEl.textContent = o.text || "";
+        // update accessible label (no visible text shown)
+        this.mainBtn.setAttribute("aria-label", o.text || "Report");
       }
     }
   }
