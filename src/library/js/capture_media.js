@@ -31,20 +31,62 @@ export default class CaptureMedia {
           ? this.captureSelectedArea.bind(this)
           : () => {},
       },
+      inbuilt_capture: {
+        combo: "Control+Alt+4",
+        key: "4",
+        ctrl: true,
+        alt: true,
+        shift: false,
+        handler: this.captureAny ? this.captureAny.bind(this) : () => {},
+      },
     };
 
     // Keydown handler for hotkeys - checks all configured hotkeys
     this._onHotkey = (e) => {
       try {
+        // Debug: log key events to help diagnose hotkey issues
+        try {
+          console.debug &&
+            console.debug("[Bugscribe hotkey]", {
+              key: e.key,
+              code: e.code,
+              ctrlKey: e.ctrlKey,
+              altKey: e.altKey,
+              shiftKey: e.shiftKey,
+              metaKey: e.metaKey,
+              repeat: e.repeat,
+              target: e.target && e.target.tagName,
+              active:
+                document &&
+                document.activeElement &&
+                document.activeElement.tagName,
+            });
+        } catch (logErr) {}
         if (e.repeat) return;
         for (const name of Object.keys(this.hotkeys || {})) {
           const hp = this.hotkeys[name];
           if (!hp) continue;
+          const pressedKey = String(e.key || "");
+          const code = String(e.code || "").toLowerCase();
+          const wantKey = String(hp.key || "");
+          const codeMatchesDigit =
+            code === `digit${wantKey}` || code === `numpad${wantKey}`;
+
+          // Consider tracked modifier state because some keyboard layouts
+          // produce a composed final key event that lacks ctrl/alt flags
+          // (e.g. AltGr). Use either the event flags or the stored mod state.
+          const mod = this._modState || {};
+          const ctrlNow = !!e.ctrlKey || !!mod.ctrl;
+          const altNow = !!e.altKey || !!mod.alt;
+          const shiftNow = !!e.shiftKey || !!mod.shift;
+          const metaNow = !!e.metaKey || !!mod.meta;
+
           if (
-            e.key === hp.key &&
-            !!e.ctrlKey === !!hp.ctrl &&
-            !!e.altKey === !!hp.alt &&
-            !!e.shiftKey === !!hp.shift
+            (pressedKey === wantKey || codeMatchesDigit) &&
+            ctrlNow === !!hp.ctrl &&
+            altNow === !!hp.alt &&
+            shiftNow === !!hp.shift &&
+            metaNow === !!hp.meta
           ) {
             e.preventDefault();
             Promise.resolve().then(() => {
@@ -63,6 +105,31 @@ export default class CaptureMedia {
     };
 
     if (typeof window !== "undefined" && window.addEventListener) {
+      // Track modifier state separately because some layouts produce a
+      // composed character key event (e.g. AltGr) where the final key
+      // event does not include ctrl/alt flags. We keep a small modifier
+      // state updated on keydown/keyup so hotkeys still match.
+      this._modState = { ctrl: false, alt: false, shift: false, meta: false };
+      this._modKeyDown = (ev) => {
+        try {
+          const k = String(ev.key || "").toLowerCase();
+          if (k.indexOf("control") !== -1) this._modState.ctrl = true;
+          if (k.indexOf("alt") !== -1) this._modState.alt = true;
+          if (k.indexOf("shift") !== -1) this._modState.shift = true;
+          if (k.indexOf("meta") !== -1) this._modState.meta = true;
+        } catch (e) {}
+      };
+      this._modKeyUp = (ev) => {
+        try {
+          const k = String(ev.key || "").toLowerCase();
+          if (k.indexOf("control") !== -1) this._modState.ctrl = false;
+          if (k.indexOf("alt") !== -1) this._modState.alt = false;
+          if (k.indexOf("shift") !== -1) this._modState.shift = false;
+          if (k.indexOf("meta") !== -1) this._modState.meta = false;
+        } catch (e) {}
+      };
+      window.addEventListener("keydown", this._modKeyDown, { capture: true });
+      window.addEventListener("keyup", this._modKeyUp, { capture: true });
       window.addEventListener("keydown", this._onHotkey, { passive: false });
     }
   }
@@ -77,105 +144,6 @@ export default class CaptureMedia {
       document.body.appendChild(preview);
     }
     return preview;
-  }
-
-  async captureAny() {
-    const preview = this.getPreviewContainer();
-    try {
-      // Prefer html2canvas if the host page provides it
-      if (
-        typeof window !== "undefined" &&
-        (typeof window.html2canvas === "function" ||
-          typeof window.html2canvas === "object")
-      ) {
-        const fn = window.html2canvas || window.html2canvas;
-        let restoreHidden = null;
-        try {
-          restoreHidden = this._hideElementsForCapture();
-          const canvas = await fn(document.documentElement, { useCORS: true });
-          const dataUrl = canvas.toDataURL("image/png");
-          this._appendThumbnail(preview, dataUrl);
-          return;
-        } finally {
-          try {
-            if (typeof restoreHidden === "function") restoreHidden();
-          } catch (e) {}
-        }
-      }
-
-      if (typeof html2canvas === "function") {
-        let restoreHidden = null;
-        try {
-          restoreHidden = this._hideElementsForCapture();
-          const canvas = await html2canvas(document.documentElement, {
-            useCORS: true,
-          });
-          const dataUrl = canvas.toDataURL("image/png");
-          this._appendThumbnail(preview, dataUrl);
-          return;
-        } finally {
-          try {
-            if (typeof restoreHidden === "function") restoreHidden();
-          } catch (e) {}
-        }
-      }
-
-      // Fallback: ask the user to share their screen (prompts for permission)
-      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-        });
-        const image = await new Promise((resolve, reject) => {
-          const video = document.createElement("video");
-          video.autoplay = true;
-          video.muted = true;
-          video.playsInline = true;
-          video.srcObject = stream;
-          video.addEventListener("loadedmetadata", () => {
-            video.play().catch(() => {});
-            const canvas = document.createElement("canvas");
-            canvas.width = video.videoWidth || 1280;
-            canvas.height = video.videoHeight || 720;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL("image/png");
-            try {
-              stream.getTracks().forEach((t) => t.stop());
-            } catch (e) {}
-            resolve(dataUrl);
-          });
-          video.addEventListener("error", (err) => reject(err));
-        });
-        this._appendThumbnail(preview, image);
-        return;
-      }
-
-      throw new Error(
-        "No supported screenshot method available (html2canvas or getDisplayMedia)"
-      );
-    } catch (err) {
-      try {
-        const msg = String(
-          (err && (err.name || err.message)) || err || ""
-        ).toLowerCase();
-        if (
-          msg.indexOf("notallowed") !== -1 ||
-          msg.indexOf("permission") !== -1 ||
-          msg.indexOf("denied") !== -1 ||
-          msg.indexOf("cancel") !== -1 ||
-          msg.indexOf("abort") !== -1
-        ) {
-          return;
-        }
-      } catch (e) {
-        // fall through
-      }
-      console.error("Screenshot capture failed", err);
-      const tile = document.createElement("div");
-      tile.className = "bugscribe-preview__item bugscribe-preview__error";
-      tile.textContent = "Unable to capture screenshot";
-      preview.appendChild(tile);
-    }
   }
 
   async ensureHtml2Canvas() {
@@ -217,8 +185,10 @@ export default class CaptureMedia {
       if (!h2c) throw new Error("html2canvas not available");
 
       let restoreHidden = null;
+      let restoreVideos = null;
       try {
         restoreHidden = this._hideElementsForCapture();
+        restoreVideos = await this._snapshotVideosForCapture(preview);
         const canvas = await h2c(document.documentElement, {
           useCORS: true,
           scale: window.devicePixelRatio || 1,
@@ -229,6 +199,9 @@ export default class CaptureMedia {
       } finally {
         try {
           if (typeof restoreHidden === "function") restoreHidden();
+        } catch (e) {}
+        try {
+          if (typeof restoreVideos === "function") restoreVideos();
         } catch (e) {}
       }
     } catch (err) {
@@ -265,8 +238,10 @@ export default class CaptureMedia {
                 "html2canvas not available after attempted restore"
               );
             let restoreHidden2 = null;
+            let restoreVideos2 = null;
             try {
               restoreHidden2 = this._hideElementsForCapture();
+              restoreVideos2 = await this._snapshotVideosForCapture(preview);
               const canvas2 = await runner(document.documentElement, {
                 useCORS: true,
                 scale: window.devicePixelRatio || 1,
@@ -276,6 +251,9 @@ export default class CaptureMedia {
             } finally {
               try {
                 if (typeof restoreHidden2 === "function") restoreHidden2();
+              } catch (e) {}
+              try {
+                if (typeof restoreVideos2 === "function") restoreVideos2();
               } catch (e) {}
             }
             return;
@@ -321,8 +299,11 @@ export default class CaptureMedia {
       if (!h2c) throw new Error("html2canvas not available");
 
       // Hide UI elements that shouldn't appear in the capture
-      const restoreHidden = this._hideElementsForCapture();
+      let restoreHidden = null;
+      let restoreVideos = null;
       try {
+        restoreHidden = this._hideElementsForCapture();
+        restoreVideos = await this._snapshotVideosForCapture(preview);
         // Capture a canvas of the full page, then crop to the viewport region.
         const fullCanvas = await h2c(document.documentElement, {
           useCORS: true,
@@ -343,7 +324,7 @@ export default class CaptureMedia {
         const out = document.createElement("canvas");
         out.width = vw * (window.devicePixelRatio || 1);
         out.height = vh * (window.devicePixelRatio || 1);
-        const ctx = out.getContext("2d");
+        const ctx = out.getContext("2d", { willReadFrequently: true });
         // draw the portion of the full canvas that corresponds to the viewport
         ctx.drawImage(
           fullCanvas,
@@ -363,6 +344,9 @@ export default class CaptureMedia {
         try {
           if (typeof restoreHidden === "function") restoreHidden();
         } catch (e) {}
+        try {
+          if (typeof restoreVideos === "function") restoreVideos();
+        } catch (e) {}
       }
     } catch (err) {
       // If html2canvas fails due to color functions, attempt the same fallback used in captureFullPage
@@ -379,6 +363,9 @@ export default class CaptureMedia {
           let restoreHidden2 = null;
           try {
             restoreHidden2 = this._hideElementsForCapture();
+            const restoreVideos2 = await this._snapshotVideosForCapture(
+              preview
+            );
             const h2c2 =
               typeof window !== "undefined" && window.html2canvas
                 ? window.html2canvas
@@ -406,7 +393,7 @@ export default class CaptureMedia {
             const out = document.createElement("canvas");
             out.width = vw * (window.devicePixelRatio || 1);
             out.height = vh * (window.devicePixelRatio || 1);
-            const ctx = out.getContext("2d");
+            const ctx = out.getContext("2d", { willReadFrequently: true });
             ctx.drawImage(
               fullCanvas2,
               sx * (window.devicePixelRatio || 1),
@@ -424,6 +411,9 @@ export default class CaptureMedia {
           } finally {
             try {
               if (typeof restoreHidden2 === "function") restoreHidden2();
+            } catch (e) {}
+            try {
+              if (typeof restoreVideos2 === "function") restoreVideos2();
             } catch (e) {}
             try {
               if (typeof restoreSheets === "function") restoreSheets();
@@ -601,8 +591,11 @@ export default class CaptureMedia {
           if (!runner) throw new Error("html2canvas not available");
 
           // Hide the preview and toolbar before capture
-          const restoreHidden = this._hideElementsForCapture();
+          let restoreHidden = null;
+          let restoreVideos = null;
           try {
+            restoreHidden = this._hideElementsForCapture();
+            restoreVideos = await this._snapshotVideosForCapture(preview);
             const fullCanvas = await runner(document.documentElement, {
               useCORS: true,
               scale: window.devicePixelRatio || 1,
@@ -616,13 +609,16 @@ export default class CaptureMedia {
             const out = document.createElement("canvas");
             out.width = sw;
             out.height = sh;
-            const ctx = out.getContext("2d");
+            const ctx = out.getContext("2d", { willReadFrequently: true });
             ctx.drawImage(fullCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
             const dataUrl = out.toDataURL("image/png");
             this._appendThumbnail(preview, dataUrl);
           } finally {
             try {
               if (typeof restoreHidden === "function") restoreHidden();
+            } catch (e) {}
+            try {
+              if (typeof restoreVideos === "function") restoreVideos();
             } catch (e) {}
           }
         } catch (err) {
@@ -646,10 +642,40 @@ export default class CaptureMedia {
                   window.html2canvas ||
                   (typeof html2canvas === "function" ? html2canvas : null);
                 if (!restoredRunner) throw err;
-                const fullCanvas2 = await restoredRunner(
-                  document.documentElement,
-                  { useCORS: true, scale: window.devicePixelRatio || 1 }
-                );
+                let restoreHidden3 = null;
+                let restoreVideos3 = null;
+                try {
+                  restoreHidden3 = this._hideElementsForCapture();
+                  restoreVideos3 = await this._snapshotVideosForCapture(
+                    preview
+                  );
+                  const fullCanvas2 = await restoredRunner(
+                    document.documentElement,
+                    { useCORS: true, scale: window.devicePixelRatio || 1 }
+                  );
+                  // `left` and `top` are page coordinates (include scroll),
+                  // so do not add `scrollX/scrollY` again here — just apply DPR.
+                  const sx = left * (window.devicePixelRatio || 1);
+                  const sy = top * (window.devicePixelRatio || 1);
+                  const sw = w * (window.devicePixelRatio || 1);
+                  const sh = h * (window.devicePixelRatio || 1);
+                  const out2 = document.createElement("canvas");
+                  out2.width = sw;
+                  out2.height = sh;
+                  const ctx2 = out2.getContext("2d", {
+                    willReadFrequently: true,
+                  });
+                  ctx2.drawImage(fullCanvas2, sx, sy, sw, sh, 0, 0, sw, sh);
+                  const dataUrl2 = out2.toDataURL("image/png");
+                  this._appendThumbnail(preview, dataUrl2);
+                } finally {
+                  try {
+                    if (typeof restoreHidden3 === "function") restoreHidden3();
+                  } catch (e) {}
+                  try {
+                    if (typeof restoreVideos3 === "function") restoreVideos3();
+                  } catch (e) {}
+                }
                 // `left` and `top` are page coordinates (include scroll),
                 // so do not add `scrollX/scrollY` again here — just apply DPR.
                 const sx = left * (window.devicePixelRatio || 1);
@@ -659,7 +685,9 @@ export default class CaptureMedia {
                 const out2 = document.createElement("canvas");
                 out2.width = sw;
                 out2.height = sh;
-                const ctx2 = out2.getContext("2d");
+                const ctx2 = out2.getContext("2d", {
+                  willReadFrequently: true,
+                });
                 ctx2.drawImage(fullCanvas2, sx, sy, sw, sh, 0, 0, sw, sh);
                 const dataUrl2 = out2.toDataURL("image/png");
                 this._appendThumbnail(preview, dataUrl2);
@@ -754,6 +782,302 @@ export default class CaptureMedia {
     overlay.addEventListener("touchstart", onTouchStart, { passive: false });
     overlay.addEventListener("touchmove", onTouchMove, { passive: false });
     overlay.addEventListener("touchend", onUp);
+  }
+
+  // Interactive screen-share fallback: ask user to share a screen/window/tab
+  // and capture a single frame as a thumbnail. This method is used as the
+  // "inbuilt" capture fallback when html2canvas is not available or fails.
+  async captureAny() {
+    const preview = this.getPreviewContainer();
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) {
+      const tile = document.createElement("div");
+      tile.className = "bugscribe-preview__item bugscribe-preview__error";
+      tile.textContent = "Screen capture not supported";
+      preview.appendChild(tile);
+      return;
+    }
+
+    let stream = null;
+    let tmp = null;
+    let restoreHidden = null;
+    let displaySurface = null;
+    try {
+      // First ask user to share; some browsers produce a black frame until
+      // the capture stabilizes. Acquire the stream first, then hide our UI
+      // and wait a short moment before grabbing a frame.
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      if (!stream) throw new Error("No stream returned");
+
+      // If the selected displaySurface is the browser/tab itself, many
+      // browsers will yield a black frame when capturing the same tab via
+      // getDisplayMedia. In that case prefer html2canvas (same-tab capture).
+      try {
+        const track = stream.getVideoTracks && stream.getVideoTracks()[0];
+        const settings =
+          track && typeof track.getSettings === "function"
+            ? track.getSettings()
+            : {};
+        const ds = settings && settings.displaySurface;
+        displaySurface = ds || null;
+        try {
+          console.debug &&
+            console.debug("captureAny: stream settings", {
+              trackSettings: settings,
+              displaySurface: ds,
+            });
+        } catch (e) {}
+        if (ds === "browser") {
+          // Attempt same-tab capture via html2canvas
+          try {
+            if (typeof window !== "undefined" && window.html2canvas) {
+              const h2c = window.html2canvas;
+              const canvas = await h2c(document.documentElement, {
+                useCORS: true,
+                scale: window.devicePixelRatio || 1,
+              });
+              const dataUrl = canvas.toDataURL("image/png");
+              this._appendThumbnail(preview, dataUrl);
+              try {
+                stream.getTracks().forEach((t) => t.stop());
+              } catch (e) {}
+              return;
+            } else {
+              await this.ensureHtml2Canvas();
+              const runner =
+                window.html2canvas ||
+                (typeof html2canvas === "function" ? html2canvas : null);
+              if (runner) {
+                const canvas = await runner(document.documentElement, {
+                  useCORS: true,
+                  scale: window.devicePixelRatio || 1,
+                });
+                const dataUrl = canvas.toDataURL("image/png");
+                this._appendThumbnail(preview, dataUrl);
+                try {
+                  stream.getTracks().forEach((t) => t.stop());
+                } catch (e) {}
+                return;
+              }
+            }
+          } catch (e) {
+            // fallback to regular getDisplayMedia flow below
+          }
+        }
+      } catch (e) {}
+
+      tmp = document.createElement("video");
+      tmp.style.position = "fixed";
+      tmp.style.left = "-9999px";
+      tmp.muted = true;
+      tmp.playsInline = true;
+      tmp.autoplay = true;
+      tmp.srcObject = stream;
+      // playback/error logging to diagnose invalid-frame issues
+      try {
+        tmp.addEventListener("playing", () => {
+          try {
+            console.debug && console.debug("captureAny: tmp playing");
+          } catch (e) {}
+        });
+        tmp.addEventListener("loadeddata", () => {
+          try {
+            console.debug && console.debug("captureAny: tmp loadeddata");
+          } catch (e) {}
+        });
+        tmp.addEventListener("error", (ev) => {
+          try {
+            console.warn && console.warn("captureAny: tmp error", ev);
+          } catch (e) {}
+        });
+      } catch (e) {}
+      document.body.appendChild(tmp);
+
+      // Wait for the video to have data/playing
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const to = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            reject(new Error("Timed out waiting for screen stream"));
+          }
+        }, 4000);
+        const onPlayable = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(to);
+          resolve();
+        };
+        tmp.addEventListener("playing", onPlayable, { once: true });
+        tmp.addEventListener("loadeddata", onPlayable, { once: true });
+      });
+
+      // Now hide our UI so it doesn't appear in the captured frame
+      try {
+        restoreHidden = this._hideElementsForCapture();
+      } catch (e) {}
+
+      // Allow the captured stream a short moment to stabilize (some setups
+      // show a black frame immediately after share selection)
+      await new Promise((r) => setTimeout(r, 300));
+
+      let _grabAttempt = 0;
+      const grabFrame = () => {
+        _grabAttempt++;
+        const vidW = tmp.videoWidth || tmp.clientWidth || 1280;
+        const vidH = tmp.videoHeight || tmp.clientHeight || 720;
+        const dpr = window.devicePixelRatio || 1;
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(vidW * dpr));
+        c.height = Math.max(1, Math.round(vidH * dpr));
+        const ctx = c.getContext("2d", { willReadFrequently: true });
+        try {
+          ctx.drawImage(tmp, 0, 0, c.width, c.height);
+        } catch (e) {
+          return { dataUrl: null, canvas: c };
+        }
+        let dataUrl = null;
+        try {
+          dataUrl = c.toDataURL("image/png");
+        } catch (e) {
+          dataUrl = null;
+        }
+        try {
+          // log a tiny brightness sample to help diagnose black frames
+          try {
+            const sctx = c.getContext("2d", { willReadFrequently: true });
+            const px = sctx.getImageData(0, 0, 1, 1).data;
+            console.debug &&
+              console.debug("captureAny: grabFrame sample", {
+                attempt: _grabAttempt,
+                sample: [px[0], px[1], px[2]],
+                hasDataUrl: !!dataUrl,
+              });
+          } catch (e) {}
+        } catch (e) {}
+        return { dataUrl, canvas: c };
+      };
+
+      let result = grabFrame();
+      // If the frame looks nearly black, retry a few times after short delays
+      const looksBlack = (canvas) => {
+        try {
+          const ctx = canvas.getContext("2d", { willReadFrequently: true });
+          const px = ctx.getImageData(0, 0, 1, 1).data;
+          const brightness = px[0] + px[1] + px[2];
+          return brightness < 10; // very dark
+        } catch (e) {
+          return false;
+        }
+      };
+      // If the first frame is black, try a few retries before deciding.
+      if ((!result.dataUrl || looksBlack(result.canvas)) && tmp) {
+        const delays = [300, 500, 800];
+        for (let i = 0; i < delays.length; i++) {
+          await new Promise((r) => setTimeout(r, delays[i]));
+          try {
+            if (typeof tmp.requestVideoFrameCallback === "function") {
+              await new Promise((r) =>
+                tmp.requestVideoFrameCallback(() => r())
+              );
+            }
+          } catch (e) {}
+          result = grabFrame();
+          if (result.dataUrl && !looksBlack(result.canvas)) break;
+        }
+      }
+
+      if (!result.dataUrl || looksBlack(result.canvas)) {
+        // Only fallback to html2canvas automatically when the user selected
+        // the browser/tab (`displaySurface === 'browser'`). For other
+        // selections prefer the stream (even if darker) and show an error
+        // if we couldn't get a valid frame.
+        if (displaySurface === "browser") {
+          try {
+            try {
+              if (stream && stream.getTracks) {
+                stream.getTracks().forEach((t) => {
+                  try {
+                    t.stop();
+                  } catch (e) {}
+                });
+              }
+            } catch (e) {}
+
+            const runner =
+              typeof window !== "undefined" && window.html2canvas
+                ? window.html2canvas
+                : typeof html2canvas === "function"
+                ? html2canvas
+                : null;
+            if (!runner) await this.ensureHtml2Canvas();
+            const h2c =
+              typeof window !== "undefined" && window.html2canvas
+                ? window.html2canvas
+                : typeof html2canvas === "function"
+                ? html2canvas
+                : null;
+            if (h2c) {
+              const canvas = await h2c(document.documentElement, {
+                useCORS: true,
+                scale: window.devicePixelRatio || 1,
+              });
+              const dataUrl = canvas.toDataURL("image/png");
+              this._appendThumbnail(preview, dataUrl);
+            } else {
+              const tile = document.createElement("div");
+              tile.className =
+                "bugscribe-preview__item bugscribe-preview__error";
+              tile.textContent = "Unable to capture screen frame";
+              preview.appendChild(tile);
+            }
+          } catch (e) {
+            const tile = document.createElement("div");
+            tile.className = "bugscribe-preview__item bugscribe-preview__error";
+            tile.textContent = "Unable to capture screen frame";
+            preview.appendChild(tile);
+          }
+        } else {
+          try {
+            console.warn &&
+              console.warn(
+                "captureAny: no valid frame, displaySurface=",
+                displaySurface
+              );
+          } catch (e) {}
+          const tile = document.createElement("div");
+          tile.className = "bugscribe-preview__item bugscribe-preview__error";
+          tile.textContent =
+            "Unable to capture selected display (no valid frame). Try selecting 'Window' or 'Entire screen' instead of 'Tab', or allow more time for the source to update.";
+          preview.appendChild(tile);
+        }
+      } else {
+        this._appendThumbnail(preview, result.dataUrl);
+      }
+    } catch (err) {
+      try {
+        console.error && console.error("captureAny failed", err);
+      } catch (e) {}
+      const tile = document.createElement("div");
+      tile.className = "bugscribe-preview__item bugscribe-preview__error";
+      tile.textContent = "Screen capture cancelled or failed";
+      this.getPreviewContainer().appendChild(tile);
+    } finally {
+      try {
+        if (typeof restoreHidden === "function") restoreHidden();
+      } catch (e) {}
+      try {
+        if (tmp && tmp.parentNode) tmp.parentNode.removeChild(tmp);
+      } catch (e) {}
+      try {
+        if (stream && stream.getTracks) {
+          stream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch (e) {}
+          });
+        }
+      } catch (e) {}
+    }
   }
 
   _patchInlineColorsForHtml2Canvas() {
@@ -876,6 +1200,315 @@ export default class CaptureMedia {
     };
   }
 
+  async _snapshotVideosForCapture(preview) {
+    // Try to replace <video> elements with static images (data-URL) of
+    // their current frame or the video's poster so html2canvas can capture
+    // them. If a video is cross-origin or not ready, fallback to poster or
+    // add a diagnostic tile to `preview` when available. Returns a restore
+    // function.
+    try {
+      const vids = Array.from(document.querySelectorAll("video"));
+      if (!vids.length) return null;
+      const replaced = [];
+
+      // Instead of replacing the video node (which stops playback), insert an
+      // absolutely-positioned overlay image above the video so the visual
+      // appearance is captured while the original video continues playing.
+      const insertImage = (v, src, layoutW, layoutH) => {
+        try {
+          const rect = v.getBoundingClientRect();
+          const pageX = rect.left + (window.scrollX || window.pageXOffset || 0);
+          const pageY = rect.top + (window.scrollY || window.pageYOffset || 0);
+          const img = document.createElement("img");
+          img.src = src;
+          img.style.position = "absolute";
+          img.style.left = pageX + "px";
+          img.style.top = pageY + "px";
+          img.style.width = layoutW + "px";
+          img.style.height = layoutH + "px";
+          img.style.objectFit = "cover";
+          img.style.pointerEvents = "none";
+          img.style.zIndex = "2147483647";
+          img.setAttribute("data-bugscribe-snapshot", "1");
+          // Preserve reference to overlay so we can remove it later
+          document.body.appendChild(img);
+          replaced.push({ video: v, overlay: img });
+          return true;
+        } catch (e) {
+          return false;
+        }
+      };
+      const captureFrame = (v, timeout = 1000) => {
+        return new Promise((resolve) => {
+          let finished = false;
+          const done = (data) => {
+            if (finished) return;
+            finished = true;
+            resolve(data || null);
+          };
+
+          const tryDrawFrom = (videoEl) => {
+            try {
+              const vidW = videoEl.videoWidth || 0;
+              const vidH = videoEl.videoHeight || 0;
+              if (vidW > 0 && vidH > 0) {
+                const c = document.createElement("canvas");
+                c.width = vidW;
+                c.height = vidH;
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.drawImage(videoEl, 0, 0, vidW, vidH);
+                try {
+                  ctx.getImageData(0, 0, 1, 1);
+                  done(c.toDataURL("image/png"));
+                  return true;
+                } catch (err) {
+                  return false;
+                }
+              }
+            } catch (e) {
+              return false;
+            }
+            return false;
+          };
+
+          // 1) If requestVideoFrameCallback available on source, use it and draw directly
+          if (typeof v.requestVideoFrameCallback === "function") {
+            try {
+              v.requestVideoFrameCallback(() => {
+                tryDrawFrom(v) || done(null);
+              });
+            } catch (e) {
+              // fallback
+            }
+            setTimeout(() => done(null), timeout + 200);
+            return;
+          }
+
+          // 2) If source already has dimensions, attempt direct draw
+          if (v.videoWidth && v.videoHeight) {
+            if (tryDrawFrom(v)) return;
+          }
+
+          // 3) Try captureStream() from the source into a temporary video element
+          const tryCaptureStream = async () => {
+            try {
+              const streamFn = v.captureStream || v.mozCaptureStream;
+              if (!streamFn) return null;
+              let stream = null;
+              try {
+                stream = v.captureStream
+                  ? v.captureStream()
+                  : v.mozCaptureStream();
+              } catch (e) {
+                return null;
+              }
+              if (!stream) return null;
+              const tmp = document.createElement("video");
+              tmp.style.position = "fixed";
+              tmp.style.left = "-9999px";
+              tmp.muted = true;
+              tmp.playsInline = true;
+              tmp.autoplay = true;
+              tmp.srcObject = stream;
+              document.body.appendChild(tmp);
+              let settled = false;
+              const cleanupTmp = () => {
+                try {
+                  if (tmp && tmp.parentNode) tmp.parentNode.removeChild(tmp);
+                } catch (e) {}
+                try {
+                  stream.getTracks().forEach((t) => t.stop());
+                } catch (e) {}
+              };
+              const onFrame = () => {
+                try {
+                  if (tryDrawFrom(tmp)) {
+                    settled = true;
+                    cleanupTmp();
+                    done(true);
+                    return;
+                  }
+                } catch (e) {}
+              };
+              if (typeof tmp.requestVideoFrameCallback === "function") {
+                try {
+                  tmp.requestVideoFrameCallback(() => setTimeout(onFrame, 20));
+                } catch (e) {
+                  // ignore
+                }
+              }
+              const onPlayable = () => {
+                try {
+                  if (!settled) onFrame();
+                } catch (e) {}
+              };
+              tmp.addEventListener("playing", onPlayable);
+              tmp.addEventListener("loadeddata", onPlayable);
+              setTimeout(() => {
+                if (!settled) {
+                  cleanupTmp();
+                  done(null);
+                }
+              }, timeout + 200);
+              return null; // resolution handled via done()
+            } catch (e) {
+              return null;
+            }
+          };
+
+          tryCaptureStream();
+
+          // 4) Finally, wait for playing/loadeddata events on source with timeout
+          const t = setTimeout(() => done(null), timeout);
+          const onPlayableSrc = () => {
+            clearTimeout(t);
+            if (!tryDrawFrom(v)) done(null);
+          };
+          try {
+            v.addEventListener("playing", onPlayableSrc, { once: true });
+            v.addEventListener("loadeddata", onPlayableSrc, { once: true });
+          } catch (e) {
+            clearTimeout(t);
+            done(null);
+          }
+        });
+      };
+
+      const loadImageAsDataUrl = (src, layoutW, layoutH, timeout = 2000) => {
+        return new Promise((resolve) => {
+          try {
+            const img = document.createElement("img");
+            let settled = false;
+            const onLoad = () => {
+              try {
+                const c = document.createElement("canvas");
+                c.width = img.naturalWidth || layoutW;
+                c.height = img.naturalHeight || layoutH;
+                const ctx = c.getContext("2d", { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0, c.width, c.height);
+                try {
+                  ctx.getImageData(0, 0, 1, 1);
+                  const data = c.toDataURL("image/png");
+                  settled = true;
+                  resolve(data);
+                  return;
+                } catch (err) {
+                  settled = true;
+                  resolve(null);
+                  return;
+                }
+              } catch (e) {
+                settled = true;
+                resolve(null);
+                return;
+              }
+            };
+            const onErr = () => {
+              if (!settled) resolve(null);
+            };
+            const to = setTimeout(() => {
+              if (!settled) resolve(null);
+            }, timeout);
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+              clearTimeout(to);
+              onLoad();
+            };
+            img.onerror = () => {
+              clearTimeout(to);
+              onErr();
+            };
+            img.src = src;
+          } catch (e) {
+            resolve(null);
+          }
+        });
+      };
+
+      await Promise.all(
+        vids.map(async (v) => {
+          try {
+            if (v.getAttribute && v.getAttribute("data-bugscribe-snapshot"))
+              return;
+            const rect = v.getBoundingClientRect();
+            const layoutW = Math.round(rect.width) || 160;
+            const layoutH = Math.round(rect.height) || 90;
+
+            const poster = v.getAttribute && v.getAttribute("poster");
+            if (poster) {
+              insertImage(v, poster, layoutW, layoutH);
+              return;
+            }
+
+            const frameData = await captureFrame(v, 1600);
+            if (frameData) {
+              insertImage(v, frameData, layoutW, layoutH);
+              return;
+            }
+
+            const src = v.currentSrc || v.src;
+            if (src) {
+              const imgData = await loadImageAsDataUrl(src, layoutW, layoutH);
+              if (imgData) {
+                insertImage(v, imgData, layoutW, layoutH);
+                return;
+              }
+              if (preview)
+                this._appendThumbnail(
+                  preview,
+                  "data:,Video not capturable (cross-origin)"
+                );
+              return;
+            }
+
+            if (preview)
+              this._appendThumbnail(
+                preview,
+                "data:,Video not capturable (no poster, cross-origin or not decoded)"
+              );
+          } catch (e) {
+            // ignore per-video failures
+          }
+        })
+      );
+
+      if (!replaced.length) return null;
+      return () => {
+        replaced.forEach((r) => {
+          try {
+            if (r.overlay && r.overlay.parentNode) {
+              const vid = r.video;
+              r.overlay.parentNode.removeChild(r.overlay);
+              // Trigger a small mouse event to coax native controls to reappear
+              try {
+                if (vid && typeof vid.dispatchEvent === "function") {
+                  const ev = new MouseEvent("mousemove", {
+                    bubbles: true,
+                    cancelable: true,
+                  });
+                  vid.dispatchEvent(ev);
+                }
+              } catch (e) {}
+            } else if (r.parent && r.repl && r.orig) {
+              r.parent.replaceChild(r.orig, r.repl);
+              try {
+                if (r.orig && typeof r.orig.dispatchEvent === "function") {
+                  const ev2 = new MouseEvent("mousemove", {
+                    bubbles: true,
+                    cancelable: true,
+                  });
+                  r.orig.dispatchEvent(ev2);
+                }
+              } catch (e) {}
+            }
+          } catch (e) {}
+        });
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   _disableProblematicStylesheets() {
     // Scan document.styleSheets and temporarily disable any same-origin
     // stylesheet that contains CSS functions html2canvas can't parse
@@ -935,9 +1568,21 @@ export default class CaptureMedia {
         window.removeEventListener &&
         this._onHotkey
       ) {
-        window.removeEventListener("keydown", this._onHotkey, {
-          passive: false,
-        });
+        try {
+          window.removeEventListener("keydown", this._onHotkey, {
+            passive: false,
+          });
+        } catch (e) {}
+        try {
+          window.removeEventListener("keydown", this._modKeyDown, {
+            capture: true,
+          });
+        } catch (e) {}
+        try {
+          window.removeEventListener("keyup", this._modKeyUp, {
+            capture: true,
+          });
+        } catch (e) {}
       }
     } catch (e) {}
   }
