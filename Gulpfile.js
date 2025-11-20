@@ -15,12 +15,12 @@ const rev = require("gulp-rev");
 
 // Configurable options (adjusted for your structure)
 const config = {
-  assetsCssDir: "src/assets/css",
+  assetsCssDir: "src/assets/scss",
   assetsJsDir: "src/assets/js",
-  libCssDir: "src/library/css",
+  libCssDir: "src/library/scss",
   libJsDir: "src/library/js",
   nodeDir: "node_modules",
-  sassPattern: "css/**/*.scss",
+  sassPattern: "scss/**/*.scss",
   jsPattern: "js/**/*.js",
   cssManifestPath: "dist/rev/manifest-css.json",
   jsManifestPath: "dist/rev/manifest-js.json",

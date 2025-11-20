@@ -1,13 +1,19 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 ?>
+
 <!doctype html>
 <html lang="en">
 
 <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>BugScribe — Visual Bug Reporting</title>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width,initial-scale=1" />
+      <title>Bugscribe — Screenshot & Capture Library</title>
+      <meta name="description" content="Embeddable screenshot UI: full-page, visible, selection — hotkeys and fallbacks." />
+      <link rel="icon" href="/favicon.ico" />
+      <!-- Font Awesome for icons (CDN for demo) -->
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+      <!-- Built CSS (your build should produce these files) -->
       <link rel="stylesheet" href="<?= asset('bugscribe.css') ?>">
       <link rel="stylesheet" href="<?= asset('main.css') ?>">
 </head>
@@ -15,112 +21,91 @@ require_once __DIR__ . '/includes/functions.php';
 <body>
       <header class="site-header">
             <div class="container header-inner">
-                  <a class="logo" href="/">BugScribe</a>
-                  <nav class="site-nav" id="siteNav">
-                        <a href="#product">Product</a>
-                        <a href="#demo">Demo</a>
-                        <a href="#features">Features</a>
-                  </nav>
-                  <div class="header-actions">
-                        <button id="startTrialHeader" class="btn primary nav-cta">Start Free Trial</button>
-                        <button id="navToggle" class="nav-toggle" aria-label="Toggle menu">☰</button>
+                  <div class="brand-row">
+                        <a class="brand" href="/">Bugscribe</a>
+                        <p class="tag">Embeddable screenshot & capture UI</p>
+                  </div>
+
+                  <div class="controls">
+                        <button id="theme-toggle" class="theme-toggle" aria-pressed="false" title="Toggle theme">
+                              <i class="fa-solid fa-circle-half-stroke"></i>
+                              <span class="sr-only">Toggle theme</span>
+                        </button>
+                        <nav class="nav-actions">
+                              <a class="btn btn-ghost" href="#features">Features</a>
+                              <a class="btn btn-ghost" href="#embed">Embed</a>
+                        </nav>
                   </div>
             </div>
       </header>
 
-      <main>
+      <main class="container">
             <section class="hero">
-                  <div class="container hero-inner">
-                        <div class="hero-left">
-                              <span class="badge">Beta · Free Trial</span>
-                              <h1 class="hero-title">Visual bug reporting built for fast triage</h1>
-                              <p class="lead">Capture screenshots, record your screen, annotate, and upload rich bug reports with thumbnails — embed anywhere.</p>
-                              <div class="cta-row">
-                                    <button class="btn primary" id="startTrial">Start Free Trial</button>
-                                    <button class="btn outline" id="watchDemo">Watch Demo</button>
-                              </div>
-                        </div>
-                        <div class="hero-right">
-                              <div class="device">
-                                    <img src="https://picsum.photos/seed/product/900/540" alt="Product screenshot">
-                              </div>
-                        </div>
+                  <h1 class="hero-title">Capture, annotate, and share</h1>
+                  <p class="hero-lead">Fast, embeddable screenshot capture with video-friendly snapshots, hotkeys, and graceful fallbacks.</p>
+
+                  <div class="hero-actions">
+                        <button id="btn-demo-full" class="btn btn-primary">Try Full Capture</button>
+                        <button id="btn-demo-select" class="btn btn-outline">Try Selection</button>
                   </div>
             </section>
 
-            <section id="features" class="section container">
-                  <h2 class="section-title">What you get</h2>
-                  <div class="grid features-grid">
-                        <article class="card">
-                              <h3>Instant Screenshots</h3>
-                              <p>Full page, viewport or area capture with one click. Auto-generated thumbnails for quick triage.</p>
-                        </article>
-                        <article class="card">
-                              <h3>Screen Recording</h3>
-                              <p>Record short sessions using MediaRecorder and extract preview thumbnails automatically.</p>
-                        </article>
-                        <article class="card">
-                              <h3>Upload & Progress</h3>
-                              <p>AJAX uploads with progress, multiple attachments and server-side mapping.</p>
-                        </article>
-                  </div>
+            <section id="features" class="cards">
+                  <article class="card">
+                        <h3>Flexible Capture Modes</h3>
+                        <p>Full page, visible viewport, or selected area. Use keyboard shortcuts or UI buttons.</p>
+                  </article>
+                  <article class="card">
+                        <h3>Video-Friendly</h3>
+                        <p>Non-invasive video snapshots preserve playback and capture the current frame without pausing.</p>
+                  </article>
+                  <article class="card">
+                        <h3>Robust Fallbacks</h3>
+                        <p>Prefers <code>html2canvas</code> rendering with an interactive screen-share fallback for cross-origin content.</p>
+                  </article>
             </section>
 
-            <section id="demo" class="section alt-bg">
-                  <div class="container demo-inner">
-                        <div class="demo-video card">
-                              <video id="promoVideo" controls poster="https://picsum.photos/seed/video/900/500">
-                                    <source src="https://samplelib.com/lib/preview/mp4/sample-5s.mp4" type="video/mp4">
-                              </video>
-                              <p class="small">Watch a short demo showing screenshot and report flows.</p>
+            <section id="embed" class="docs">
+                  <h2>How to embed</h2>
+                  <p>Include the built assets and initialize a single instance on your page.</p>
+                  <pre><code>&lt;link rel="stylesheet" href="/bugscribe/dist/css/main-<hash>.css"&gt;
+&lt;script type="module" src="/bugscribe/dist/js/bugscribe-<hash>.js"&gt;&lt;/script&gt;
+
+&lt;script&gt;
+  const inst = new Bugscribe();
+  // programmatic capture
+  // inst.captureFullPage();
+&lt;/script&gt;
+</code></pre>
+            </section>
+
+            <section id="pricing" class="pricing">
+                  <h2>Pricing</h2>
+                  <div class="pricing-grid">
+                        <div class="price-card">
+                              <h4>Free</h4>
+                              <p>Open-source core - local preview and basic capture</p>
                         </div>
-
-                        <aside class="card specs">
-                              <h4>Try it</h4>
-                              <p>Use the testing controls to exercise screenshots, recordings, and report upload. Thumbnails appear below.</p>
-                        </aside>
-                  </div>
-            </section>
-
-            <section id="testing" class="section container">
-                  <h2 class="section-title">Interactive Testing Area</h2>
-                  <div class="panel card">
-                        <div class="controls">
-                              <button id="takeScreenshotBtn" class="btn">Take Full Screenshot</button>
-                              <button id="screenshotVisibleBtn" class="btn outline">Take Visible Screenshot</button>
-                              <button id="startRecordBtn" class="btn">Start/Stop Recording</button>
-                              <button id="openReportBtn" class="btn outline">Open Report Modal</button>
+                        <div class="price-card highlight">
+                              <h4>Pro</h4>
+                              <p>$9 / month - cloud uploads, priority support</p>
                         </div>
-                        <div id="screenshotPreviewContainer" class="previews"></div>
+                        <div class="price-card">
+                              <h4>Enterprise</h4>
+                              <p>Custom - on-premise, SSO, SLAs, integrations</p>
+                        </div>
                   </div>
             </section>
-
-            <!-- Pricing section removed per request -->
       </main>
 
       <footer class="site-footer">
-            <div class="container">© <?= date('Y') ?> BugScribe — Visual bug reporting for teams and developers.</div>
+            <div class="container">© Bugscribe — Embeddable captures for the web</div>
       </footer>
 
-      <!-- Persistent bug button is created by the Bugscribe library -->
-
-      <!-- Report modal -->
-      <div id="reportModal" class="modal hidden">
-            <div class="modal-dialog card">
-                  <button id="closeReportModal" class="modal-close">&times;</button>
-                  <h3>Report a bug</h3>
-                  <input id="reportUrl" class="form-control" placeholder="Page URL">
-                  <textarea id="reportMessage" class="form-control" rows="4" placeholder="Describe the issue..."></textarea>
-                  <div id="reportMediaList" class="previews"></div>
-                  <div class="modal-actions">
-                        <button id="submitReportBtn" class="btn primary">Submit</button>
-                        <button id="cancelReportBtn" class="btn outline">Cancel</button>
-                  </div>
-            </div>
-      </div>
-
+      <!-- Library bundles -->
       <script type="module" src="<?= asset('bugscribe.js') ?>"></script>
       <script nomodule src="<?= asset('bugscribe.js', 'nomodule') ?>"></script>
+      <!-- App script (classic) -->
       <script src="<?= asset('main.js') ?>"></script>
 </body>
 
