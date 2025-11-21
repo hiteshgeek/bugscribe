@@ -147,7 +147,7 @@ function addAllScriptsIIFE() {
       .pipe(
         rollup(
           { plugins: [rollupBabel({ babelHelpers: "bundled" })] },
-          { format: "iife", name: "MyLib" }
+          { format: "iife", name: "Bugscribe" } //provide library name
         )
       )
       .pipe(plugins.concat(outName.replace(/\.js$/, ".iife.js")))
@@ -181,7 +181,7 @@ gulp.task("clean", async function () {
 });
 
 const styleEntries = [
-  [[config.libCssDir + "/bugscribe.scss"], "bugscribe.css"],
+  [[config.libCssDir + "/index.scss"], "bugscribe.css"],
   [[config.assetsCssDir + "/main.scss"], "main.css"],
 ];
 gulp.task("styles", gulp.series("clean-css", addAllStyles));
@@ -190,7 +190,7 @@ gulp.task("styles", gulp.series("clean-css", addAllStyles));
 gulp.task("styles-clean", gulp.series("styles", "clean-old-css"));
 
 const scriptEntries = [
-  [[config.libJsDir + "/bugscribe.js"], "bugscribe.js"],
+  [[config.libJsDir + "/index.js"], "bugscribe.js"],
   [[config.assetsJsDir + "/main.js"], "main.js"],
 ];
 

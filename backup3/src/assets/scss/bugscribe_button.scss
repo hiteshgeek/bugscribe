@@ -1,0 +1,108 @@
+// bugscribe_button.scss
+// Styles for the Bugscribe floating button and panel
+
+.bugscribe-btn-wrapper {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  &.bottom {
+    bottom: 2rem;
+  }
+  &.top {
+    top: 2rem;
+  }
+  &.left {
+    left: 2rem;
+    right: auto;
+    align-items: flex-start;
+  }
+  &.right {
+    right: 2rem;
+    left: auto;
+    align-items: flex-end;
+  }
+  &.open .bugscribe-btn-panel {
+    display: flex;
+  }
+}
+
+.bugscribe-btn-main {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  font-size: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-bottom: 0.5rem;
+}
+
+.bugscribe-btn-main:hover {
+  background: #1d4ed8;
+}
+
+.bugscribe-btn-panel {
+  display: none;
+  flex-direction: row;
+  gap: 0.5rem;
+  background: #fff;
+  border-radius: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+}
+
+.bugscribe-btn-action {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+
+.bugscribe-btn-action:hover {
+  background: #e0e7ff;
+  color: #1d4ed8;
+}
+
+.bugscribe-btn-split-menu {
+  display: none;
+  position: absolute;
+  bottom: 3.5rem;
+  right: 0;
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 0.5rem 0.75rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  z-index: 10000;
+}
+
+.bugscribe-btn-split {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  transition: background 0.2s, color 0.2s;
+}
+
+.bugscribe-btn-split:hover {
+  background: #e0e7ff;
+  color: #1d4ed8;
+}

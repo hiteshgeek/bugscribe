@@ -1,0 +1,73 @@
+.bug-wrapper {
+  position: fixed;
+  right: var(--bug-right);
+  bottom: var(--bug-bottom);
+  display: flex;
+  align-items: center;
+  padding: calc(var(--bug-btn-size) / 10);
+  border-radius: 999px;
+  background: var(--bug-bg-color);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  overflow: hidden;
+
+  &.open {
+    .bug-main {
+      margin-left: 10px;
+      background: var(--bug-bg-color);
+      border-left: 1px solid rgba(255, 255, 255, 0.5);
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+
+      svg {
+        //rotate(45deg);
+        fill: var(--bug-text-color);
+        transform: rotate(180deg);
+      }
+    }
+  }
+}
+
+.bug-actions {
+  display: flex;
+  gap: 8px;
+  max-width: 0; /* 🔥 Fully collapsed */
+  opacity: 0;
+  overflow: hidden; /* hide buttons */
+  pointer-events: none;
+  transition: max-width 0.2s ease, opacity 0.2s ease;
+}
+
+.bug-wrapper.open .bug-actions {
+  max-width: 500px; /* 🔥 Large enough to fit all buttons */
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bug-btn {
+  width: var(--bug-btn-size);
+  height: var(--bug-btn-size);
+  min-width: var(--bug-btn-size);
+  min-height: var(--bug-btn-size);
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, margin 0.2s ease, color 0.2s ease;
+
+  svg {
+    width: calc(var(--bug-btn-size) / 2);
+    height: calc(var(--bug-btn-size) / 2);
+    fill: currentColor;
+    transform: rotate(0deg);
+    transition: transform 0.4s ease;
+  }
+}
+
+.bug-main {
+  transition: border 0.2s ease, border-radius 0.2s ease;
+}

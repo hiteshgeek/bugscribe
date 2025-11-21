@@ -1,0 +1,116 @@
+// Bugscribe Button Styles
+.bugscribe-btn-wrapper {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 2, 0.6, 1);
+}
+.bugscribe-btn-wrapper.bottom {
+  bottom: 2rem;
+}
+.bugscribe-btn-wrapper.top {
+  top: 2rem;
+}
+.bugscribe-btn-wrapper.right {
+  right: 2rem;
+  align-items: flex-end;
+}
+.bugscribe-btn-wrapper.left {
+  left: 2rem;
+  align-items: flex-start;
+}
+.bugscribe-btn-wrapper.open .bugscribe-btn-panel {
+  display: flex !important;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+.bugscribe-btn-main {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+.bugscribe-btn-main:active {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.bugscribe-btn-panel {
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.3s cubic-bezier(0.4, 2, 0.6, 1);
+  transform: translateX(40px);
+}
+.bugscribe-btn-wrapper.left .bugscribe-btn-panel {
+  flex-direction: row-reverse;
+  transform: translateX(-40px);
+}
+.bugscribe-btn-wrapper.open.right .bugscribe-btn-panel {
+  transform: translateX(0);
+}
+.bugscribe-btn-wrapper.open.left .bugscribe-btn-panel {
+  transform: translateX(0);
+}
+.bugscribe-btn-action {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: #2563eb;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s, color 0.2s;
+}
+.bugscribe-btn-action:hover {
+  background: #f0f4ff;
+  color: #1746a2;
+}
+.bugscribe-btn-split-menu {
+  display: none;
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 0.5rem 0;
+  min-width: 140px;
+  z-index: 10;
+}
+.bugscribe-btn-split {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #2563eb;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bugscribe-btn-split:hover {
+  background: #f0f4ff;
+}
