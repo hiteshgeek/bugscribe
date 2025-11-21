@@ -1,4 +1,3 @@
-//import icons
 import { icons } from "./icons.js";
 
 export default class BugButtonWrapper {
@@ -9,12 +8,10 @@ export default class BugButtonWrapper {
 
   constructor(options = {}) {
     this._options = options;
-
     this._render();
   }
 
   _render() {
-    // Create button wrapper
     const wrapper = document.createElement("div");
     wrapper.className = `bug-wrapper bug-element`;
 
@@ -22,17 +19,14 @@ export default class BugButtonWrapper {
     wrapper.appendChild(this._getBugActions());
     wrapper.appendChild(this.mainBtn);
 
-    // Append to body
     document.body.appendChild(wrapper);
 
-    // Add event listeners
     this.mainBtn.addEventListener("click", () => {
       wrapper.classList.toggle("open");
     });
   }
 
   _getBugButton() {
-    // Create main button
     const mainBtn = document.createElement("button");
     mainBtn.className = "bug-btn bug-main";
     mainBtn.innerHTML = icons.bug;
@@ -40,7 +34,6 @@ export default class BugButtonWrapper {
   }
 
   _getBugActions() {
-    // Create actions container
     const actions = document.createElement("div");
     actions.className = "bug-actions";
 
@@ -59,14 +52,31 @@ export default class BugButtonWrapper {
     const screenshotButton = document.createElement("button");
     screenshotButton.className = "bug-btn bug-screenshot";
     screenshotButton.innerHTML = icons.screenshot;
+
+    // Create vertical icons container
+    const verticalIcons = document.createElement("div");
+    verticalIcons.className = "vertical-icons";
+
+    verticalIcons.appendChild(this._getVerticalIcon("Full Page"));
+    verticalIcons.appendChild(this._getVerticalIcon("Visible Page"));
+    verticalIcons.appendChild(this._getVerticalIcon("Custom Area"));
+
+    screenshotButton.appendChild(verticalIcons);
+
     return screenshotButton;
+  }
+
+  _getVerticalIcon(title) {
+    const icon = document.createElement("span");
+    icon.className = `vertical-icon`;
+    icon.textContent = title;
+    return icon;
   }
 
   _getRecordButton() {
     const recordBtn = document.createElement("button");
     recordBtn.className = "bug-btn bug-record";
     recordBtn.innerHTML = icons.record;
-
     return recordBtn;
   }
 
@@ -74,7 +84,6 @@ export default class BugButtonWrapper {
     const settingsBtn = document.createElement("button");
     settingsBtn.className = "bug-btn bug-settings";
     settingsBtn.innerHTML = icons.settings;
-
     return settingsBtn;
   }
 }

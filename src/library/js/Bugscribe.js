@@ -1,5 +1,6 @@
 import BugButtonWrapper from "./BugButtonWrapper.js";
 import MediaCapture from "./MediaCapture.js";
+import ConsoleCapture from "./ConsoleCapture.js";
 
 export default class Bugscribe {
   constructor(options = {}) {
@@ -125,9 +126,22 @@ export default class Bugscribe {
         this.captureVisibleScreen();
         console.log("Ctrl + Shift + 3");
       } else if (e.ctrlKey && e.shiftKey && e.code === "Digit4") {
-        e.preventDefault();
-        this.captureRealScreen();
-        console.log("Ctrl + Shift + 4");
+        const logger = new ConsoleCapture();
+
+        console.log("Hello world");
+        console.warn("This is a warning");
+        console.error("An error occurred");
+        console.info("Some info message");
+
+        // Get stored logs
+        console.table(logger.getLogs());
+
+        // Show logs on screen
+        logger.showOverlay();
+
+        // Clear stored logs (does not clear real console)
+        logger.clearLogs();
+        return;
       }
     });
   }
