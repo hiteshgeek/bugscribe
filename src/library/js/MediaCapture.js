@@ -3,7 +3,7 @@ export default class MediaCapture {
     this.screenshotPreviews = [];
   }
 
-  async captureFullScreen() {
+  async captureAny() {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { mediaSource: "screen" },
@@ -32,7 +32,7 @@ export default class MediaCapture {
     }
   }
 
-  async captureScreenWithHtml2Canvas() {
+  async captureFullScreen() {
     const modifiedElements = []; // store elements & their old styles
 
     try {
@@ -76,6 +76,50 @@ export default class MediaCapture {
         el.style.color = originalColor;
         el.style.backgroundColor = originalBg;
       });
+    }
+  }
+
+  async captureVisibleScreen() {
+    try {
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+
+      // Create an overlay clone
+      const clone = document.body.cloneNode(true);
+
+      // Container to prevent layout flicker
+      const container = document.createElement("div");
+      container.style.position = "fixed";
+      container.style.top = "0";
+      container.style.left = "0";
+      container.style.right = "0";
+      container.style.bottom = "0";
+      container.style.overflow = "hidden";
+      container.style.zIndex = "-1"; // behind everything
+      container.style.opacity = "0"; // invisible but still rendered
+      container.style.pointerEvents = "none"; // ignore clicks
+
+      clone.style.transform = `translate(-${scrollX}px, -${scrollY}px)`;
+      clone.style.position = "absolute";
+
+      container.appendChild(clone);
+      document.body.appendChild(container); // add invisible clone to DOM
+
+      const canvas = await html2canvas(clone, {
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        scale: 2,
+      });
+
+      container.remove(); // cleanup
+
+      return canvas.toDataURL("image/png");
+    } catch (err) {
+      console.error("Error capturing visible screen:", err);
+      return false;
     }
   }
 }

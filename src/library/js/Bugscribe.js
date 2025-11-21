@@ -9,6 +9,9 @@ export default class Bugscribe {
 
     this.mediaCapture = new MediaCapture();
 
+    // Bind the handler to the class instance
+    this.captureUsingMediaCapture = this.captureUsingMediaCapture.bind(this);
+
     this.initMediaEvents();
     this.setHotKeys();
   }
@@ -22,7 +25,7 @@ export default class Bugscribe {
 
   async captureUsingMediaCapture() {
     try {
-      const imgURL = await this.mediaCapture.captureFullScreen(); // fixed: mediaCaputure → mediaCapture
+      const imgURL = await this.mediaCapture.captureAny();
 
       if (!imgURL) return; // if user cancelled or failed
 
@@ -37,7 +40,23 @@ export default class Bugscribe {
     try {
       await this.hideImagePreviewWrapper();
 
-      const imgURL = await this.mediaCapture.captureScreenWithHtml2Canvas();
+      const imgURL = await this.mediaCapture.captureFullScreen();
+
+      if (!imgURL) return;
+
+      this._screenshotPreviews.push(imgURL);
+      this.showPreview(imgURL);
+      this.showImagePreviewWrapper();
+    } catch (err) {
+      console.error("Error capturing screenshot:", err);
+    }
+  }
+
+  async captureVisibleScreen() {
+    try {
+      await this.hideImagePreviewWrapper();
+
+      const imgURL = await this.mediaCapture.captureVisibleScreen();
 
       if (!imgURL) return;
 
@@ -95,12 +114,26 @@ export default class Bugscribe {
     document.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.shiftKey && e.code === "Digit1") {
         e.preventDefault();
-        this.captureFullScreen();
+        this.captureUsingMediaCapture();
+        console.log("Ctrl + Shift + 1");
       } else if (e.ctrlKey && e.shiftKey && e.code === "Digit2") {
         e.preventDefault();
-        this.captureUsingMediaCapture();
+        this.captureFullScreen();
+        console.log("Ctrl + Shift + 2");
+      } else if (e.ctrlKey && e.shiftKey && e.code === "Digit3") {
+        e.preventDefault();
+        this.captureVisibleScreen();
+        console.log("Ctrl + Shift + 3");
+      } else if (e.ctrlKey && e.shiftKey && e.code === "Digit4") {
+        e.preventDefault();
+        this.captureRealScreen();
+        console.log("Ctrl + Shift + 4");
       }
     });
+  }
+
+  getScreenshots() {
+    return this._screenshotPreviews;
   }
 }
 
