@@ -1,0 +1,25 @@
+/* Apply to elements with class .thin-scroll */
+.thin-scroll {
+  overflow: auto; /* or scroll */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #bbb transparent; /* Firefox */
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px; /* vertical scrollbar */
+  height: 6px; /* horizontal scrollbar */
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 999px;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}

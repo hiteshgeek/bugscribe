@@ -1,10 +1,106 @@
-import BugButton from "./BugButton.js";
+import BugButtonWrapper from "./BugButtonWrapper.js";
+import MediaCapture from "./MediaCapture.js";
 
 export default class Bugscribe {
   constructor(options = {}) {
     this._options = options;
+    this._screenshotPreviews = [];
+    this.bugButtonWrapper = new BugButtonWrapper(options.button || {});
 
-    this.bug_button = new BugButton(options.button || {});
+    this.mediaCapture = new MediaCapture();
+
+    this.initMediaEvents();
+    this.setHotKeys();
+  }
+
+  initMediaEvents() {
+    this.bugButtonWrapper.screenshotButton.addEventListener(
+      "click",
+      this.captureUsingMediaCapture
+    );
+  }
+
+  async captureUsingMediaCapture() {
+    try {
+      const imgURL = await this.mediaCapture.captureFullScreen(); // fixed: mediaCaputure → mediaCapture
+
+      if (!imgURL) return; // if user cancelled or failed
+
+      this._screenshotPreviews.push(imgURL);
+      this.showPreview(imgURL);
+    } catch (err) {
+      console.error("Error capturing using MediaCapture:", err);
+    }
+  }
+
+  async captureFullScreen() {
+    try {
+      await this.hideImagePreviewWrapper();
+
+      const imgURL = await this.mediaCapture.captureScreenWithHtml2Canvas();
+
+      if (!imgURL) return;
+
+      this._screenshotPreviews.push(imgURL);
+      this.showPreview(imgURL);
+      this.showImagePreviewWrapper();
+    } catch (err) {
+      console.error("Error capturing screenshot:", err);
+    }
+  }
+
+  hideImagePreviewWrapper() {
+    const bug_elements = document.querySelectorAll(".bug-element");
+
+    bug_elements.forEach((el) => {
+      el.classList.add("hide_el");
+    });
+
+    return Promise.resolve();
+  }
+
+  showImagePreviewWrapper() {
+    const bug_elements = document.querySelectorAll(".bug-element");
+
+    bug_elements.forEach((el) => {
+      el.classList.remove("hide_el");
+    });
+  }
+
+  createImagePreviewWrapper() {
+    if (this.preview_wrapper) {
+      return;
+    }
+
+    const preview_wrapper_id = "bugscribe-preview-wrapper";
+    const wrapper = document.createElement("div");
+    wrapper.id = preview_wrapper_id;
+    wrapper.className = "bug-element thin-scroll";
+    document.body.appendChild(wrapper);
+    this.preview_wrapper = wrapper;
+  }
+
+  // Preview function (optional)
+  showPreview(imgURL) {
+    this.createImagePreviewWrapper();
+
+    const img = document.createElement("img");
+    img.src = imgURL;
+    img.className = "screenshot-preview";
+
+    this.preview_wrapper.appendChild(img);
+  }
+
+  setHotKeys() {
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey && e.shiftKey && e.code === "Digit1") {
+        e.preventDefault();
+        this.captureFullScreen();
+      } else if (e.ctrlKey && e.shiftKey && e.code === "Digit2") {
+        e.preventDefault();
+        this.captureUsingMediaCapture();
+      }
+    });
   }
 }
 

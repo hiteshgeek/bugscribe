@@ -1,11 +1,11 @@
 //import icons
 import { icons } from "./icons.js";
 
-export default class BugButton {
-  _mainButton = null;
-  _screenshotButton = null;
-  _recordButton = null;
-  _settingsButton = null;
+export default class BugButtonWrapper {
+  mainButton = null;
+  screenshotButton = null;
+  recordButton = null;
+  settingsButton = null;
 
   constructor(options = {}) {
     this._options = options;
@@ -16,21 +16,17 @@ export default class BugButton {
   _render() {
     // Create button wrapper
     const wrapper = document.createElement("div");
-    wrapper.className = `bug-wrapper`;
+    wrapper.className = `bug-wrapper bug-element`;
 
-    this._mainBtn = this._getBugButton();
-    this._screenshotBtn = this._getBugScreenshotButton();
-    this._recordBtn = this._getRecordButton();
-    this._settingsBtn = this._getSettingsButton();
-
+    this.mainBtn = this._getBugButton();
     wrapper.appendChild(this._getBugActions());
-    wrapper.appendChild(this._mainBtn);
+    wrapper.appendChild(this.mainBtn);
 
     // Append to body
     document.body.appendChild(wrapper);
 
     // Add event listeners
-    this._mainBtn.addEventListener("click", () => {
+    this.mainBtn.addEventListener("click", () => {
       wrapper.classList.toggle("open");
     });
   }
@@ -48,22 +44,22 @@ export default class BugButton {
     const actions = document.createElement("div");
     actions.className = "bug-actions";
 
-    const screenshotBtn = this._getBugScreenshotButton();
-    const recordBtn = this._getRecordButton();
-    const settingsBtn = this._getSettingsButton();
+    this.screenshotButton = this._getBugScreenshotButton();
+    this.recordBtn = this._getRecordButton();
+    this.settingsBtn = this._getSettingsButton();
 
-    actions.appendChild(screenshotBtn);
-    actions.appendChild(recordBtn);
-    actions.appendChild(settingsBtn);
+    actions.appendChild(this.screenshotButton);
+    actions.appendChild(this.recordBtn);
+    actions.appendChild(this.settingsBtn);
 
     return actions;
   }
 
   _getBugScreenshotButton() {
-    const screenshotBtn = document.createElement("button");
-    screenshotBtn.className = "bug-btn bug-screenshot";
-    screenshotBtn.innerHTML = icons.screenshot;
-    return screenshotBtn;
+    const screenshotButton = document.createElement("button");
+    screenshotButton.className = "bug-btn bug-screenshot";
+    screenshotButton.innerHTML = icons.screenshot;
+    return screenshotButton;
   }
 
   _getRecordButton() {

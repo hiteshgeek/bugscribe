@@ -7,20 +7,19 @@
   padding: calc(var(--bug-btn-size) / 10);
   border-radius: 999px;
   background: var(--bug-bg-color);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  // box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   overflow: hidden;
 
   &.open {
     .bug-main {
-      margin-left: 10px;
+      margin-left: 5px;
       background: var(--bug-bg-color);
       border-left: 1px solid rgba(255, 255, 255, 0.5);
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
 
       svg {
-        //rotate(45deg);
         fill: var(--bug-text-color);
         transform: rotate(180deg);
       }
@@ -30,16 +29,16 @@
 
 .bug-actions {
   display: flex;
-  gap: 8px;
-  max-width: 0; /* 🔥 Fully collapsed */
+  gap: 5px;
+  max-width: 0;
   opacity: 0;
-  overflow: hidden; /* hide buttons */
+  overflow: hidden;
   pointer-events: none;
   transition: max-width 0.2s ease, opacity 0.2s ease;
 }
 
 .bug-wrapper.open .bug-actions {
-  max-width: 500px; /* 🔥 Large enough to fit all buttons */
+  max-width: 500px;
   opacity: 1;
   pointer-events: auto;
 }
@@ -52,12 +51,17 @@
   flex-shrink: 0;
   border-radius: 50%;
   border: none;
-  background: #f3f4f6;
+  background: color-mix(in srgb, var(--bug-bg-color) 50%, #fff);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: background 0.2s ease, margin 0.2s ease, color 0.2s ease;
+
+  &:hover,
+  &:focus {
+    background: color-mix(in srgb, var(--bug-bg-color) 20%, #fff);
+  }
 
   svg {
     width: calc(var(--bug-btn-size) / 2);
@@ -65,6 +69,7 @@
     fill: currentColor;
     transform: rotate(0deg);
     transition: transform 0.4s ease;
+    outline: none;
   }
 }
 
