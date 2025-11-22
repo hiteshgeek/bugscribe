@@ -18,12 +18,9 @@ export default class BugButtonWrapper {
     wrapper.className = `bug-wrapper bug-element`;
 
     this.mainBtn = this._getBugButton();
+
     wrapper.appendChild(this._getBugActions());
-
-    const separator = document.createElement("div");
-    separator.className = "bug-separator";
-
-    wrapper.appendChild(separator);
+    wrapper.appendChild(this._getSeparator());
     wrapper.appendChild(this.mainBtn);
 
     document.body.appendChild(wrapper);
@@ -32,6 +29,12 @@ export default class BugButtonWrapper {
     this.mainBtn.addEventListener("click", () => {
       wrapper.classList.toggle("open");
     });
+  }
+
+  _getSeparator() {
+    const separator = document.createElement("div");
+    separator.className = "bug-separator";
+    return separator;
   }
 
   _getBugButton() {
@@ -46,14 +49,17 @@ export default class BugButtonWrapper {
     actions.className = "bug-actions";
 
     this.moveButton = this._getBugMoveButton();
+    this.sendButton = this._getBugSendButton();
     this.screenshotButton = this._getBugScreenshotButton();
     this.recordBtn = this._getRecordButton();
     this.settingsBtn = this._getSettingsButton();
 
-    actions.appendChild(this.moveButton);
+    // actions.appendChild(this.moveButton);
     actions.appendChild(this.screenshotButton);
     actions.appendChild(this.recordBtn);
     actions.appendChild(this.settingsBtn);
+    actions.appendChild(this._getSeparator());
+    actions.appendChild(this.sendButton);
 
     return actions;
   }
@@ -63,6 +69,13 @@ export default class BugButtonWrapper {
     moveButton.className = "bug-btn bug-move";
     moveButton.innerHTML = icons.move;
     return moveButton;
+  }
+
+  _getBugSendButton() {
+    const sendButton = document.createElement("button");
+    sendButton.className = "bug-btn bug-send";
+    sendButton.innerHTML = icons.send;
+    return sendButton;
   }
 
   _getBugScreenshotButton() {
