@@ -7,17 +7,30 @@
   padding: calc(var(--bug-btn-size) / 10);
   border-radius: 999px;
   background: var(--bug-bg-color);
-  // box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
   z-index: 1000;
-  // overflow: hidden;
+  overflow: hidden;
 
   &.open {
+    gap: 5px;
+
     .bug-main {
-      margin-left: 5px;
+      // margin-left: 5px;
       background: var(--bug-bg-color);
-      border-left: 1px solid rgba(255, 255, 255, 0.5);
-      border-top-left-radius: 0;
-      border-bottom-left-radius: 0;
+      // border-left: 1px solid rgba(255, 255, 255, 0.5);
+      // border-top-left-radius: 0;
+      // border-bottom-left-radius: 0;
+
+      //dispay a line
+      &::before {
+        content: "";
+        position: absolute;
+        width: 1px;
+        height: 60%;
+        translate: 50%;
+        transform: translateX(-20px);
+        background: rgba(255, 255, 255, 1);
+      }
 
       svg {
         fill: var(--bug-text-color);
@@ -32,9 +45,10 @@
   gap: 5px;
   max-width: 0;
   opacity: 0;
-  // overflow: hidden;
+  overflow: hidden;
   pointer-events: none;
-  transition: max-width 0.2s ease, opacity 0.2s ease;
+  transition: max-width var(--bug-fast-animation-duration) ease,
+    opacity var(--bug-fast-animation-duration) ease;
 }
 
 .bug-wrapper.open .bug-actions {
@@ -56,7 +70,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.2s ease, margin 0.2s ease, color 0.2s ease;
+  transition: background var(--bug-fast-animation-duration) ease,
+    margin var(--bug-fast-animation-duration) ease,
+    color var(--bug-fast-animation-duration) ease;
 
   &:hover,
   &:focus {
@@ -68,13 +84,14 @@
     height: calc(var(--bug-btn-size) / 2);
     fill: currentColor;
     transform: rotate(0deg);
-    transition: transform 0.4s ease;
+    transition: transform var(--bug-fast-animation-duration) ease;
     outline: none;
   }
 }
 
 .bug-main {
-  transition: border 0.2s ease, border-radius 0.2s ease;
+  transition: border var(--bug-fast-animation-duration) ease,
+    border-radius var(--bug-fast-animation-duration) ease;
 }
 
 .bug-screenshot {
@@ -91,7 +108,8 @@
     gap: 8px;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.3s, transform 0.3s;
+    transition: opacity var(--bug-fast-animation-duration),
+      transform var(--bug-fast-animation-duration);
     transform: translate(-50%, 20px);
   }
 
@@ -110,7 +128,8 @@
     padding: 7px 10px;
     font-size: 0.8rem;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: background 0.5s, color 0.5s;
+    transition: background var(--bug-fast-animation-duration),
+      color var(--bug-fast-animation-duration);
     text-align: left;
   }
 
