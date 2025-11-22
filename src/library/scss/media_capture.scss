@@ -1,15 +1,15 @@
-/* Dimmed overlay - but creates a transparent 'hole' via JS clipPath */
+/* Dimmed overlay with a clear "hole" for the selection */
 .mc-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4); // soft dim
+  background: rgba(0, 0, 0, 0.5); /* Darker dim for better contrast */
   z-index: 999998;
   pointer-events: auto;
   cursor: crosshair;
   transition: opacity 0.15s ease-in-out;
 }
 
-/* Selection box - ONLY border, no filter, no background */
+/* Selection box - clean border only, completely transparent inside */
 .mc-selection-box {
   position: fixed;
   z-index: 999999;
@@ -17,19 +17,19 @@
   display: none;
   box-sizing: border-box;
 
-  /* Only clean border */
-  border: 2px solid #0a66ff;
-  background: transparent; // Make area fully clear
-  backdrop-filter: none; // No blur or brightness
-  filter: none; // Remove drop-shadow
+  /* Clean border to show the selection area */
+  border: 2px solid var(--bug-bg-color);
 
-  /* Remove previous shadows and glow entirely */
+  /* Completely transparent - no background, no filters */
+  background: transparent;
+  backdrop-filter: none;
+  filter: none;
   box-shadow: none;
 
   transition: none;
 }
 
-/* During selection mode - disable interactions, enforce crosshair */
+/* During selection mode */
 .mc-selecting,
 .mc-selecting * {
   cursor: crosshair !important;

@@ -92,23 +92,23 @@ export default class Bugscribe {
         const style = document.createElement("style");
         style.id = "html2canvas-color-sanitize";
         style.textContent = `
-          * {
-            color: rgb(0,0,0) !important;
-            background-color: transparent !important;
-            border-color: rgb(160,160,160) !important;
-            outline-color: rgb(0,0,0) !important;
-            text-decoration-color: rgb(0,0,0) !important;
-            box-shadow: none !important;
-          }
-          *::before, *::after {
-            color: rgb(0,0,0) !important;
-            background-color: transparent !important;
-          }
-          svg, svg * {
-            fill: rgb(0,0,0) !important;
-            stroke: rgb(0,0,0) !important;
-          }
-        `;
+        * {
+          color: rgb(0,0,0) !important;
+          background-color: transparent !important;
+          border-color: rgb(160,160,160) !important;
+          outline-color: rgb(0,0,0) !important;
+          text-decoration-color: rgb(0,0,0) !important;
+          box-shadow: none !important;
+        }
+        *::before, *::after {
+          color: rgb(0,0,0) !important;
+          background-color: transparent !important;
+        }
+        svg, svg * {
+          fill: rgb(0,0,0) !important;
+          stroke: rgb(0,0,0) !important;
+        }
+      `;
         document.head.appendChild(style);
       };
 
@@ -142,15 +142,17 @@ export default class Bugscribe {
           height: `${rect.height}px`,
         });
 
+        // Create a "hole" in the backdrop using clip-path
+        // This makes the selected area completely clear
         backdrop.style.clipPath = `polygon(
-          0 0, 100% 0, 100% 100%, 0 100%,
-          0 0,
-          ${rect.left}px ${rect.top}px,
-          ${rect.left + rect.width}px ${rect.top}px,
-          ${rect.left + rect.width}px ${rect.top + rect.height}px,
-          ${rect.left}px ${rect.top + rect.height}px,
-          ${rect.left}px ${rect.top}px
-        )`;
+        evenodd,
+        0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+        ${rect.left}px ${rect.top}px,
+        ${rect.left}px ${rect.top + rect.height}px,
+        ${rect.left + rect.width}px ${rect.top + rect.height}px,
+        ${rect.left + rect.width}px ${rect.top}px,
+        ${rect.left}px ${rect.top}px
+      )`;
 
         rafId = null;
       };
