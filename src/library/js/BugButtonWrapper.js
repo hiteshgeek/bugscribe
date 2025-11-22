@@ -17,6 +17,13 @@ export default class BugButtonWrapper {
 
     this.mainBtn = this._getBugButton();
     wrapper.appendChild(this._getBugActions());
+
+    // <div class="bug-separator"></div>;
+
+    const separator = document.createElement("div");
+    separator.className = "bug-separator";
+
+    wrapper.appendChild(separator);
     wrapper.appendChild(this.mainBtn);
 
     document.body.appendChild(wrapper);
@@ -57,18 +64,28 @@ export default class BugButtonWrapper {
     const verticalIcons = document.createElement("div");
     verticalIcons.className = "vertical-icons";
 
-    this.bug_menu_full_page = this._getVerticalIcon("Full Page", "full_page");
+    this.bug_menu_full_page = this._getVerticalIcon("Full Page", "full_page", [
+      "Ctrl",
+      "Shift",
+      "1",
+    ]);
     this.bug_menu_visible_page = this._getVerticalIcon(
       "Visible Page",
-      "visible_page"
+      "visible_page",
+      ["Ctrl", "Shift", "2"]
     );
 
     this.bug_menu_custom_area = this._getVerticalIcon(
       "Custom Area",
-      "custom_area"
+      "custom_area",
+      ["Ctrl", "Shift", "3"]
     );
 
-    this.bug_menu_any_page = this._getVerticalIcon("Any Page", "any_page");
+    this.bug_menu_any_page = this._getVerticalIcon("Any Page", "any_page", [
+      "Ctrl",
+      "Shift",
+      "4",
+    ]);
 
     verticalIcons.appendChild(this.bug_menu_full_page);
     verticalIcons.appendChild(this.bug_menu_visible_page);
@@ -80,11 +97,25 @@ export default class BugButtonWrapper {
     return screenshotButton;
   }
 
-  _getVerticalIcon(title, id) {
+  _getVerticalIcon(title, id, shortcut = []) {
     const icon = document.createElement("span");
     icon.id = `bug_menu_${id}`;
     icon.className = `vertical-icon`;
     icon.textContent = title;
+
+    //<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>
+
+    shortcut = shortcut.join("+");
+
+    shortcut = `<kbd>${shortcut}</kbd>`;
+
+    //wrp in <kbd>
+
+    const shortcutSpan = document.createElement("span");
+    shortcutSpan.className = "bug-shortcut";
+    shortcutSpan.innerHTML = shortcut;
+
+    icon.appendChild(shortcutSpan);
     return icon;
   }
 
