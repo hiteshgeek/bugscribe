@@ -57,17 +57,32 @@ export default class BugButtonWrapper {
     const verticalIcons = document.createElement("div");
     verticalIcons.className = "vertical-icons";
 
-    verticalIcons.appendChild(this._getVerticalIcon("Full Page"));
-    verticalIcons.appendChild(this._getVerticalIcon("Visible Page"));
-    verticalIcons.appendChild(this._getVerticalIcon("Custom Area"));
+    this.bug_menu_full_page = this._getVerticalIcon("Full Page", "full_page");
+    this.bug_menu_visible_page = this._getVerticalIcon(
+      "Visible Page",
+      "visible_page"
+    );
+
+    this.bug_menu_custom_area = this._getVerticalIcon(
+      "Custom Area",
+      "custom_area"
+    );
+
+    this.bug_menu_any_page = this._getVerticalIcon("Any Page", "any_page");
+
+    verticalIcons.appendChild(this.bug_menu_full_page);
+    verticalIcons.appendChild(this.bug_menu_visible_page);
+    verticalIcons.appendChild(this.bug_menu_custom_area);
+    verticalIcons.appendChild(this.bug_menu_any_page);
 
     screenshotButton.appendChild(verticalIcons);
 
     return screenshotButton;
   }
 
-  _getVerticalIcon(title) {
+  _getVerticalIcon(title, id) {
     const icon = document.createElement("span");
+    icon.id = `bug_menu_${id}`;
     icon.className = `vertical-icon`;
     icon.textContent = title;
     return icon;

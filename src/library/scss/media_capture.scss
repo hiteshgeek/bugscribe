@@ -1,0 +1,53 @@
+.mc-selection-box {
+  position: fixed;
+  z-index: 999999;
+  pointer-events: none;
+  display: none;
+  box-sizing: border-box;
+
+  /* Clear visibility improvements */
+  border: 2px solid rgba(11, 95, 255, 0.9);
+  background: rgba(255, 255, 255, 0.15); // Light white tint to show clearly
+  backdrop-filter: brightness(1.3) blur(1px); // Make selection area pop
+  filter: drop-shadow(0 0 10px rgba(0, 128, 255, 0.7));
+
+  /* Slight glow effect for clarity */
+  box-shadow: 0 0 0 1px rgba(11, 95, 255, 0.5) inset,
+    0 0 10px rgba(11, 95, 255, 0.6), 0 0 18px rgba(0, 120, 255, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.15);
+
+  transition: all 0.1s ease-out;
+
+  /* Corner indicators */
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    background: rgba(11, 95, 255, 0.95);
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+  }
+
+  &::before {
+    top: -2px;
+    left: -2px;
+    border-radius: 4px 0 0 0;
+  }
+
+  &::after {
+    bottom: -2px;
+    right: -2px;
+    border-radius: 0 0 4px 0;
+  }
+}
+
+.mc-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65); // darker for more contrast
+  z-index: 999998;
+  pointer-events: auto;
+  cursor: crosshair;
+  backdrop-filter: blur(1px) brightness(0.8); // darken & blur background
+}

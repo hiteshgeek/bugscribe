@@ -122,4 +122,233 @@ export default class MediaCapture {
       return false;
     }
   }
+
+  async captureSelectedArea() {
+    return new Promise((resolve) => {
+      let startX, startY, endX, endY;
+      let isSelecting = false;
+      let rafId = null;
+
+      const sanitizedElements = [];
+
+      // Comprehensive color sanitization
+      const sanitizeColors = () => {
+        const allElements = document.querySelectorAll("*");
+        allElements.forEach((el) => {
+          const computed = getComputedStyle(el);
+          const inline = el.style;
+
+          // Check all color-related properties
+          const colorProps = [
+            "color",
+            "backgroundColor",
+            "borderColor",
+            "borderTopColor",
+            "borderRightColor",
+            "borderBottomColor",
+            "borderLeftColor",
+            "outlineColor",
+            "textDecorationColor",
+            "caretColor",
+            "columnRuleColor",
+            "fill",
+            "stroke",
+          ];
+
+          let needsSanitization = false;
+
+          // Check computed styles for unsupported color functions
+          for (const prop of colorProps) {
+            const value = computed[prop];
+            if (
+              value &&
+              (value.includes("color(") || value.includes("color-mix("))
+            ) {
+              needsSanitization = true;
+              break;
+            }
+          }
+
+          // Also check inline styles
+          if (!needsSanitization && inline.cssText) {
+            if (
+              inline.cssText.includes("color(") ||
+              inline.cssText.includes("color-mix(")
+            ) {
+              needsSanitization = true;
+            }
+          }
+
+          if (needsSanitization) {
+            const originalStyles = {
+              el,
+              cssText: inline.cssText,
+            };
+
+            sanitizedElements.push(originalStyles);
+
+            // Force override with safe colors using !important
+            const safeFixes = [
+              "color: rgb(0, 0, 0) !important",
+              "background-color: transparent !important",
+              "border-color: rgb(200, 200, 200) !important",
+              "outline-color: rgb(0, 0, 0) !important",
+              "text-decoration-color: rgb(0, 0, 0) !important",
+              "caret-color: rgb(0, 0, 0) !important",
+            ];
+
+            safeFixes.forEach((fix) => {
+              inline.cssText += "; " + fix;
+            });
+          }
+        });
+      };
+
+      const restoreColors = () => {
+        sanitizedElements.forEach(({ el, cssText }) => {
+          el.style.cssText = cssText;
+        });
+        sanitizedElements.length = 0;
+      };
+
+      const backdrop = document.createElement("div");
+      backdrop.className = "mc-backdrop";
+      document.body.appendChild(backdrop);
+
+      const selectionBox = document.createElement("div");
+      selectionBox.className = "mc-selection-box";
+      document.body.appendChild(selectionBox);
+
+      document.body.classList.add("mc-selecting");
+
+      const updateSelection = () => {
+        const rect = {
+          left: Math.min(startX, endX),
+          top: Math.min(startY, endY),
+          width: Math.abs(endX - startX),
+          height: Math.abs(endY - startY),
+        };
+
+        Object.assign(selectionBox.style, {
+          left: `${rect.left}px`,
+          top: `${rect.top}px`,
+          width: `${rect.width}px`,
+          height: `${rect.height}px`,
+        });
+
+        rafId = null;
+      };
+
+      const onMouseDown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        isSelecting = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        endX = startX;
+        endY = startY;
+
+        Object.assign(selectionBox.style, {
+          left: `${startX}px`,
+          top: `${startY}px`,
+          width: `0px`,
+          height: `0px`,
+          display: "block",
+        });
+      };
+
+      const onMouseMove = (e) => {
+        if (!isSelecting) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        endX = e.clientX;
+        endY = e.clientY;
+
+        if (!rafId) {
+          rafId = requestAnimationFrame(updateSelection);
+        }
+      };
+
+      const cleanup = () => {
+        backdrop.remove();
+        selectionBox.remove();
+        document.body.classList.remove("mc-selecting");
+        backdrop.removeEventListener("mousedown", onMouseDown);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.removeEventListener("keydown", onKeyDown);
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+        }
+      };
+
+      const onMouseUp = async (e) => {
+        if (!isSelecting) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        isSelecting = false;
+
+        const rect = {
+          left: Math.min(startX, endX),
+          top: Math.min(startY, endY),
+          width: Math.abs(endX - startX),
+          height: Math.abs(endY - startY),
+        };
+
+        // Check if selection is too small
+        if (rect.width < 10 || rect.height < 10) {
+          cleanup();
+          resolve(false);
+          return;
+        }
+
+        cleanup();
+
+        // Wait for UI cleanup
+        await new Promise((r) => setTimeout(r, 150));
+
+        sanitizeColors();
+
+        try {
+          const canvas = await html2canvas(document.body, {
+            useCORS: true,
+            allowTaint: true,
+            x: rect.left + window.scrollX,
+            y: rect.top + window.scrollY,
+            width: rect.width,
+            height: rect.height,
+            scrollX: -window.scrollX,
+            scrollY: -window.scrollY,
+            scale: 2,
+            logging: false,
+            backgroundColor: null,
+          });
+
+          restoreColors();
+          resolve(canvas.toDataURL("image/png"));
+        } catch (err) {
+          console.error("Selective capture failed:", err);
+          restoreColors();
+          resolve(false);
+        }
+      };
+
+      const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+          isSelecting = false;
+          cleanup();
+          resolve(false);
+        }
+      };
+
+      // Attach mousedown to backdrop so it captures all clicks
+      backdrop.addEventListener("mousedown", onMouseDown);
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("keydown", onKeyDown);
+    });
+  }
 }
