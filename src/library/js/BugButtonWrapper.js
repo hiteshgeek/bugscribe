@@ -9,6 +9,8 @@ export default class BugButtonWrapper {
   constructor(options = {}) {
     this._options = options;
     this._render();
+    // this._initDragFunctionality();
+    // this._loadSavedPosition();
   }
 
   _render() {
@@ -18,8 +20,6 @@ export default class BugButtonWrapper {
     this.mainBtn = this._getBugButton();
     wrapper.appendChild(this._getBugActions());
 
-    // <div class="bug-separator"></div>;
-
     const separator = document.createElement("div");
     separator.className = "bug-separator";
 
@@ -27,6 +27,7 @@ export default class BugButtonWrapper {
     wrapper.appendChild(this.mainBtn);
 
     document.body.appendChild(wrapper);
+    this.wrapper = wrapper;
 
     this.mainBtn.addEventListener("click", () => {
       wrapper.classList.toggle("open");
@@ -44,10 +45,12 @@ export default class BugButtonWrapper {
     const actions = document.createElement("div");
     actions.className = "bug-actions";
 
+    this.moveButton = this._getBugMoveButton();
     this.screenshotButton = this._getBugScreenshotButton();
     this.recordBtn = this._getRecordButton();
     this.settingsBtn = this._getSettingsButton();
 
+    actions.appendChild(this.moveButton);
     actions.appendChild(this.screenshotButton);
     actions.appendChild(this.recordBtn);
     actions.appendChild(this.settingsBtn);
@@ -55,12 +58,18 @@ export default class BugButtonWrapper {
     return actions;
   }
 
+  _getBugMoveButton() {
+    const moveButton = document.createElement("button");
+    moveButton.className = "bug-btn bug-move";
+    moveButton.innerHTML = icons.move;
+    return moveButton;
+  }
+
   _getBugScreenshotButton() {
     const screenshotButton = document.createElement("button");
     screenshotButton.className = "bug-btn bug-screenshot";
     screenshotButton.innerHTML = icons.screenshot;
 
-    // Create vertical icons container
     const verticalIcons = document.createElement("div");
     verticalIcons.className = "vertical-icons";
 
@@ -103,13 +112,8 @@ export default class BugButtonWrapper {
     icon.className = `vertical-icon`;
     icon.textContent = title;
 
-    //<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd>
-
     shortcut = shortcut.join("+");
-
     shortcut = `<kbd>${shortcut}</kbd>`;
-
-    //wrp in <kbd>
 
     const shortcutSpan = document.createElement("span");
     shortcutSpan.className = "bug-shortcut";
@@ -132,4 +136,117 @@ export default class BugButtonWrapper {
     settingsBtn.innerHTML = icons.settings;
     return settingsBtn;
   }
+
+  _initDragFunctionality() {
+    let isDragging = false;
+    let startX, startY, initialX, initialY;
+
+    const onMouseDown = (e) => {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const rect = this.mainBtn.getBoundingClientRect();
+      initialX = rect.left;
+      initialY = rect.top;
+
+      this.wrapper.style.transition = "none";
+      this.wrapper.classList.add("dragging");
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      const newX = initialX + deltaX;
+      const newY = initialY + deltaY;
+
+      // Keep button within viewport bounds (based on main button)
+      const mainBtnRect = this.mainBtn.getBoundingClientRect();
+      const maxX = window.innerWidth - mainBtnRect.width;
+      const maxY = window.innerHeight - mainBtnRect.height;
+
+      const boundedX = Math.max(0, Math.min(newX, maxX));
+      const boundedY = Math.max(0, Math.min(newY, maxY));
+
+      this.wrapper.style.left = `${boundedX}px`;
+      this.wrapper.style.top = `${boundedY}px`;
+      this.wrapper.style.right = "auto";
+      this.wrapper.style.bottom = "auto";
+    };
+
+    const onMouseUp = () => {
+      if (isDragging) {
+        isDragging = false;
+        this.wrapper.style.transition = "";
+        this.wrapper.classList.remove("dragging");
+
+        // Save position to localStorage
+        this._savePosition();
+
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+      }
+    };
+
+    this.moveButton.addEventListener("mousedown", onMouseDown);
+  }
+
+  _savePosition() {
+    const rect = this.mainBtn.getBoundingClientRect();
+    const position = {
+      left: rect.left,
+      top: rect.top,
+    };
+
+    try {
+      localStorage.setItem(
+        "bugscribe-button-position",
+        JSON.stringify(position)
+      );
+    } catch (e) {
+      console.warn("Failed to save button position to localStorage:", e);
+    }
+  }
+
+  // _loadSavedPosition() {
+  //   try {
+  //     const savedPosition = localStorage.getItem("bugscribe-button-position");
+  //     if (savedPosition) {
+  //       const position = JSON.parse(savedPosition);
+
+  //       // Calculate offset between wrapper and main button
+  //       const wrapperRect = this.wrapper.getBoundingClientRect();
+  //       const mainBtnRect = this.mainBtn.getBoundingClientRect();
+  //       const offsetX = mainBtnRect.left - wrapperRect.left;
+  //       const offsetY = mainBtnRect.top - wrapperRect.top;
+
+  //       // Position wrapper so main button appears at saved position
+  //       const wrapperLeft = position.left - offsetX;
+  //       const wrapperTop = position.top - offsetY;
+
+  //       // Ensure wrapper is within viewport
+  //       const maxX = window.innerWidth - this.wrapper.offsetWidth;
+  //       const maxY = window.innerHeight - this.wrapper.offsetHeight;
+
+  //       const boundedX = Math.max(0, Math.min(wrapperLeft, maxX));
+  //       const boundedY = Math.max(0, Math.min(wrapperTop, maxY));
+
+  //       this.wrapper.style.left = `${boundedX}px`;
+  //       this.wrapper.style.top = `${boundedY}px`;
+  //       this.wrapper.style.right = "auto";
+  //       this.wrapper.style.bottom = "auto";
+  //     }
+  //   } catch (e) {
+  //     console.warn("Failed to load button position from localStorage:", e);
+  //   }
+  // }
 }

@@ -76,7 +76,7 @@
   svg {
     width: calc(var(--bug-btn-size) / 2);
     height: calc(var(--bug-btn-size) / 2);
-    fill: currentColor;
+    fill: var(--bug-dark-color);
     transform: rotate(0deg);
     transition: transform var(--bug-fast-animation-duration) ease;
     outline: none;
@@ -181,4 +181,13 @@
   .vertical-icon:hover {
     background: color-mix(in srgb, var(--bug-bg-color) 55%, #fff);
   }
+}
+
+.bug-wrapper.dragging {
+  cursor: grabbing;
+  opacity: 0.8;
+}
+
+.bug-move {
+  cursor: grab;
 }
