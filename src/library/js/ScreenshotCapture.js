@@ -331,18 +331,17 @@ export default class ScreenshotCapture {
       let rafId = null;
       let backdrop = null;
 
-      // 1. Create and APPEND the Backdrop immediately (FIX: Eliminates (0,0) flash)
+      console.log("🎯 Freeform Capture Started");
+
+      // 1. Create and APPEND the Backdrop immediately
       backdrop = document.createElement("div");
       backdrop.className = "mc-backdrop";
       backdrop.style.pointerEvents = "none";
-      // Append it immediately so the screen darkens right away.
       document.body.appendChild(backdrop);
-      // Ensure clip-path is 'none' initially so it's a solid dark screen
-      backdrop.style.clipPath = "none";
 
       // 2. Create the Canvas (Used for event capture AND drawing the lasso border)
       const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d"); // Get context for drawing
+      const ctx = canvas.getContext("2d");
 
       Object.assign(canvas.style, {
         position: "fixed",
@@ -359,16 +358,26 @@ export default class ScreenshotCapture {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
+      console.log("📐 Canvas dimensions:", canvas.width, "x", canvas.height);
+      console.log(
+        "📐 Viewport dimensions:",
+        window.innerWidth,
+        "x",
+        window.innerHeight
+      );
+      console.log("📜 Scroll position:", window.scrollX, window.scrollY);
+
       document.body.classList.add("mc-freeform-selecting");
 
       // --- Core Logic for Visual Masking and Border ---
 
       const drawLassoBorder = (isClosed = false) => {
-        if (points.length < 1) return;
-
+        // Clear the entire canvas first
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        ctx.strokeStyle = "var(--bug-primary, rgb(255, 0, 0))"; // Border color
+        if (points.length < 1) return;
+
+        ctx.strokeStyle = "var(--bug-primary, rgb(255, 0, 0))";
         ctx.lineWidth = 2;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
@@ -397,10 +406,16 @@ export default class ScreenshotCapture {
         // 1. Update the canvas border
         drawLassoBorder();
 
+        console.log(
+          "🖊️ Points array (" + points.length + "):",
+          JSON.stringify(points, null, 2)
+        );
+
         // 2. Apply clip-path to backdrop (Creates the transparent hole)
-        if (points.length < 2) {
-          // Keep backdrop solid dark until there are enough points.
-          backdrop.style.clipPath = "none";
+        // Only show the hole when we have at least 3 points to form a visible shape
+        if (points.length < 3) {
+          // Keep backdrop solid - don't show clip-path yet
+          // The canvas will still show the red dot/line
           rafId = null;
           return;
         }
@@ -408,12 +423,20 @@ export default class ScreenshotCapture {
         // Create the CSS polygon string from the recorded points
         const polygonPoints = points.map((p) => `${p.x}px ${p.y}px`).join(", ");
 
-        // Generate the complex clip-path for the freeform hole
-        backdrop.style.clipPath = `polygon(
-          evenodd,
-          0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
-          ${polygonPoints}
-        )`;
+        // Use path() with evenodd instead of polygon to avoid connecting paths
+        // OR use inset with a hole - let's use a simpler approach with path
+        const clipPathValue = `path(evenodd, "M 0 0 L ${
+          window.innerWidth
+        } 0 L ${window.innerWidth} ${window.innerHeight} L 0 ${
+          window.innerHeight
+        } Z M ${points[0].x} ${points[0].y} ${points
+          .slice(1)
+          .map((p) => `L ${p.x} ${p.y}`)
+          .join(" ")} Z")`;
+
+        backdrop.style.clipPath = clipPathValue;
+
+        console.log("🎭 Backdrop clip-path:", clipPathValue);
 
         rafId = null;
       };
@@ -423,9 +446,19 @@ export default class ScreenshotCapture {
         points.length = 0; // Reset points
         points.push({ x: e.clientX, y: e.clientY });
 
-        // Reset clip-path on click to ensure it's solid dark and ready to draw
-        backdrop.style.clipPath = "none";
-        updateSelection();
+        console.log("🖱️ MouseDown at:", e.clientX, e.clientY);
+        console.log("   - pageX/pageY:", e.pageX, e.pageY);
+        console.log("   - offsetX/offsetY:", e.offsetX, e.offsetY);
+        console.log("   - screenX/screenY:", e.screenX, e.screenY);
+
+        // Clear canvas and ensure backdrop has no clip-path
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        backdrop.style.clipPath = "";
+
+        // Draw initial dot (canvas only, backdrop stays dark)
+        drawLassoBorder();
+
+        console.log("🎭 Backdrop: Reset (no clip-path)");
       };
 
       const onMouseMove = (e) => {
@@ -437,6 +470,13 @@ export default class ScreenshotCapture {
         // Only record a new point if the mouse has moved a minimum distance
         if (Math.sqrt(dx * dx + dy * dy) > 5) {
           points.push({ x: e.clientX, y: e.clientY });
+          console.log(
+            "➕ Point added:",
+            e.clientX,
+            e.clientY,
+            "- Total points:",
+            points.length
+          );
         }
 
         if (!rafId) {
@@ -446,6 +486,7 @@ export default class ScreenshotCapture {
 
       const onKeyDown = (e) => {
         if (e.key === "Escape") {
+          console.log("❌ Cancelled by user (Escape)");
           cleanup();
           resolve(false);
         }
@@ -455,7 +496,6 @@ export default class ScreenshotCapture {
         if (cleanupDone) return;
         cleanupDone = true;
         canvas.remove();
-        // Backdrop is guaranteed to be in the DOM now
         backdrop.remove();
         document.body.classList.remove("mc-freeform-selecting");
 
@@ -470,8 +510,11 @@ export default class ScreenshotCapture {
         if (!isDrawing) return;
         isDrawing = false;
 
+        console.log("🖱️ MouseUp - Total points drawn:", points.length);
+
         // If no drawing happened (only a click)
         if (points.length < 2) {
+          console.log("⚠️ Too few points, cancelling");
           cleanup();
           resolve(false);
           return;
@@ -480,11 +523,14 @@ export default class ScreenshotCapture {
         // Close the shape visually (connecting the last point to the first)
         if (points[points.length - 1] !== points[0]) {
           points.push(points[0]);
+          console.log("🔄 Closed shape by adding first point again");
         }
 
         // Final update to close the visual border and clip-path
         drawLassoBorder(true);
         updateSelection();
+
+        console.log("📊 Final points array:", JSON.stringify(points, null, 2));
 
         // --- HTML2Canvas Capture Preparation (Bounding Box) ---
         let minX = Infinity,
@@ -499,10 +545,20 @@ export default class ScreenshotCapture {
           maxY = Math.max(maxY, p.y);
         }
 
+        console.log("📦 Bounding box:");
+        console.log("   - minX:", minX, "maxX:", maxX);
+        console.log("   - minY:", minY, "maxY:", maxY);
+        console.log("   - width:", maxX - minX);
+        console.log("   - height:", maxY - minY);
+
         const captureX = minX + window.scrollX;
         const captureY = minY + window.scrollY;
         const captureWidth = maxX - minX;
         const captureHeight = maxY - minY;
+
+        console.log("📸 Capture parameters:");
+        console.log("   - x:", captureX, "y:", captureY);
+        console.log("   - width:", captureWidth, "height:", captureHeight);
 
         // Clean up UI elements before capture
         cleanup();
@@ -511,6 +567,8 @@ export default class ScreenshotCapture {
         this._injectColorSanitizerStyle();
 
         try {
+          console.log("📷 Starting html2canvas capture...");
+
           // 1. Capture ONLY the rectangular bounding box region
           const screenshotCanvas = await html2canvas(document.body, {
             useCORS: true,
@@ -526,6 +584,8 @@ export default class ScreenshotCapture {
             logging: false,
           });
 
+          console.log("✅ html2canvas completed");
+
           const scaleFactor = 2;
 
           // 2. Create the final output canvas
@@ -533,9 +593,16 @@ export default class ScreenshotCapture {
           finalCanvas.width = captureWidth * scaleFactor;
           finalCanvas.height = captureHeight * scaleFactor;
           const finalCtx = finalCanvas.getContext("2d");
-          finalCtx.clearRect(0, 0, finalCanvas.width, finalCtx.height);
+          finalCtx.clearRect(0, 0, finalCanvas.width, finalCanvas.height);
 
-          // 3. Define the polygonal clipping path on the final canvas (The actual capture clipping)
+          console.log(
+            "🎨 Final canvas size:",
+            finalCanvas.width,
+            "x",
+            finalCanvas.height
+          );
+
+          // 3. Define the polygonal clipping path on the final canvas
           finalCtx.beginPath();
           finalCtx.moveTo(
             (points[0].x - minX) * scaleFactor,
@@ -550,6 +617,8 @@ export default class ScreenshotCapture {
           finalCtx.closePath();
           finalCtx.clip();
 
+          console.log("✂️ Clipping path applied");
+
           // 4. Draw the captured bounding box onto the clipped context
           finalCtx.drawImage(
             screenshotCanvas,
@@ -559,10 +628,12 @@ export default class ScreenshotCapture {
             finalCanvas.height
           );
 
+          console.log("✅ Freeform capture completed successfully!");
+
           this._removeSanitizerStyle();
           resolve(finalCanvas.toDataURL("image/png"));
         } catch (err) {
-          console.error("Freeform capture failed:", err);
+          console.error("❌ Freeform capture failed:", err);
           this._removeSanitizerStyle();
           resolve(false);
         }
