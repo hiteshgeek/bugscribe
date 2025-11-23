@@ -1,18 +1,82 @@
 // RecordingTimer.js
 
-import { icons } from "./icons.js";
+import { icons } from "./icons.js"; // Assuming 'icons.js' provides the necessary icon SVG strings
 
 export default class RecordingTimer {
+  /**
+   * @type {object}
+   * @private
+   */
+  mediaCapture;
+  /**
+   * @type {number}
+   * @private
+   */
+  maxRecordingSeconds;
+  /**
+   * @type {NodeJS.Timeout | null}
+   * @private
+   */
+  _interval = null;
+  /**
+   * @type {boolean}
+   * @private
+   */
+  _isPaused = false;
+  /**
+   * @type {number}
+   * @private
+   * Tracks the time (in ms) accumulated during all pause periods.
+   */
+  _pausedTime = 0;
+  /**
+   * @type {number}
+   * @private
+   * Tracks the total elapsed seconds of recording time.
+   */
+  _elapsedSeconds = 0;
+
   constructor(mediaCapture, maxRecordingSeconds) {
     this.mediaCapture = mediaCapture;
     this.maxRecordingSeconds = maxRecordingSeconds;
-    this._interval = null;
-    this._isPaused = false;
-    this._pausedTime = 0;
+  }
+
+  /**
+   * Helper function to format seconds into MM:SS string.
+   * @param {number} totalSeconds
+   * @returns {string}
+   */
+  _formatTime(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
+      2,
+      "0"
+    )}`;
+  }
+
+  /**
+   * Updates the timer display and applies visual warnings if time is low.
+   * @private
+   */
+  _updateDisplay(currentTimeSpan, timerDisplay) {
+    currentTimeSpan.textContent = this._formatTime(this._elapsedSeconds);
+
+    if (this.maxRecordingSeconds - this._elapsedSeconds <= 30) {
+      currentTimeSpan.style.color = "#ff4444";
+      timerDisplay.style.animation = "timer-warning 1s ease-in-out infinite";
+    } else {
+      // Ensure styles are reset if timer was in warning and now resumed/restarted
+      currentTimeSpan.style.color = "";
+      timerDisplay.style.animation = "";
+    }
   }
 
   show(micMutedOnStart = false) {
     this.hide(); // Clear any existing timer
+    this._elapsedSeconds = 0; // Reset counter for new recording
+    this._pausedTime = 0; // Reset paused time
+    this._isPaused = false;
 
     const timerWrapper = document.createElement("div");
     timerWrapper.id = "recording-timer-wrapper";
@@ -21,36 +85,33 @@ export default class RecordingTimer {
     // --- Timer Display Setup ---
     const timerDisplay = document.createElement("div");
     timerDisplay.className = "recording-timer-display";
-    const currentTime = document.createElement("span");
-    currentTime.className = "recording-current-time";
-    currentTime.textContent = "00:00";
-    const maxMinutes = Math.floor(this.maxRecordingSeconds / 60);
-    const maxSeconds = this.maxRecordingSeconds % 60;
-    const maxTimeContent = `${String(maxMinutes).padStart(2, "0")}:${String(
-      maxSeconds
-    ).padStart(2, "0")}`;
+
+    const maxTimeContent = this._formatTime(this.maxRecordingSeconds);
 
     timerDisplay.innerHTML = `
-      <span class="recording-current-time">00:00</span>
-      <span class="recording-separator"> / </span>
-      <span class="recording-max-time">${maxTimeContent}</span>
-    `;
+            <span class="recording-current-time">00:00</span>
+            <span class="recording-separator"> / </span>
+            <span class="recording-max-time">${maxTimeContent}</span>
+        `;
     const currentTimeSpan = timerDisplay.querySelector(
       ".recording-current-time"
     );
+
+    // Ensure initial display is 00:00 before interval fires
+    this._updateDisplay(currentTimeSpan, timerDisplay);
 
     // --- Mic Button Setup ---
     const micBtn = document.createElement("button");
     micBtn.className = "recording-control-btn recording-mic-btn";
 
-    // Access the recorder state via the mediaCapture instance's video recorder
+    // Determine initial mic state
     const micTrack =
       this.mediaCapture.video._activeRecorder?.micStream?.getAudioTracks?.()[0] ||
       null;
 
     let isMicMuted;
     if (!micTrack) {
-      isMicMuted = true;
+      isMicMuted = true; // No mic track means it's effectively muted (no input)
     } else if (typeof micMutedOnStart === "boolean") {
       isMicMuted = micMutedOnStart;
     } else {
@@ -63,9 +124,7 @@ export default class RecordingTimer {
 
     micBtn.addEventListener("click", () => {
       const isMuted = this.mediaCapture.toggleMicrophone();
-      micBtn.innerHTML = isMuted ? icons.microhpone_disabled : icons.microhone;
-      micBtn.title = isMuted ? "Unmute microphone" : "Mute microphone";
-      micBtn.classList.toggle("muted", isMuted);
+      this.updateMicVisual(isMuted);
     });
 
     // --- Control Buttons Setup ---
@@ -87,18 +146,12 @@ export default class RecordingTimer {
 
     pauseBtn.addEventListener("click", () => {
       this.mediaCapture.pauseRecording();
-      this._isPaused = true;
-      pauseBtn.style.display = "none";
-      resumeBtn.style.display = "flex";
-      timerDisplay.style.opacity = "0.6";
+      // In a well-structured application, the mediaCapture listener should call updateToPaused()
     });
 
     resumeBtn.addEventListener("click", () => {
       this.mediaCapture.resumeRecording();
-      this._isPaused = false;
-      resumeBtn.style.display = "none";
-      pauseBtn.style.display = "flex";
-      timerDisplay.style.opacity = "1";
+      // In a well-structured application, the mediaCapture listener should call updateToResumed()
     });
 
     stopBtn.addEventListener("click", () => {
@@ -120,33 +173,21 @@ export default class RecordingTimer {
     document.body.appendChild(timerWrapper);
 
     // --- Start Timer Interval ---
-    const startTime = Date.now();
     this._interval = setInterval(() => {
       if (this._isPaused) {
+        // If paused, just accumulate time that passed since the last second
         this._pausedTime += 1000;
         return;
       }
 
-      const elapsed = Math.floor(
-        (Date.now() - startTime - this._pausedTime) / 1000
-      );
+      this._elapsedSeconds += 1; // Increment stable counter
 
-      if (elapsed >= this.maxRecordingSeconds) {
+      if (this._elapsedSeconds >= this.maxRecordingSeconds) {
         this.mediaCapture.stopRecording();
         return;
       }
 
-      const minutes = Math.floor(elapsed / 60);
-      const seconds = elapsed % 60;
-      currentTimeSpan.textContent = `${String(minutes).padStart(
-        2,
-        "0"
-      )}:${String(seconds).padStart(2, "0")}`;
-
-      if (this.maxRecordingSeconds - elapsed <= 30) {
-        currentTimeSpan.style.color = "#ff4444";
-        timerDisplay.style.animation = "timer-warning 1s ease-in-out infinite";
-      }
+      this._updateDisplay(currentTimeSpan, timerDisplay);
     }, 1000);
   }
 
@@ -171,9 +212,7 @@ export default class RecordingTimer {
    */
   updateToResumed() {
     this._isPaused = false;
-    // We reset _pausedTime here to ensure the timer starts counting up correctly.
-    // If you want accurate total duration including the pause time, you must track the pause start time instead of just accumulating _pausedTime in the interval.
-    // However, based on your current interval logic, setting _isPaused to false is sufficient to resume counting.
+    // The time tracking relies on the incrementing counter (_elapsedSeconds), which is more stable.
 
     const pauseBtn = document.querySelector(".recording-pause-btn");
     const resumeBtn = document.querySelector(".recording-resume-btn");
