@@ -225,10 +225,10 @@ export default class RecordingTimer {
     const maxTimeContent = this._formatTime(this.maxRecordingSeconds);
 
     timerDisplay.innerHTML = `
-            <span class="recording-current-time">00:00</span>
-            <span class="recording-separator"> / </span>
-            <span class="recording-max-time">${maxTimeContent}</span>
-        `;
+    			 <span class="recording-current-time">00:00</span>
+    			 <span class="recording-separator"> / </span>
+    			 <span class="recording-max-time">${maxTimeContent}</span>
+    		 `;
     const currentTimeSpan = timerDisplay.querySelector(
       ".recording-current-time"
     );
@@ -282,7 +282,7 @@ export default class RecordingTimer {
       this.updateMicVisual(isMuted);
     });
 
-    // --- System Audio Button Setup ---
+    // --- System Audio Button Setup (The Smart Button Logic) ---
     const systemAudioBtn = document.createElement("button");
     systemAudioBtn.className =
       "recording-control-btn recording-system-audio-btn";
@@ -290,21 +290,41 @@ export default class RecordingTimer {
     const systemTrack =
       this.mediaCapture.video?._activeRecorder?.displayStream?.getAudioTracks?.()[0] ||
       null;
-    let isSystemMuted = !systemTrack || !systemTrack.enabled; // Default to muted if no track
+
+    // Check if the track exists at all
+    const trackExists = !!systemTrack;
+    let isSystemMuted = !trackExists || !systemTrack.enabled; // Default to muted if no track
 
     systemAudioBtn.innerHTML = isSystemMuted
       ? icons.speaker_disabled
       : icons.speaker;
-    systemAudioBtn.title = isSystemMuted
-      ? "Enable system audio"
-      : "Mute system audio";
+
     systemAudioBtn.classList.toggle("muted", isSystemMuted);
 
-    systemAudioBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      const isMuted = this.mediaCapture.toggleSystemAudio();
-      this.updateSystemAudioVisual(isMuted);
-    });
+    if (trackExists) {
+      // CASE 1: Track exists - Button is a functional toggle
+      systemAudioBtn.title = isSystemMuted
+        ? "Enable system audio"
+        : "Mute system audio";
+
+      systemAudioBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const isMuted = this.mediaCapture.toggleSystemAudio();
+        this.updateSystemAudioVisual(isMuted);
+      });
+    } else {
+      // CASE 2: Track is missing - Button is a disabled indicator/warning
+      systemAudioBtn.setAttribute("disabled", "true");
+      systemAudioBtn.style.opacity = "0.4"; // Visual cue for disabled
+      systemAudioBtn.title =
+        "System audio not captured. Stop and restart recording to include it.";
+
+      systemAudioBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        // Optional: Display a temporary on-screen message (toast/alert)
+        // to reinforce the limitation.
+      });
+    }
 
     // --- Control Buttons Setup ---
     const pauseBtn = document.createElement("button");
@@ -432,11 +452,12 @@ export default class RecordingTimer {
 
   /**
    * Visually updates the system audio button state.
+   * NOTE: This is only called if a system audio track *exists*.
    * @param {boolean} isMuted - The new mute state (true if muted).
    */
   updateSystemAudioVisual(isMuted) {
     const systemBtn = document.querySelector(".recording-system-audio-btn");
-    if (systemBtn) {
+    if (systemBtn && !systemBtn.hasAttribute("disabled")) {
       systemBtn.innerHTML = isMuted ? icons.speaker_disabled : icons.speaker;
       systemBtn.title = isMuted ? "Enable system audio" : "Mute system audio";
       systemBtn.classList.toggle("muted", isMuted);
