@@ -1,6 +1,5 @@
 // ScreenCapture.js - Main entry point
 
-// import html2canvas from "html2canvas";
 import CaptureUtils from "./utils/CaptureUtils.js";
 import FreeformCapture from "./utils/FreeformCapture.js";
 import ShapeCapture from "./utils/ShapeCapture.js";

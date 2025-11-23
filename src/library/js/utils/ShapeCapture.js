@@ -1,3 +1,5 @@
+// ShapeCapture.js - FINAL CORRECTED FILE
+
 export default class ShapeCapture {
   constructor(utils, shapeSelector) {
     this.utils = utils;
@@ -82,6 +84,9 @@ export default class ShapeCapture {
       };
 
       const cleanup = () => {
+        // Add display none before removal for instant visual clearance
+        selectionBox.style.display = "none";
+
         backdrop.remove();
         selectionBox.remove();
         document.body.classList.remove("mc-selecting");
@@ -111,8 +116,12 @@ export default class ShapeCapture {
           return;
         }
 
-        const imgURL = await this._captureArea(finalRect, shapeType);
+        // CRITICAL FIX: The cleanup function now contains the line to hide the selection box
+        // instantly (selectionBox.style.display = 'none';) before removing it.
         cleanup();
+
+        // Await the capture
+        const imgURL = await this._captureArea(finalRect, shapeType);
         resolve(imgURL);
       };
 
@@ -134,14 +143,14 @@ export default class ShapeCapture {
   _generateClipPath(shapeType, rect) {
     if (shapeType === "rectangle" || shapeType === "square") {
       return `polygon(
-        evenodd,
-        0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
-        ${rect.left}px ${rect.top}px,
-        ${rect.left}px ${rect.top + rect.height}px,
-        ${rect.left + rect.width}px ${rect.top + rect.height}px,
-        ${rect.left + rect.width}px ${rect.top}px,
-        ${rect.left}px ${rect.top}px
-      )`;
+evenodd,
+0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+${rect.left}px ${rect.top}px,
+${rect.left}px ${rect.top + rect.height}px,
+${rect.left + rect.width}px ${rect.top + rect.height}px,
+${rect.left + rect.width}px ${rect.top}px,
+${rect.left}px ${rect.top}px
+)`;
     } else {
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
@@ -162,8 +171,6 @@ export default class ShapeCapture {
   }
 
   async _captureArea(finalRect, shape) {
-    await new Promise((r) => setTimeout(r, 50));
-
     this.utils.injectColorSanitizerStyle();
 
     try {
@@ -185,32 +192,37 @@ export default class ShapeCapture {
         logging: false,
       });
 
-      this.utils.removeSanitizerStyle();
-
-      if (shape === "rectangle" || shape === "square") {
-        return screenshotCanvas.toDataURL("image/png");
-      } else {
-        const finalCanvas = document.createElement("canvas");
-        finalCanvas.width = finalRect.width * scale;
-        finalCanvas.height = finalRect.height * scale;
-        const finalCtx = finalCanvas.getContext("2d");
-
-        const centerX = finalCanvas.width / 2;
-        const centerY = finalCanvas.height / 2;
-        const radiusX = finalCanvas.width / 2;
-        const radiusY = finalCanvas.height / 2;
-
-        finalCtx.beginPath();
-        finalCtx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
-        finalCtx.clip();
-        finalCtx.drawImage(screenshotCanvas, 0, 0);
-
-        return finalCanvas.toDataURL("image/png");
-      }
+      return this._processCanvas(screenshotCanvas, shape, finalRect);
     } catch (err) {
       console.error("Selective capture failed:", err);
-      this.utils.removeSanitizerStyle();
       return false;
+    } finally {
+      // Ensure sanitizer style is removed on success OR failure
+      this.utils.removeSanitizerStyle();
+    }
+  }
+
+  _processCanvas(screenshotCanvas, shape, finalRect) {
+    const scale = 2; // Inherited from _captureArea
+    if (shape === "rectangle" || shape === "square") {
+      return screenshotCanvas.toDataURL("image/png");
+    } else {
+      const finalCanvas = document.createElement("canvas");
+      finalCanvas.width = finalRect.width * scale;
+      finalCanvas.height = finalRect.height * scale;
+      const finalCtx = finalCanvas.getContext("2d");
+
+      const centerX = finalCanvas.width / 2;
+      const centerY = finalCanvas.height / 2;
+      const radiusX = finalCanvas.width / 2;
+      const radiusY = finalCanvas.height / 2;
+
+      finalCtx.beginPath();
+      finalCtx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+      finalCtx.clip();
+      finalCtx.drawImage(screenshotCanvas, 0, 0);
+
+      return finalCanvas.toDataURL("image/png");
     }
   }
 }
