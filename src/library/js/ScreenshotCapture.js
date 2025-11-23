@@ -54,6 +54,7 @@ export default class ScreenshotCapture {
         }
       });
 
+      // NOTE: html2canvas must be available globally or imported here
       const canvas = await html2canvas(document.body, {
         useCORS: true,
         scale: 2,
@@ -96,6 +97,7 @@ export default class ScreenshotCapture {
       container.appendChild(clone);
       document.body.appendChild(container);
 
+      // NOTE: html2canvas must be available globally or imported here
       const canvas = await html2canvas(clone, {
         useCORS: true,
         scrollX: 0,
@@ -124,9 +126,9 @@ export default class ScreenshotCapture {
         const style = document.createElement("style");
         style.id = "html2canvas-color-sanitize";
         style.textContent = `
-        * { color: rgb(0,0,0) !important; background-color: transparent !important; }
-        svg, svg * { fill: rgb(0,0,0) !important; stroke: rgb(0,0,0) !important; }
-      `;
+          * { color: rgb(0,0,0) !important; background-color: transparent !important; }
+          svg, svg * { fill: rgb(0,0,0) !important; stroke: rgb(0,0,0) !important; }
+        `;
         document.head.appendChild(style);
       };
 
@@ -161,14 +163,14 @@ export default class ScreenshotCapture {
         });
 
         backdrop.style.clipPath = `polygon(
-        evenodd,
-        0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
-        ${rect.left}px ${rect.top}px,
-        ${rect.left}px ${rect.top + rect.height}px,
-        ${rect.left + rect.width}px ${rect.top + rect.height}px,
-        ${rect.left + rect.width}px ${rect.top}px,
-        ${rect.left}px ${rect.top}px
-      )`;
+          evenodd,
+          0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+          ${rect.left}px ${rect.top}px,
+          ${rect.left}px ${rect.top + rect.height}px,
+          ${rect.left + rect.width}px ${rect.top + rect.height}px,
+          ${rect.left + rect.width}px ${rect.top}px,
+          ${rect.left}px ${rect.top}px
+        )`;
 
         rafId = null;
       };
@@ -202,7 +204,7 @@ export default class ScreenshotCapture {
         backdrop.remove();
         selectionBox.remove();
         document.body.classList.remove("mc-selecting");
-        document.removeEventListener("mousedown", onMouseDown);
+        backdrop.removeEventListener("mousedown", onMouseDown);
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
         document.removeEventListener("keydown", onKeyDown);
@@ -237,6 +239,7 @@ export default class ScreenshotCapture {
           const captureX = finalRect.left + window.scrollX;
           const captureY = finalRect.top + window.scrollY;
 
+          // NOTE: html2canvas must be available globally or imported here
           const canvas = await html2canvas(document.body, {
             useCORS: true,
             allowTaint: true,
@@ -271,6 +274,276 @@ export default class ScreenshotCapture {
       };
 
       backdrop.addEventListener("mousedown", onMouseDown);
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("keydown", onKeyDown);
+    });
+  }
+
+  // FREEFORM/LASSO SELECTION Helpers functions
+  _injectColorSanitizerStyle = () => {
+    const style = document.createElement("style");
+    style.id = "html2canvas-color-sanitize";
+    style.textContent = `
+      * { color: rgb(0,0,0) !important; background-color: transparent !important; }
+      svg, svg * { fill: rgb(0,0,0) !important; stroke: rgb(0,0,0) !important; }
+    `;
+    document.head.appendChild(style);
+  };
+
+  _removeSanitizerStyle = () => {
+    const el = document.getElementById("html2canvas-color-sanitize");
+    if (el) el.remove();
+  };
+
+  // FREEFORM/LASSO SELECTION
+  async captureFreeformArea() {
+    return new Promise((resolve) => {
+      let isDrawing = false;
+      const points = [];
+      let cleanupDone = false;
+      let rafId = null;
+
+      // 1. Create the Backdrop (The dark element that will hold the clean clip-path mask)
+      const backdrop = document.createElement("div");
+      backdrop.className = "mc-backdrop";
+      backdrop.style.pointerEvents = "none";
+      // Ensure the backdrop starts fully dark (no clip-path)
+      backdrop.style.clipPath = "none";
+      document.body.appendChild(backdrop);
+
+      // 2. Create the Canvas (Used for event capture AND drawing the lasso border)
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      Object.assign(canvas.style, {
+        position: "fixed",
+        top: "0",
+        left: "0",
+        width: "100%",
+        height: "100%",
+        zIndex: "100000",
+        cursor: "crosshair",
+        pointerEvents: "auto",
+        background: "transparent",
+      });
+      document.body.appendChild(canvas);
+
+      document.body.classList.add("mc-freeform-selecting");
+
+      // Set canvas dimensions to viewport size
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      // --- Core Logic for Visual Masking and Border ---
+
+      const drawLassoBorder = (isClosed = false) => {
+        if (points.length < 1) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = "var(--bug-primary, rgb(255, 0, 0))"; // Border color
+        ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+
+        ctx.beginPath();
+
+        // Draw a dot if only one point
+        if (points.length === 1) {
+          ctx.arc(points[0].x, points[0].y, 2, 0, 2 * Math.PI);
+          ctx.fillStyle = "var(--bug-primary, rgb(255, 0, 0))";
+          ctx.fill();
+        } else {
+          // Draw the continuous path
+          ctx.moveTo(points[0].x, points[0].y);
+          for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
+          }
+          if (isClosed) {
+            ctx.closePath();
+          }
+          ctx.stroke();
+        }
+      };
+
+      const updateSelection = () => {
+        // 1. Update the canvas border
+        drawLassoBorder();
+
+        // 2. Update the clip-path on the backdrop
+        if (points.length < 2) {
+          // FINAL FIX: Set clip-path to a solid shape (0% 0% to 100% 100%)
+          // This makes the backdrop completely dark and prevents the (0,0) issue.
+          backdrop.style.clipPath =
+            "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)";
+          rafId = null;
+          return;
+        }
+
+        // Create the CSS polygon string from the recorded points
+        const polygonPoints = points.map((p) => `${p.x}px ${p.y}px`).join(", ");
+
+        // Generate the complex clip-path for the freeform hole
+        backdrop.style.clipPath = `polygon(
+                evenodd,
+                0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+                ${polygonPoints}
+            )`;
+
+        rafId = null;
+      };
+
+      const onMouseDown = (e) => {
+        isDrawing = true;
+        points.length = 0; // Reset points
+        points.push({ x: e.clientX, y: e.clientY });
+
+        // On mousedown, ensure the clip-path is set to the safe, solid dark polygon
+        // which updateSelection will handle, showing only the dot initially.
+        updateSelection();
+      };
+
+      const onMouseMove = (e) => {
+        if (!isDrawing) return;
+        const lastPoint = points[points.length - 1];
+        const dx = e.clientX - lastPoint.x;
+        const dy = e.clientY - lastPoint.y;
+
+        // Only record a new point if the mouse has moved a minimum distance
+        if (Math.sqrt(dx * dx + dy * dy) > 5) {
+          points.push({ x: e.clientX, y: e.clientY });
+        }
+
+        if (!rafId) {
+          rafId = requestAnimationFrame(updateSelection);
+        }
+      };
+
+      const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+          cleanup();
+          resolve(false);
+        }
+      };
+
+      const cleanup = () => {
+        if (cleanupDone) return;
+        cleanupDone = true;
+        canvas.remove();
+        backdrop.remove();
+        document.body.classList.remove("mc-freeform-selecting");
+
+        canvas.removeEventListener("mousedown", onMouseDown);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        document.removeEventListener("keydown", onKeyDown);
+        if (rafId) cancelAnimationFrame(rafId);
+      };
+
+      const onMouseUp = async () => {
+        if (!isDrawing) return;
+        isDrawing = false;
+
+        // Close the shape visually (connecting the last point to the first)
+        if (points.length > 0 && points[points.length - 1] !== points[0]) {
+          points.push(points[0]);
+        }
+
+        // Final update to close the visual border and clip-path
+        drawLassoBorder(true);
+        updateSelection();
+
+        if (points.length < 3) {
+          cleanup();
+          resolve(false);
+          return;
+        }
+
+        // --- HTML2Canvas Capture Preparation (Bounding Box) ---
+        let minX = Infinity,
+          minY = Infinity;
+        let maxX = -Infinity,
+          maxY = -Infinity;
+
+        for (const p of points) {
+          minX = Math.min(minX, p.x);
+          maxX = Math.max(maxX, p.x);
+          minY = Math.min(minY, p.y);
+          maxY = Math.max(maxY, p.y);
+        }
+
+        const captureX = minX + window.scrollX;
+        const captureY = minY + window.scrollY;
+        const captureWidth = maxX - minX;
+        const captureHeight = maxY - minY;
+
+        // Clean up UI elements before capture
+        cleanup();
+        await new Promise((r) => setTimeout(r, 50));
+
+        this._injectColorSanitizerStyle();
+
+        try {
+          // 1. Capture ONLY the rectangular bounding box region
+          const screenshotCanvas = await html2canvas(document.body, {
+            useCORS: true,
+            x: captureX,
+            y: captureY,
+            width: captureWidth,
+            height: captureHeight,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: document.documentElement.scrollWidth,
+            windowHeight: document.documentElement.scrollHeight,
+            scale: 2,
+            logging: false,
+          });
+
+          const scaleFactor = 2;
+
+          // 2. Create the final output canvas
+          const finalCanvas = document.createElement("canvas");
+          finalCanvas.width = captureWidth * scaleFactor;
+          finalCanvas.height = captureHeight * scaleFactor;
+          const finalCtx = finalCanvas.getContext("2d");
+          finalCtx.clearRect(0, 0, finalCanvas.width, finalCtx.height);
+
+          // 3. Define the polygonal clipping path on the final canvas (The actual capture clipping)
+          finalCtx.beginPath();
+          finalCtx.moveTo(
+            (points[0].x - minX) * scaleFactor,
+            (points[0].y - minY) * scaleFactor
+          );
+          for (let i = 1; i < points.length; i++) {
+            finalCtx.lineTo(
+              (points[i].x - minX) * scaleFactor,
+              (points[i].y - minY) * scaleFactor
+            );
+          }
+          finalCtx.closePath();
+          finalCtx.clip();
+
+          // 4. Draw the captured bounding box onto the clipped context
+          finalCtx.drawImage(
+            screenshotCanvas,
+            0,
+            0,
+            finalCanvas.width,
+            finalCanvas.height
+          );
+
+          this._removeSanitizerStyle();
+          resolve(finalCanvas.toDataURL("image/png"));
+        } catch (err) {
+          console.error("Freeform capture failed:", err);
+          this._removeSanitizerStyle();
+          resolve(false);
+        }
+      };
+
+      // --- Attach Listeners ---
+      canvas.addEventListener("mousedown", onMouseDown);
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
       document.addEventListener("keydown", onKeyDown);

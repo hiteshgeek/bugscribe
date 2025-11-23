@@ -33,6 +33,10 @@ export default class MediaCapture {
     return this.screenshots.captureSelectedArea();
   }
 
+  captureFreeformArea() {
+    return this.screenshots.captureFreeformArea();
+  }
+
   // Proxy Video Methods
   startRecording(captureMicrophone, startWithMicMuted) {
     return this.video.startRecording(captureMicrophone, startWithMicMuted);

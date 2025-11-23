@@ -138,10 +138,17 @@ export default class BugButtonWrapper {
       "4",
     ]);
 
+    this.bug_menu_freeform_area = this._getVerticalIcon(
+      "Freeform",
+      "freeform",
+      ["Ctrl", "Shift", "5"]
+    );
+
     verticalIcons.appendChild(this.bug_menu_full_page);
     verticalIcons.appendChild(this.bug_menu_visible_page);
     verticalIcons.appendChild(this.bug_menu_custom_area);
     verticalIcons.appendChild(this.bug_menu_any_page);
+    verticalIcons.appendChild(this.bug_menu_freeform_area);
 
     screenshotButton.appendChild(verticalIcons);
 
