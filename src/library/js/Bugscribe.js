@@ -49,16 +49,32 @@ export default class Bugscribe {
   /* ------------------------------- EVENT BINDING ------------------------------- */
   initMediaEvents() {
     const eventMap = {
-      bug_menu_full_page: () => this.captureScreenshot("captureFullScreen"),
-      bug_menu_visible_page: () =>
-        this.captureScreenshot("captureVisibleScreen"),
-      bug_menu_custom_area: () => this.captureScreenshot("captureSelectedArea"),
-      bug_menu_any_page: () => this.captureScreenshot("captureAny"),
-      bug_menu_freeform_area: () =>
-        this.captureScreenshot("captureFreeformArea"),
+      // Handlers now include stopPropagation() to prevent event bubbling
+      bug_menu_full_page: (e) => {
+        e.stopPropagation();
+        this.captureScreenshot("captureFullScreen");
+      },
+      bug_menu_visible_page: (e) => {
+        e.stopPropagation();
+        this.captureScreenshot("captureVisibleScreen");
+      },
+      bug_menu_custom_area: (e) => {
+        e.stopPropagation();
+        this.captureScreenshot("captureSelectedArea");
+      },
+      bug_menu_any_page: (e) => {
+        e.stopPropagation();
+        this.captureScreenshot("captureAny");
+      },
+      bug_menu_freeform_area: (e) => {
+        e.stopPropagation();
+        this.captureScreenshot("captureFreeformArea");
+      },
       recordBtn: () => this.startRecording(),
-      // screenshotButton: () =>
-      //  this.captureScreenshot(this.defaultScreenshotMethod),
+
+      // ✅ Main screenshot button enabled
+      screenshotButton: () =>
+        this.captureScreenshot(this.defaultScreenshotMethod),
     };
 
     Object.entries(eventMap).forEach(([key, handler]) => {
@@ -129,6 +145,7 @@ export default class Bugscribe {
             : "N/A",
       });
 
+      // NOTE: Using result.url for thumbnail generation
       const thumbnail = await this.mediaCapture.createVideoThumbnail(
         result.url
       );
@@ -202,6 +219,35 @@ export default class Bugscribe {
             console.error("Error");
             logger.showOverlay();
             logger.clearLogs();
+          },
+          KeyS: () => {
+            if (this.mediaCapture.isRecording()) {
+              this.mediaCapture.stopRecording();
+            }
+          },
+
+          KeyP: () => {
+            if (this.mediaCapture.isRecording()) {
+              if (this.mediaCapture.isPaused()) {
+                this.mediaCapture.resumeRecording();
+                this.recordingTimer.updateToResumed(); // ⬅️ NEW
+                console.log("Video recording resumed via shortcut.");
+              } else {
+                this.mediaCapture.pauseRecording();
+                this.recordingTimer.updateToPaused();
+                console.log("Video recording paused via shortcut.");
+              }
+            }
+          },
+
+          KeyM: () => {
+            if (this.mediaCapture.isRecording()) {
+              const isNowMuted = this.mediaCapture.toggleMicrophone();
+              this.recordingTimer.updateMicVisual(isNowMuted);
+              console.log(
+                `Microphone toggled via shortcut. Muted: ${isNowMuted}`
+              );
+            }
           },
         };
         actions[e.code]?.();

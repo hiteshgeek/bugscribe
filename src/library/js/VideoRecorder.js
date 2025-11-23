@@ -214,6 +214,8 @@ export default class VideoRecorder {
   stopRecording() {
     if (this._activeRecorder) {
       this._activeRecorder.recorder?.stop();
+      // Ensure the recorder state is cleared for the next recording session
+      this._activeRecorder = null;
     }
   }
 
@@ -242,6 +244,11 @@ export default class VideoRecorder {
 
   isRecording() {
     return !!this._activeRecorder;
+  }
+
+  isPaused() {
+    // Returns true if the active recorder's state is "paused"
+    return this._activeRecorder?.recorder?.state === "paused";
   }
 }
 

@@ -66,6 +66,10 @@ export default class MediaCapture {
     return this.video.isRecording();
   }
 
+  isPaused() {
+    return this.video.isPaused();
+  }
+
   // Proxy Thumbnail Methods
   createImageThumbnail(url, w, h) {
     return this.thumbnail.createImageThumbnail(url, w, h);

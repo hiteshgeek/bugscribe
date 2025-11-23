@@ -150,6 +150,55 @@ export default class RecordingTimer {
     }, 1000);
   }
 
+  /**
+   * Visually and internally updates the timer state to PAUSED.
+   */
+  updateToPaused() {
+    this._isPaused = true;
+    const pauseBtn = document.querySelector(".recording-pause-btn");
+    const resumeBtn = document.querySelector(".recording-resume-btn");
+    const timerDisplay = document.querySelector(".recording-timer-display");
+
+    if (pauseBtn && resumeBtn && timerDisplay) {
+      pauseBtn.style.display = "none";
+      resumeBtn.style.display = "flex";
+      timerDisplay.style.opacity = "0.6";
+    }
+  }
+
+  /**
+   * Visually and internally updates the timer state to RESUMED.
+   */
+  updateToResumed() {
+    this._isPaused = false;
+    // We reset _pausedTime here to ensure the timer starts counting up correctly.
+    // If you want accurate total duration including the pause time, you must track the pause start time instead of just accumulating _pausedTime in the interval.
+    // However, based on your current interval logic, setting _isPaused to false is sufficient to resume counting.
+
+    const pauseBtn = document.querySelector(".recording-pause-btn");
+    const resumeBtn = document.querySelector(".recording-resume-btn");
+    const timerDisplay = document.querySelector(".recording-timer-display");
+
+    if (pauseBtn && resumeBtn && timerDisplay) {
+      resumeBtn.style.display = "none";
+      pauseBtn.style.display = "flex";
+      timerDisplay.style.opacity = "1";
+    }
+  }
+
+  /**
+   * Visually updates the mic button state.
+   * @param {boolean} isMuted - The new mute state (true if muted).
+   */
+  updateMicVisual(isMuted) {
+    const micBtn = document.querySelector(".recording-mic-btn");
+    if (micBtn) {
+      micBtn.innerHTML = isMuted ? icons.microhpone_disabled : icons.microhone;
+      micBtn.title = isMuted ? "Unmute microphone" : "Mute microphone";
+      micBtn.classList.toggle("muted", isMuted);
+    }
+  }
+
   hide() {
     if (this._interval) {
       clearInterval(this._interval);

@@ -8,4 +8,6 @@ if (typeof window !== "undefined") {
       bgColor: "#ff5733",
     },
   });
+
+  window.bugscribe = bugscribe;
 }
