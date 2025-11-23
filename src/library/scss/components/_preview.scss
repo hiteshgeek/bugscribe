@@ -24,6 +24,8 @@
 .image-preview-wrapper {
   position: relative;
   width: 200px;
+  min-width: 200px;
+  max-width: 200px;
   aspect-ratio: 1.75;
   height: 100%;
   cursor: pointer;
