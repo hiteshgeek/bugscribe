@@ -143,7 +143,22 @@ export default class ScreenshotCapture {
   }
 
   async captureSelectedArea() {
-    return new Promise((resolve) => {
+    // This method now defers to the new prompt function
+    return this._promptAndStartSelection();
+  }
+
+  async _promptAndStartSelection() {
+    return new Promise(async (resolve) => {
+      let shapeType = await this._showShapeSelectionPreDraw();
+
+      // If user cancels the initial dialog (e.g., clicks close or hits Escape)
+      if (!shapeType) {
+        resolve(false);
+        return;
+      }
+
+      // --- Start Drawing Logic (Only proceeds if a shape is selected) ---
+
       let startX, startY, endX, endY;
       let isSelecting = false;
       let rafId = null;
@@ -152,9 +167,9 @@ export default class ScreenshotCapture {
         const style = document.createElement("style");
         style.id = "html2canvas-color-sanitize";
         style.textContent = `
-          * { color: rgb(0,0,0) !important; background-color: transparent !important; }
-          svg, svg * { fill: rgb(0,0,0) !important; stroke: rgb(0,0,0) !important; }
-        `;
+        * { color: rgb(0,0,0) !important; background-color: transparent !important; }
+        svg, svg * { fill: rgb(0,0,0) !important; stroke: rgb(0,0,0) !important; }
+      `;
         document.head.appendChild(style);
       };
 
@@ -173,6 +188,7 @@ export default class ScreenshotCapture {
 
       document.body.classList.add("mc-selecting");
 
+      // --- Core Logic: Update Selection Visuals ---
       const updateSelection = () => {
         const rect = {
           left: Math.min(startX, endX),
@@ -188,7 +204,11 @@ export default class ScreenshotCapture {
           height: `${rect.height}px`,
         });
 
-        backdrop.style.clipPath = `polygon(
+        // Apply different styling based on shape type
+        let clipPathValue = "";
+        if (shapeType === "rectangle") {
+          selectionBox.style.borderRadius = "0px";
+          clipPathValue = `polygon(
           evenodd,
           0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
           ${rect.left}px ${rect.top}px,
@@ -197,6 +217,28 @@ export default class ScreenshotCapture {
           ${rect.left + rect.width}px ${rect.top}px,
           ${rect.left}px ${rect.top}px
         )`;
+        } else if (shapeType === "ellipse") {
+          selectionBox.style.borderRadius = "50%";
+
+          const centerX = rect.left + rect.width / 2;
+          const centerY = rect.top + rect.height / 2;
+          const radiusX = rect.width / 2;
+          const radiusY = rect.height / 2;
+
+          // Create ellipse path approximation
+          const segments = 64;
+          let ellipsePath = `M ${centerX + radiusX} ${centerY}`;
+          for (let i = 1; i <= segments; i++) {
+            const angle = (i * 2 * Math.PI) / segments;
+            const x = centerX + radiusX * Math.cos(angle);
+            const y = centerY + radiusY * Math.sin(angle);
+            ellipsePath += ` L ${x} ${y}`;
+          }
+
+          clipPathValue = `path(evenodd, "M 0 0 L ${window.innerWidth} 0 L ${window.innerWidth} ${window.innerHeight} L 0 ${window.innerHeight} Z ${ellipsePath} Z")`;
+        }
+
+        backdrop.style.clipPath = clipPathValue;
 
         rafId = null;
       };
@@ -237,11 +279,76 @@ export default class ScreenshotCapture {
         if (rafId) cancelAnimationFrame(rafId);
       };
 
+      const captureArea = async (finalRect, shape) => {
+        cleanup();
+        await new Promise((r) => setTimeout(r, 50));
+
+        injectColorSanitizerStyle();
+
+        try {
+          const captureX = finalRect.left + window.scrollX;
+          const captureY = finalRect.top + window.scrollY;
+
+          const scale = 2;
+
+          // 1. Capture the rectangular bounding box first (using html2canvas)
+          const screenshotCanvas = await html2canvas(document.body, {
+            useCORS: true,
+            allowTaint: true,
+            x: captureX,
+            y: captureY,
+            width: finalRect.width,
+            height: finalRect.height,
+            scrollX: 0,
+            scrollY: 0,
+            scale: scale,
+            backgroundColor: null,
+            logging: false,
+          });
+
+          removeSanitizerStyle();
+
+          if (shape === "rectangle") {
+            return screenshotCanvas.toDataURL("image/png");
+          } else if (shape === "ellipse") {
+            // 2. Apply Elliptical clipping
+            const finalCanvas = document.createElement("canvas");
+            finalCanvas.width = finalRect.width * scale;
+            finalCanvas.height = finalRect.height * scale;
+            const finalCtx = finalCanvas.getContext("2d");
+
+            const centerX = finalCanvas.width / 2;
+            const centerY = finalCanvas.height / 2;
+            const radiusX = finalCanvas.width / 2;
+            const radiusY = finalCanvas.height / 2;
+
+            finalCtx.beginPath();
+            finalCtx.ellipse(
+              centerX,
+              centerY,
+              radiusX,
+              radiusY,
+              0,
+              0,
+              2 * Math.PI
+            );
+            finalCtx.clip();
+
+            finalCtx.drawImage(screenshotCanvas, 0, 0);
+
+            return finalCanvas.toDataURL("image/png");
+          }
+        } catch (err) {
+          console.error("Selective capture failed:", err);
+          removeSanitizerStyle();
+          return false;
+        }
+      };
+
       const onMouseUp = async () => {
         if (!isSelecting) return;
         isSelecting = false;
 
-        // Get the final selection coordinates BEFORE cleanup
         const finalRect = {
           left: Math.min(startX, endX),
           top: Math.min(startY, endY),
@@ -255,40 +362,8 @@ export default class ScreenshotCapture {
           return;
         }
 
-        cleanup();
-        await new Promise((r) => setTimeout(r, 50));
-
-        injectColorSanitizerStyle();
-
-        try {
-          // Calculate the absolute position on the page
-          const captureX = finalRect.left + window.scrollX;
-          const captureY = finalRect.top + window.scrollY;
-
-          // NOTE: html2canvas must be available globally or imported here
-          const canvas = await html2canvas(document.body, {
-            useCORS: true,
-            allowTaint: true,
-            x: captureX,
-            y: captureY,
-            width: finalRect.width,
-            height: finalRect.height,
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: document.documentElement.scrollWidth,
-            windowHeight: document.documentElement.scrollHeight,
-            scale: 2,
-            backgroundColor: null,
-            logging: false,
-          });
-
-          removeSanitizerStyle();
-          resolve(canvas.toDataURL("image/png"));
-        } catch (err) {
-          console.error("Selective capture failed:", err);
-          removeSanitizerStyle();
-          resolve(false);
-        }
+        const imgURL = await captureArea(finalRect, shapeType);
+        resolve(imgURL);
       };
 
       const onKeyDown = (e) => {
@@ -299,9 +374,87 @@ export default class ScreenshotCapture {
         }
       };
 
+      // --- Attach Listeners (keeping original approach) ---
       backdrop.addEventListener("mousedown", onMouseDown);
       document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("mouseup", onMouseUp);
+      document.addEventListener("keydown", onKeyDown);
+    });
+  }
+
+  /**
+   * @private
+   * Shows the shape selection dialog before drawing starts.
+   * @returns {Promise<string|null>} Resolves with the shape ('rectangle' or 'ellipse')
+   * or null if cancelled.
+   */
+  _showShapeSelectionPreDraw() {
+    return new Promise((resolve) => {
+      // Create the backdrop for the modal
+      const modalBackdrop = document.createElement("div");
+      modalBackdrop.className = "mc-initial-backdrop";
+      Object.assign(modalBackdrop.style, {
+        position: "fixed",
+        inset: "0",
+        background: "rgba(0, 0, 0, 0.7)",
+        zIndex: "100000",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      });
+
+      // Create UI container
+      const selectorContainer = document.createElement("div");
+      selectorContainer.id = "mc-shape-selector";
+      Object.assign(selectorContainer.style, {
+        padding: "30px",
+        background: "white",
+        borderRadius: "8px",
+        textAlign: "center",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+      });
+
+      selectorContainer.innerHTML = `
+      <h3 style="margin-top: 0; font-size: 1.3em;">Choose Capture Shape</h3>
+      <div style="display: flex; gap: 30px; justify-content: center; margin-bottom: 20px;">
+        <button id="mc-shape-rect" data-shape="rectangle" style="padding: 15px 30px; cursor: pointer; border: 1px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; min-width: 120px;">
+          Rectangle
+        </button>
+        <button id="mc-shape-ellipse" data-shape="ellipse" style="padding: 15px 30px; cursor: pointer; border: 1px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; min-width: 120px;">
+          Ellipse/Oval
+        </button>
+      </div>
+      <p style="color: gray; font-size: 0.9em; margin: 0;">Click to select shape and begin drawing.</p>
+    `;
+
+      modalBackdrop.appendChild(selectorContainer);
+      document.body.appendChild(modalBackdrop);
+
+      const rectButton = document.getElementById("mc-shape-rect");
+      const ellipseButton = document.getElementById("mc-shape-ellipse");
+
+      const cleanup = () => {
+        modalBackdrop.remove();
+        document.removeEventListener("keydown", onKeyDown);
+      };
+
+      const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+          cleanup();
+          resolve(null); // User cancelled
+        }
+      };
+
+      rectButton.addEventListener("click", () => {
+        cleanup();
+        resolve("rectangle");
+      });
+
+      ellipseButton.addEventListener("click", () => {
+        cleanup();
+        resolve("ellipse");
+      });
+
       document.addEventListener("keydown", onKeyDown);
     });
   }
