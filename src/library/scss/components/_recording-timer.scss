@@ -126,3 +126,16 @@
 .recording-resume-btn {
   background: rgba(255, 255, 255, 0.15);
 }
+
+// Waveform Canvas Styling
+.recording-waveform-canvas {
+  // Canvas dimensions are set in JS (width: 80px, height: 20px),
+  // but these properties ensure correct display in the flex container.
+  width: 50px;
+  height: 20px;
+  margin-right: 4px; // Small gap between the waveform and the mic button
+  opacity: 0.8;
+
+  display: block;
+  background-color: transparent;
+}

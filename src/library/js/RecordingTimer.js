@@ -19,6 +19,11 @@ export default class RecordingTimer {
    */
   _interval = null;
   /**
+   * @type {NodeJS.Timeout | null}
+   * @private
+   */
+  drawWaveformInterval = null; // Storing the waveform interval
+  /**
    * @type {boolean}
    * @private
    */
@@ -72,6 +77,121 @@ export default class RecordingTimer {
     }
   }
 
+  /**
+   * Utility function to convert hex color to RGB object.
+   * @private
+   * @param {string} hex - Hex color string.
+   * @returns {Object} RGB object.
+   */
+  _hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : null;
+  }
+
+  /**
+   * Utility function to convert RGB to hex color string.
+   * @private
+   * @param {number} r - Red value.
+   * @param {number} g - Green value.
+   * @param {number} b - Blue value.
+   * @returns {string} Hex color string.
+   */
+  _rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  /**
+   * Utility function to mix two hex colors with a percentage.
+   * @private
+   * @param {string} color1 - First hex color.
+   * @param {string} color2 - Second hex color.
+   * @param {number} percentage - Mix percentage (0-1).
+   * @returns {string} Mixed hex color.
+   */
+  _mixColors(color1, color2, percentage) {
+    const rgb1 = this._hexToRgb(color1);
+    const rgb2 = this._hexToRgb(color2);
+    if (!rgb1 || !rgb2) return color1;
+    const result = {
+      r: Math.round(rgb1.r * (1 - percentage) + rgb2.r * percentage),
+      g: Math.round(rgb1.g * (1 - percentage) + rgb2.g * percentage),
+      b: Math.round(rgb1.b * (1 - percentage) + rgb2.b * percentage),
+    };
+    return this._rgbToHex(result.r, result.g, result.b);
+  }
+
+  /**
+   * Draws a professional multi-bar microphone waveform on the canvas, inspired by Google Meet's audio indicator.
+   * Uses frequency data segmented into multiple bars for a dynamic, responsive visualization.
+   * @private
+   * @param {CanvasRenderingContext2D} context - The canvas 2D context.
+   * @param {AnalyserNode} analyzer - The audio analyzer node.
+   * @param {Uint8Array} dataArray - The array to store frequency data.
+   */
+  _drawWaveform(context, analyzer, dataArray) {
+    if (!analyzer || !dataArray) return;
+
+    const width = context.canvas.width;
+    const height = context.canvas.height;
+    const barCount = 5; // Number of bars for a professional, segmented look
+    const barWidth = 2; // Fixed thin bar width
+    const totalBarsWidth = barCount * barWidth;
+    const gap = (width - totalBarsWidth) / (barCount + 1); // Even spacing gaps
+    const noiseThreshold = 5; // Adjusted threshold to filter noise while allowing subtle audio
+    const visualMultiplier = 2.0; // Balanced multiplier for smooth scaling in small canvas
+
+    // Fetch CSS variables for theme-aware colors
+    const style = getComputedStyle(document.documentElement);
+    let primary = style.getPropertyValue("--timer-primary").trim();
+    if (!primary) primary = "#2ecc71"; // Fallback
+    const lighter = this._mixColors(primary, "#ffffff", 0.15); // Mix 15% white for lighter bottom (adjust as needed for theme)
+
+    // 1. Get the frequency data
+    analyzer.getByteFrequencyData(dataArray);
+
+    context.clearRect(0, 0, width, height);
+
+    // 2. Segment frequency data into bars and draw each
+    const binSize = Math.floor(dataArray.length / barCount);
+    for (let i = 0; i < barCount; i++) {
+      // Calculate average for this frequency segment
+      let sum = 0;
+      for (let j = 0; j < binSize; j++) {
+        sum += dataArray[i * binSize + j];
+      }
+      const average = sum / binSize;
+
+      // Normalize magnitude
+      let magnitude =
+        Math.max(0, average - noiseThreshold) / (255 - noiseThreshold);
+      let barHeight = height * magnitude * visualMultiplier;
+      barHeight = Math.min(barHeight, height); // Cap at full height
+
+      // Position: centered horizontally with gaps, grow from bottom
+      const x = (i + 1) * gap + i * barWidth;
+      const y = height - barHeight;
+
+      // Create a subtle gradient for professional look (primary to lighter)
+      const gradient = context.createLinearGradient(x, y, x, height);
+      gradient.addColorStop(0, primary); // Primary at top
+      gradient.addColorStop(1, lighter); // Lighter at bottom
+
+      context.fillStyle = gradient;
+      context.fillRect(x, y, barWidth, barHeight);
+
+      // Optional: Add a thin white outline for crispness (subtle)
+      context.strokeStyle = "rgba(255, 255, 255, 0.3)";
+      context.lineWidth = 0.5;
+      context.strokeRect(x, y, barWidth, barHeight);
+    }
+  }
+
   show(micMutedOnStart = false) {
     this.hide(); // Clear any existing timer
     this._elapsedSeconds = 0; // Reset counter for new recording
@@ -100,9 +220,24 @@ export default class RecordingTimer {
     // Ensure initial display is 00:00 before interval fires
     this._updateDisplay(currentTimeSpan, timerDisplay);
 
-    // --- Mic Button Setup ---
+    // --- Mic Button & Waveform Setup ---
     const micBtn = document.createElement("button");
     micBtn.className = "recording-control-btn recording-mic-btn";
+
+    const waveformCanvas = document.createElement("canvas");
+    waveformCanvas.id = "mic-waveform-canvas";
+    waveformCanvas.className = "recording-waveform-canvas";
+    waveformCanvas.width = 40; // Reduced width for smaller waveform
+    waveformCanvas.height = 20;
+
+    const canvasContext = waveformCanvas.getContext("2d");
+    // Get the Analyzer Node from the VideoRecorder
+    const analyzer = this.mediaCapture.getMicAnalyzer();
+
+    // A place to store the frequency data (must be Uint8Array)
+    const dataArray = analyzer
+      ? new Uint8Array(analyzer.frequencyBinCount)
+      : null;
 
     // Determine initial mic state
     const micTrack =
@@ -146,12 +281,10 @@ export default class RecordingTimer {
 
     pauseBtn.addEventListener("click", () => {
       this.mediaCapture.pauseRecording();
-      // In a well-structured application, the mediaCapture listener should call updateToPaused()
     });
 
     resumeBtn.addEventListener("click", () => {
       this.mediaCapture.resumeRecording();
-      // In a well-structured application, the mediaCapture listener should call updateToResumed()
     });
 
     stopBtn.addEventListener("click", () => {
@@ -165,6 +298,7 @@ export default class RecordingTimer {
     timerWrapper.append(
       recordingDot,
       timerDisplay,
+      waveformCanvas, // Integrated waveform canvas
       micBtn,
       pauseBtn,
       resumeBtn,
@@ -172,15 +306,21 @@ export default class RecordingTimer {
     );
     document.body.appendChild(timerWrapper);
 
+    // --- Start Waveform Drawing ---
+    if (analyzer && dataArray) {
+      this.drawWaveformInterval = setInterval(() => {
+        this._drawWaveform(canvasContext, analyzer, dataArray);
+      }, 50); // Draw 20 times per second for smooth animation
+    }
+
     // --- Start Timer Interval ---
     this._interval = setInterval(() => {
       if (this._isPaused) {
-        // If paused, just accumulate time that passed since the last second
         this._pausedTime += 1000;
         return;
       }
 
-      this._elapsedSeconds += 1; // Increment stable counter
+      this._elapsedSeconds += 1;
 
       if (this._elapsedSeconds >= this.maxRecordingSeconds) {
         this.mediaCapture.stopRecording();
@@ -212,8 +352,6 @@ export default class RecordingTimer {
    */
   updateToResumed() {
     this._isPaused = false;
-    // The time tracking relies on the incrementing counter (_elapsedSeconds), which is more stable.
-
     const pauseBtn = document.querySelector(".recording-pause-btn");
     const resumeBtn = document.querySelector(".recording-resume-btn");
     const timerDisplay = document.querySelector(".recording-timer-display");
@@ -243,6 +381,13 @@ export default class RecordingTimer {
       clearInterval(this._interval);
       this._interval = null;
     }
+
+    // Stop Waveform Drawing
+    if (this.drawWaveformInterval) {
+      clearInterval(this.drawWaveformInterval);
+      this.drawWaveformInterval = null;
+    }
+
     const timer = document.getElementById("recording-timer-wrapper");
     if (timer) timer.remove();
   }

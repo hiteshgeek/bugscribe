@@ -67,6 +67,7 @@ export default class VideoRecorder {
     let audioDestination = null;
     let combinedStream = null;
     let startTime = Date.now();
+    let micAnalyzer = null;
 
     const targetBitrate = resolution.bitrate;
 
@@ -115,6 +116,13 @@ export default class VideoRecorder {
 
         const micSource = audioContext.createMediaStreamSource(micStream);
         micSource.connect(audioDestination);
+
+        micAnalyzer = audioContext.createAnalyser();
+        micAnalyzer.fftSize = 256; // Smaller size for quick visual updates
+
+        // Connect mic source -> analyzer -> destination
+        micSource.connect(micAnalyzer);
+        micAnalyzer.connect(audioDestination);
       }
 
       const audioTracks = audioDestination.stream.getAudioTracks();
@@ -191,6 +199,7 @@ export default class VideoRecorder {
         combinedStream,
         audioContext,
         micMutedOnStart: startWithMicMuted,
+        micAnalyzer,
       };
 
       if (this.onRecordingStarted) {
@@ -249,6 +258,14 @@ export default class VideoRecorder {
   isPaused() {
     // Returns true if the active recorder's state is "paused"
     return this._activeRecorder?.recorder?.state === "paused";
+  }
+
+  /**
+   * Gets the analyzer node for real-time microphone data.
+   * @returns {AnalyserNode | null}
+   */
+  getMicAnalyzer() {
+    return this._activeRecorder?.micAnalyzer || null;
   }
 }
 

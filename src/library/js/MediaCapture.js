@@ -70,6 +70,10 @@ export default class MediaCapture {
     return this.video.isPaused();
   }
 
+  getMicAnalyzer() {
+    return this.video.getMicAnalyzer();
+  }
+
   // Proxy Thumbnail Methods
   createImageThumbnail(url, w, h) {
     return this.thumbnail.createImageThumbnail(url, w, h);
