@@ -299,3 +299,61 @@
   border-radius: 4px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
+
+.recording-control-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, transform 0.1s ease;
+  padding: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: #fff;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.recording-stop-btn {
+  background: rgba(255, 68, 68, 0.3);
+
+  &:hover {
+    background: rgba(255, 68, 68, 0.5);
+  }
+}
+
+.recording-pause-btn,
+.recording-resume-btn {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.recording-timer-wrapper {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  padding: 12px 20px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}

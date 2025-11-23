@@ -531,6 +531,28 @@ export default class MediaCapture {
     }
   }
 
+  // Pause recording
+  pauseRecording() {
+    if (this._activeRecorder && this._activeRecorder.recorder) {
+      const { recorder } = this._activeRecorder;
+      if (recorder.state === "recording") {
+        recorder.pause();
+        console.log("Recording paused");
+      }
+    }
+  }
+
+  // Resume recording
+  resumeRecording() {
+    if (this._activeRecorder && this._activeRecorder.recorder) {
+      const { recorder } = this._activeRecorder;
+      if (recorder.state === "paused") {
+        recorder.resume();
+        console.log("Recording resumed");
+      }
+    }
+  }
+
   // Check if recording is in progress
   isRecording() {
     return this._activeRecorder !== null;

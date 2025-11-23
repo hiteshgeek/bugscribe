@@ -1,6 +1,7 @@
 import BugButtonWrapper from "./BugButtonWrapper.js";
 import MediaCapture from "./MediaCapture.js";
 import ConsoleCapture from "./ConsoleCapture.js";
+import { icons } from "./icons.js";
 
 export default class Bugscribe {
   constructor(options = {}) {
@@ -352,17 +353,46 @@ export default class Bugscribe {
     timerDisplay.appendChild(separator);
     timerDisplay.appendChild(maxTime);
 
-    // Create stop button
-    const stopButton = document.createElement("button");
-    stopButton.className = "recording-stop-btn";
-    stopButton.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="16" height="16">
-      <path fill="currentColor" d="M384 32c35.3 0 64 28.7 64 64l0 320c0 35.3-28.7 64-64 64L64 480c-35.3 0-64-28.7-64-64L0 96C0 60.7 28.7 32 64 32l320 0z"/>
-    </svg>
-    Stop
-  `;
+    // Create pause button
+    const pauseBtn = document.createElement("button");
+    pauseBtn.className = "recording-control-btn recording-pause-btn";
+    pauseBtn.innerHTML = icons.pause;
+    pauseBtn.title = "Pause recording";
 
-    stopButton.addEventListener("click", () => {
+    // Create resume button (hidden initially)
+    const resumeBtn = document.createElement("button");
+    resumeBtn.className = "recording-control-btn recording-resume-btn";
+    resumeBtn.innerHTML = icons.play;
+    resumeBtn.style.display = "none";
+    resumeBtn.title = "Resume recording";
+
+    // Create stop button
+    const stopBtn = document.createElement("button");
+    stopBtn.className = "recording-control-btn recording-stop-btn";
+    stopBtn.innerHTML = icons.stop;
+    stopBtn.title = "Stop recording";
+
+    // Pause/Resume functionality
+    let isPaused = false;
+    let pausedTime = 0;
+
+    pauseBtn.addEventListener("click", () => {
+      this.mediaCapture.pauseRecording();
+      isPaused = true;
+      pauseBtn.style.display = "none";
+      resumeBtn.style.display = "flex";
+      timerDisplay.style.opacity = "0.6";
+    });
+
+    resumeBtn.addEventListener("click", () => {
+      this.mediaCapture.resumeRecording();
+      isPaused = false;
+      resumeBtn.style.display = "none";
+      pauseBtn.style.display = "flex";
+      timerDisplay.style.opacity = "1";
+    });
+
+    stopBtn.addEventListener("click", () => {
       this.mediaCapture.stopRecording();
     });
 
@@ -372,14 +402,21 @@ export default class Bugscribe {
 
     timerWrapper.appendChild(recordingDot);
     timerWrapper.appendChild(timerDisplay);
-    timerWrapper.appendChild(stopButton);
+    timerWrapper.appendChild(pauseBtn);
+    timerWrapper.appendChild(resumeBtn);
+    timerWrapper.appendChild(stopBtn);
 
     document.body.appendChild(timerWrapper);
 
     // Start timer
     const startTime = Date.now();
     this._recordingTimerInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      if (isPaused) {
+        pausedTime += 1000;
+        return;
+      }
+
+      const elapsed = Math.floor((Date.now() - startTime - pausedTime) / 1000);
 
       // Check if max time reached
       if (elapsed >= this.maxRecordingSeconds) {
