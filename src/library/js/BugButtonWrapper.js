@@ -26,8 +26,37 @@ export default class BugButtonWrapper {
     document.body.appendChild(wrapper);
     this.wrapper = wrapper;
 
+    //toggle bug wrapper
     this.mainBtn.addEventListener("click", () => {
       wrapper.classList.toggle("open");
+    });
+
+    //open vertical menu on mouse enter
+    this.screenshotButton.addEventListener("mouseenter", () => {
+      console.log("mouse entered");
+      const verticalIcons =
+        this.screenshotButton.querySelector(".vertical-icons");
+      verticalIcons.classList.add("open");
+    });
+
+    //one mouse enter of other menu close vertical menu
+    const otherButtons = [this.recordBtn, this.settingsBtn, this.sendButton];
+    otherButtons.forEach((btn) => {
+      btn.addEventListener("mouseenter", () => {
+        const verticalIcons =
+          this.screenshotButton.querySelector(".vertical-icons");
+        verticalIcons.classList.remove("open");
+      });
+    });
+
+    //one outside click close the bug wrapper
+    document.addEventListener("click", (e) => {
+      if (!wrapper.contains(e.target)) {
+        wrapper.classList.remove("open");
+        const verticalIcons =
+          this.screenshotButton.querySelector(".vertical-icons");
+        verticalIcons.classList.remove("open");
+      }
     });
   }
 

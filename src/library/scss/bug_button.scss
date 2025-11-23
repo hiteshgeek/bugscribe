@@ -51,6 +51,7 @@
 }
 
 .bug-btn {
+  padding: 0;
   width: var(--bug-btn-size);
   height: var(--bug-btn-size);
   min-width: var(--bug-btn-size);
@@ -138,15 +139,16 @@
       border-bottom-left-radius: 8px;
       border-bottom-right-radius: 8px;
     }
+
+    &.open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, 0);
+    }
   }
 
-  &:hover .vertical-icons,
-  .bug-wrapper.open .vertical-icons {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translate(-50%, 0);
-  }
-
+  // &:hover .vertical-icons,
+  // .bug-wrapper.open .vertical-icons
   .vertical-icon {
     background: color-mix(in srgb, var(--bug-bg-color) 85%, #fff);
     color: #fff;

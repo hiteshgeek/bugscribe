@@ -129,19 +129,46 @@ export default class MediaCapture {
       let isSelecting = false;
       let rafId = null;
 
-      // Create backdrop
+      // Inject sanitizer <style> to prevent color() errors
+      const injectColorSanitizerStyle = () => {
+        const style = document.createElement("style");
+        style.id = "html2canvas-color-sanitize";
+        style.textContent = `
+        * {
+          color: rgb(0,0,0) !important;
+          background-color: transparent !important;
+          border-color: rgb(160,160,160) !important;
+          outline-color: rgb(0,0,0) !important;
+          text-decoration-color: rgb(0,0,0) !important;
+          box-shadow: none !important;
+        }
+        *::before, *::after {
+          color: rgb(0,0,0) !important;
+          background-color: transparent !important;
+        }
+        svg, svg * {
+          fill: rgb(0,0,0) !important;
+          stroke: rgb(0,0,0) !important;
+        }
+      `;
+        document.head.appendChild(style);
+      };
+
+      const removeSanitizerStyle = () => {
+        const el = document.getElementById("html2canvas-color-sanitize");
+        if (el) el.remove();
+      };
+
       const backdrop = document.createElement("div");
       backdrop.className = "mc-backdrop";
       document.body.appendChild(backdrop);
 
-      // Create selection box
       const selectionBox = document.createElement("div");
       selectionBox.className = "mc-selection-box";
       document.body.appendChild(selectionBox);
 
       document.body.classList.add("mc-selecting");
 
-      // Track selection smoothly
       const updateSelection = () => {
         const rect = {
           left: Math.min(startX, endX),
@@ -150,23 +177,22 @@ export default class MediaCapture {
           height: Math.abs(endY - startY),
         };
 
-        // Update selection box position
         Object.assign(selectionBox.style, {
           left: `${rect.left}px`,
           top: `${rect.top}px`,
           width: `${rect.width}px`,
           height: `${rect.height}px`,
-          display: "block",
         });
 
-        // Create transparent "cut-out" hole
+        // Create a "hole" in the backdrop using clip-path
+        // This makes the selected area completely clear
         backdrop.style.clipPath = `polygon(
-        0 0, 100% 0, 100% 100%, 0 100%,
-        0 0,
+        evenodd,
+        0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
         ${rect.left}px ${rect.top}px,
-        ${rect.left + rect.width}px ${rect.top}px,
-        ${rect.left + rect.width}px ${rect.top + rect.height}px,
         ${rect.left}px ${rect.top + rect.height}px,
+        ${rect.left + rect.width}px ${rect.top + rect.height}px,
+        ${rect.left + rect.width}px ${rect.top}px,
         ${rect.left}px ${rect.top}px
       )`;
 
@@ -179,7 +205,6 @@ export default class MediaCapture {
         startY = e.clientY;
         endX = startX;
         endY = startY;
-
         Object.assign(selectionBox.style, {
           left: `${startX}px`,
           top: `${startY}px`,
@@ -191,7 +216,6 @@ export default class MediaCapture {
 
       const onMouseMove = (e) => {
         if (!isSelecting) return;
-
         endX = e.clientX;
         endY = e.clientY;
 
@@ -204,6 +228,7 @@ export default class MediaCapture {
         backdrop.remove();
         selectionBox.remove();
         document.body.classList.remove("mc-selecting");
+        document.removeEventListener("mousedown", onMouseDown);
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
         document.removeEventListener("keydown", onKeyDown);
@@ -215,14 +240,16 @@ export default class MediaCapture {
         isSelecting = false;
 
         const rect = selectionBox.getBoundingClientRect();
-        cleanup();
-
         if (rect.width < 10 || rect.height < 10) {
+          cleanup();
           resolve(false);
           return;
         }
 
+        cleanup();
         await new Promise((r) => setTimeout(r, 50));
+
+        injectColorSanitizerStyle();
 
         try {
           const canvas = await html2canvas(document.body, {
@@ -239,9 +266,12 @@ export default class MediaCapture {
             logging: false,
           });
 
-          resolve(canvas.toDataURL("image/png"));
+          removeSanitizerStyle();
+          const imgURL = canvas.toDataURL("image/png");
+          resolve(imgURL);
         } catch (err) {
           console.error("Selective capture failed:", err);
+          removeSanitizerStyle();
           resolve(false);
         }
       };
