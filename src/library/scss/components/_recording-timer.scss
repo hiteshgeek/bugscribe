@@ -1,0 +1,128 @@
+@use "../mixins" as *;
+
+.recording-timer-wrapper {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--timer-bg);
+  padding: 12px 20px;
+  border-radius: var(--timer-border-radius);
+  @include flex-center;
+  gap: 12px;
+  z-index: var(--z-timer);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+}
+
+// Recording indicator dot
+.recording-dot {
+  width: var(--timer-dot-size);
+  height: var(--timer-dot-size);
+  background: var(--timer-danger);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+// Timer display
+.recording-timer-display {
+  @include flex-center;
+  color: var(--timer-text);
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
+  min-width: 90px;
+  text-align: center;
+}
+
+.recording-current-time {
+  color: var(--timer-text);
+  @include transition(color);
+}
+
+.recording-separator {
+  color: var(--timer-text-muted);
+  margin: 0 2px;
+}
+
+.recording-max-time {
+  color: var(--timer-text-muted);
+  font-size: 0.95rem;
+}
+
+// Timer warning animation
+@keyframes timer-warning {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+// Control buttons
+.recording-control-btn {
+  @include circle-button(var(--timer-control-size));
+  background: rgba(255, 255, 255, 0.15);
+  @include transition(background, transform);
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--timer-text);
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// Microphone button states
+.recording-mic-btn {
+  &.muted {
+    background: color-mix(in srgb, var(--timer-danger) 30%, transparent);
+
+    svg {
+      fill: var(--timer-danger);
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--timer-danger) 40%, transparent);
+    }
+  }
+}
+
+// Stop button
+.recording-stop-btn {
+  background: color-mix(in srgb, var(--timer-danger) 30%, transparent);
+  padding: 0;
+  width: var(--timer-control-size);
+  height: var(--timer-control-size);
+  min-width: var(--timer-control-size);
+  min-height: var(--timer-control-size);
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  gap: 6px;
+
+  &:hover {
+    background: color-mix(in srgb, var(--timer-danger) 50%, transparent);
+    transform: scale(1.05);
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+// Pause/Resume buttons
+.recording-pause-btn,
+.recording-resume-btn {
+  background: rgba(255, 255, 255, 0.15);
+}

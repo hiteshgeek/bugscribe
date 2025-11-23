@@ -1,0 +1,30 @@
+@use "../_mixins" as *;
+
+.mc-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: var(--z-separator);
+  pointer-events: auto;
+  cursor: crosshair;
+  @include transition(opacity);
+}
+
+.mc-selection-box {
+  position: fixed;
+  z-index: var(--z-selection);
+  pointer-events: none;
+  display: none;
+  box-sizing: border-box;
+  border: 2px solid var(--bug-primary);
+  background: transparent;
+  backdrop-filter: none;
+  filter: none;
+  box-shadow: none;
+}
+
+.mc-selecting,
+.mc-selecting * {
+  cursor: crosshair !important;
+  user-select: none !important;
+}

@@ -1,0 +1,76 @@
+@use "../mixins" as *;
+
+.bug-wrapper {
+  position: fixed;
+  right: var(--bug-right);
+  bottom: var(--bug-bottom);
+  display: flex;
+  align-items: center;
+  padding: var(--bug-wrapper-padding);
+  border-radius: var(--radius-full);
+  background: var(--bug-primary);
+  box-shadow: var(--shadow-md);
+  z-index: var(--z-base);
+  gap: 0;
+  @include transition(gap);
+
+  &.open {
+    gap: var(--bug-wrapper-gap);
+
+    .bug-main {
+      background: var(--bug-btn-bg-open);
+
+      svg {
+        fill: var(--bug-text-light);
+        transform: rotate(-90deg);
+      }
+    }
+  }
+
+  &.dragging {
+    cursor: grabbing;
+    opacity: 0.8;
+  }
+}
+
+.bug-actions {
+  display: flex;
+  gap: var(--bug-wrapper-gap);
+  max-width: 0;
+  opacity: 0;
+  pointer-events: none;
+  @include transition(max-width, opacity);
+
+  .bug-wrapper.open & {
+    max-width: 500px;
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.bug-btn {
+  @include circle-button(var(--bug-btn-size));
+  background: var(--bug-btn-bg);
+  @include transition(background, transform);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--bug-btn-bg-hover);
+  }
+
+  svg {
+    width: var(--bug-btn-icon-size);
+    height: var(--bug-btn-icon-size);
+    fill: var(--bug-text-dark);
+    @include transition(transform, fill);
+  }
+}
+
+.bug-main {
+  position: relative;
+  @include transition(background);
+}
+
+.bug-move {
+  cursor: grab;
+}

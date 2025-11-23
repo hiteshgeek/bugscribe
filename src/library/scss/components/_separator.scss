@@ -1,0 +1,18 @@
+@use "../mixins" as *;
+
+.bug-separator {
+  width: 1px;
+  height: var(--bug-separator-height);
+  align-self: center;
+  background: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+  opacity: 0;
+  display: none;
+  margin: 0 -3px;
+  @include transition(opacity);
+
+  .bug-wrapper.open & {
+    display: block;
+    opacity: 1;
+  }
+}

@@ -1,0 +1,73 @@
+@use "../mixins" as *;
+
+// Shared modal styles
+%modal-base {
+  @include modal-overlay;
+}
+
+%modal-close-btn {
+  @include button-reset;
+  @include flex-center;
+  position: absolute;
+  top: -50px;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--bug-text-light);
+  font-size: 2rem;
+  border-radius: 50%;
+  line-height: 1;
+  @include transition(background);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+// Image modal
+.image-modal-overlay {
+  @extend %modal-base;
+  padding: 20px;
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 95vw;
+  max-height: 95vh;
+}
+
+.image-modal-close {
+  @extend %modal-close-btn;
+}
+
+.image-modal-viewer {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-xl);
+}
+
+// Video modal
+.video-modal-overlay {
+  @extend %modal-base;
+}
+
+.video-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.video-modal-close {
+  @extend %modal-close-btn;
+  top: -40px;
+}
+
+.video-modal-player {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+}

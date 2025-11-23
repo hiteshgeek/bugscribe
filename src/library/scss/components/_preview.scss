@@ -1,0 +1,73 @@
+@use "../mixins" as *;
+
+#bugscribe-preview-wrapper {
+  position: fixed;
+  bottom: 25px;
+  left: 25px;
+  z-index: var(--z-timer);
+  background: var(--bug-primary);
+  padding: 5px;
+  border-radius: var(--radius-md);
+  max-height: 150px;
+  max-width: 60vw;
+  display: flex;
+  gap: 5px;
+  overflow: auto;
+}
+
+// Image preview
+.image-preview-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  @include hover-lift;
+}
+
+.image-thumbnail,
+.screenshot-preview {
+  width: 200px;
+  aspect-ratio: 1.75;
+  border-radius: var(--radius-md);
+  display: block;
+}
+
+// Video preview
+.video-preview-wrapper {
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  &:hover .video-play-icon {
+    transform: translate(-50%, -50%) scale(1.1);
+    background: rgba(255, 255, 255, 0.95);
+  }
+}
+
+.video-thumbnail {
+  width: 100%;
+  display: block;
+}
+
+.video-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  @include flex-center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  pointer-events: none;
+  @include transition(all);
+  box-shadow: var(--shadow-md);
+
+  svg {
+    fill: #333;
+  }
+}

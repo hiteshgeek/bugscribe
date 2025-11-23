@@ -1,0 +1,25 @@
+// Thin scrollbar utility
+.thin-scroll {
+  overflow: auto;
+  scrollbar-width: thin; // Firefox
+  scrollbar-color: #bbb transparent; // Firefox
+
+  // WebKit (Chrome, Edge, Safari)
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #aaa;
+    border-radius: var(--radius-full);
+
+    &:hover {
+      background: #888;
+    }
+  }
+}

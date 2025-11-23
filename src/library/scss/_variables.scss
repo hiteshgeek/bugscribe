@@ -1,12 +1,60 @@
 :root {
-  --bug-bg-color: #d81d65;
-  --bug-text-color: #ffffff;
-  --bug-dark-color: #333;
+  // Brand Colors
+  --bug-primary: #d81d65;
+  --bug-primary-light: color-mix(in srgb, var(--bug-primary) 80%, #fff);
+  --bug-primary-dark: color-mix(in srgb, var(--bug-primary) 80%, #000);
+  --bug-text-light: #ffffff;
+  --bug-text-dark: #333333;
+
+  // Button Colors
+  --bug-btn-bg: color-mix(in srgb, var(--bug-primary) 50%, #fff);
+  --bug-btn-bg-hover: color-mix(in srgb, var(--bug-primary) 20%, #fff);
+  --bug-btn-bg-open: color-mix(in srgb, var(--bug-primary) 80%, #fff);
+
+  // Positioning
   --bug-right: 26px;
   --bug-bottom: 26px;
   --bug-top: auto;
   --bug-left: auto;
+
+  // Sizing
   --bug-btn-size: 40px;
-  --bug-fast-animation-duration: 0.2s;
-  --bug-slow-animation-duration: 0.7s;
+  --bug-btn-icon-size: calc(var(--bug-btn-size) / 2);
+  --bug-separator-height: calc(var(--bug-btn-size) * 0.5);
+  --bug-wrapper-padding: calc(var(--bug-btn-size) / 10);
+  --bug-wrapper-gap: 8px;
+
+  // Recording Timer
+  --timer-bg: rgba(0, 0, 0, 0.9);
+  --timer-primary: var(--bug-primary);
+  --timer-danger: #ff4444;
+  --timer-text: #ffffff;
+  --timer-text-muted: rgba(255, 255, 255, 0.6);
+  --timer-dot-size: 12px;
+  --timer-control-size: 36px;
+  --timer-border-radius: 50px;
+
+  // Animations
+  --anim-fast: 0.2s;
+  --anim-medium: 0.3s;
+  --anim-slow: 0.7s;
+
+  // Shadows
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+  // Z-index layers
+  --z-base: 1000;
+  --z-separator: 999998;
+  --z-selection: 999999;
+  --z-timer: 10000;
+  --z-modal: 100000;
+
+  // Border radius
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 999px;
 }

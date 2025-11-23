@@ -1,7 +1,16 @@
+// Base
 @use "variables";
-@use "mixins";
-@use "bug_button";
-@use "bugscribe";
-@use "preview";
-@use "scroll";
-@use "media_capture";
+@use "mixins" as *;
+@use "base";
+
+// Components
+@use "components/button";
+@use "components/separator";
+@use "components/screenshot-menu";
+@use "components/recording-timer";
+@use "components/preview";
+@use "components/modals";
+@use "components/selection";
+
+// Utilities
+@use "utilities/scroll";
