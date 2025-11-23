@@ -33,7 +33,6 @@ export default class BugButtonWrapper {
 
     //open vertical menu on mouse enter
     this.screenshotButton.addEventListener("mouseenter", () => {
-      console.log("mouse entered");
       const verticalIcons =
         this.screenshotButton.querySelector(".vertical-icons");
       verticalIcons.classList.add("open");

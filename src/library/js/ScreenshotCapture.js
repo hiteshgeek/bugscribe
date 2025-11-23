@@ -303,18 +303,20 @@ export default class ScreenshotCapture {
       const points = [];
       let cleanupDone = false;
       let rafId = null;
+      let backdrop = null;
 
-      // 1. Create the Backdrop (The dark element that will hold the clean clip-path mask)
-      const backdrop = document.createElement("div");
+      // 1. Create and APPEND the Backdrop immediately (FIX: Eliminates (0,0) flash)
+      backdrop = document.createElement("div");
       backdrop.className = "mc-backdrop";
       backdrop.style.pointerEvents = "none";
-      // Ensure the backdrop starts fully dark (no clip-path)
-      backdrop.style.clipPath = "none";
+      // Append it immediately so the screen darkens right away.
       document.body.appendChild(backdrop);
+      // Ensure clip-path is 'none' initially so it's a solid dark screen
+      backdrop.style.clipPath = "none";
 
       // 2. Create the Canvas (Used for event capture AND drawing the lasso border)
       const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
+      const ctx = canvas.getContext("2d"); // Get context for drawing
 
       Object.assign(canvas.style, {
         position: "fixed",
@@ -328,12 +330,10 @@ export default class ScreenshotCapture {
         background: "transparent",
       });
       document.body.appendChild(canvas);
-
-      document.body.classList.add("mc-freeform-selecting");
-
-      // Set canvas dimensions to viewport size
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+
+      document.body.classList.add("mc-freeform-selecting");
 
       // --- Core Logic for Visual Masking and Border ---
 
@@ -371,12 +371,10 @@ export default class ScreenshotCapture {
         // 1. Update the canvas border
         drawLassoBorder();
 
-        // 2. Update the clip-path on the backdrop
+        // 2. Apply clip-path to backdrop (Creates the transparent hole)
         if (points.length < 2) {
-          // FINAL FIX: Set clip-path to a solid shape (0% 0% to 100% 100%)
-          // This makes the backdrop completely dark and prevents the (0,0) issue.
-          backdrop.style.clipPath =
-            "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)";
+          // Keep backdrop solid dark until there are enough points.
+          backdrop.style.clipPath = "none";
           rafId = null;
           return;
         }
@@ -386,10 +384,10 @@ export default class ScreenshotCapture {
 
         // Generate the complex clip-path for the freeform hole
         backdrop.style.clipPath = `polygon(
-                evenodd,
-                0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
-                ${polygonPoints}
-            )`;
+          evenodd,
+          0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+          ${polygonPoints}
+        )`;
 
         rafId = null;
       };
@@ -399,8 +397,8 @@ export default class ScreenshotCapture {
         points.length = 0; // Reset points
         points.push({ x: e.clientX, y: e.clientY });
 
-        // On mousedown, ensure the clip-path is set to the safe, solid dark polygon
-        // which updateSelection will handle, showing only the dot initially.
+        // Reset clip-path on click to ensure it's solid dark and ready to draw
+        backdrop.style.clipPath = "none";
         updateSelection();
       };
 
@@ -431,6 +429,7 @@ export default class ScreenshotCapture {
         if (cleanupDone) return;
         cleanupDone = true;
         canvas.remove();
+        // Backdrop is guaranteed to be in the DOM now
         backdrop.remove();
         document.body.classList.remove("mc-freeform-selecting");
 
@@ -445,20 +444,21 @@ export default class ScreenshotCapture {
         if (!isDrawing) return;
         isDrawing = false;
 
+        // If no drawing happened (only a click)
+        if (points.length < 2) {
+          cleanup();
+          resolve(false);
+          return;
+        }
+
         // Close the shape visually (connecting the last point to the first)
-        if (points.length > 0 && points[points.length - 1] !== points[0]) {
+        if (points[points.length - 1] !== points[0]) {
           points.push(points[0]);
         }
 
         // Final update to close the visual border and clip-path
         drawLassoBorder(true);
         updateSelection();
-
-        if (points.length < 3) {
-          cleanup();
-          resolve(false);
-          return;
-        }
 
         // --- HTML2Canvas Capture Preparation (Bounding Box) ---
         let minX = Infinity,

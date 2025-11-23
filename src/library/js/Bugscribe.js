@@ -1,3 +1,5 @@
+// Bugscribe.js
+
 import BugButtonWrapper from "./BugButtonWrapper.js";
 import MediaCapture from "./MediaCapture.js";
 import ConsoleCapture from "./ConsoleCapture.js";
@@ -51,7 +53,7 @@ export default class Bugscribe {
         this.captureScreenshot("captureFreeformArea"),
       recordBtn: this.startRecording,
       // screenshotButton: () =>
-      //   this.captureScreenshot(this.defaultScreenshotMethod),
+      // 	this.captureScreenshot(this.defaultScreenshotMethod),
     };
 
     Object.entries(eventMap).forEach(([key, handler]) => {
@@ -62,9 +64,16 @@ export default class Bugscribe {
   /* ------------------------------ SCREENSHOT HANDLER ------------------------------ */
   captureScreenshot = async (method) => {
     try {
-      await this.previewManager.hideWrapper(); // Use PreviewManager
+      await this.previewManager.hideWrapper(); // 1. Hide the wrapper (Always happens)
       const imgURL = await this.mediaCapture[method]?.();
-      if (!imgURL) return;
+
+      // 🛑 FIX START: Handle cancellation/failure
+      if (!imgURL) {
+        console.log(`Screenshot capture via ${method} was cancelled.`);
+        this.previewManager.showWrapper(); // 2. Show the wrapper on cancel/failure
+        return;
+      }
+      // 🛑 FIX END
 
       const thumbnail = await this.mediaCapture.createImageThumbnail(imgURL);
 
@@ -80,9 +89,10 @@ export default class Bugscribe {
 
       // Pass the index/ID instead of the full URL for preview
       this.previewManager.showImagePreview(previewIndex, thumbnail);
-      this.previewManager.showWrapper(); // Use PreviewManager
+      this.previewManager.showWrapper(); // 3. Show the wrapper on success
     } catch (err) {
       console.error(`Error capturing via ${method}:`, err);
+      this.previewManager.showWrapper(); // 4. Show the wrapper on error
     }
   };
 
@@ -102,7 +112,7 @@ export default class Bugscribe {
 
       if (!result?.url) {
         console.log("Recording was cancelled or failed.");
-        this.previewManager.showWrapper(); // Use PreviewManager
+        this.previewManager.showWrapper(); // FIX: Wrapper shown on video cancel
         return;
       }
 
