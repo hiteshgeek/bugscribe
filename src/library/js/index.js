@@ -1,10 +1,10 @@
 import { Bugscribe } from "./Bugscribe.js";
-import { icons } from "./icons.js";
+// import { icons } from "./icons.js";
 
-export { Bugscribe, icons };
+export { Bugscribe };
 
 // Expose Bugscribe class directly for IIFE build
 if (typeof window !== "undefined") {
   window.Bugscribe = Bugscribe;
-  window.BugscribeIcons = icons;
+  // window.BugscribeIcons = icons;
 }

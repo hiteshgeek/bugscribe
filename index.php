@@ -19,7 +19,7 @@ include_once __DIR__ . '/includes/functions.php';
 </head>
 
 <body>
-      <img src="src/assets/images/image1.jpg" alt="" class='main_image'>
+      <img src="src/assets/images/image2.jpg" alt="" class='main_image'>
 
       <!-- <div class='bug-wrapper'>
             <button class='bug-btn bug-main' type='button'>1</button>

@@ -124,9 +124,9 @@ export default class ScreenshotCapture {
         const style = document.createElement("style");
         style.id = "html2canvas-color-sanitize";
         style.textContent = `
-          * { color: rgb(0,0,0) !important; background-color: transparent !important; }
-          svg, svg * { fill: rgb(0,0,0) !important; stroke: rgb(0,0,0) !important; }
-        `;
+        * { color: rgb(0,0,0) !important; background-color: transparent !important; }
+        svg, svg * { fill: rgb(0,0,0) !important; stroke: rgb(0,0,0) !important; }
+      `;
         document.head.appendChild(style);
       };
 
@@ -161,14 +161,14 @@ export default class ScreenshotCapture {
         });
 
         backdrop.style.clipPath = `polygon(
-          evenodd,
-          0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
-          ${rect.left}px ${rect.top}px,
-          ${rect.left}px ${rect.top + rect.height}px,
-          ${rect.left + rect.width}px ${rect.top + rect.height}px,
-          ${rect.left + rect.width}px ${rect.top}px,
-          ${rect.left}px ${rect.top}px
-        )`;
+        evenodd,
+        0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,
+        ${rect.left}px ${rect.top}px,
+        ${rect.left}px ${rect.top + rect.height}px,
+        ${rect.left + rect.width}px ${rect.top + rect.height}px,
+        ${rect.left + rect.width}px ${rect.top}px,
+        ${rect.left}px ${rect.top}px
+      )`;
 
         rafId = null;
       };
@@ -213,8 +213,15 @@ export default class ScreenshotCapture {
         if (!isSelecting) return;
         isSelecting = false;
 
-        const rect = selectionBox.getBoundingClientRect();
-        if (rect.width < 10 || rect.height < 10) {
+        // Get the final selection coordinates BEFORE cleanup
+        const finalRect = {
+          left: Math.min(startX, endX),
+          top: Math.min(startY, endY),
+          width: Math.abs(endX - startX),
+          height: Math.abs(endY - startY),
+        };
+
+        if (finalRect.width < 10 || finalRect.height < 10) {
           cleanup();
           resolve(false);
           return;
@@ -226,15 +233,21 @@ export default class ScreenshotCapture {
         injectColorSanitizerStyle();
 
         try {
+          // Calculate the absolute position on the page
+          const captureX = finalRect.left + window.scrollX;
+          const captureY = finalRect.top + window.scrollY;
+
           const canvas = await html2canvas(document.body, {
             useCORS: true,
             allowTaint: true,
-            x: rect.left + window.scrollX,
-            y: rect.top + window.scrollY,
-            width: rect.width,
-            height: rect.height,
-            scrollX: -window.scrollX,
-            scrollY: -window.scrollY,
+            x: captureX,
+            y: captureY,
+            width: finalRect.width,
+            height: finalRect.height,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: document.documentElement.scrollWidth,
+            windowHeight: document.documentElement.scrollHeight,
             scale: 2,
             backgroundColor: null,
             logging: false,
