@@ -8,68 +8,46 @@ export default class Bugscribe {
     this._options = options;
 
     this.maxRecordingSeconds = options.maxRecordingSeconds || 120;
-    this.captureMicrophone = true; //options.captureMicrophone !== false; // Default true
-    this.startWithMicMuted = true; //options.startWithMicMuted || false; // Default false
+    this.captureMicrophone = true; // you can later wire this to options.captureMicrophone
+    this.startWithMicMuted = true; // initial configuration
 
     this._screenshotPreviews = [];
     this.bugButtonWrapper = new BugButtonWrapper(options.button || {});
-
     this.mediaCapture = new MediaCapture();
 
-    this.captureUsingMediaCapture = this.captureUsingMediaCapture.bind(this);
-    this.captureFullScreen = this.captureFullScreen.bind(this);
-    this.captureVisibleScreen = this.captureVisibleScreen.bind(this);
-    this.captureSelectedArea = this.captureSelectedArea.bind(this);
-    this.startRecording = this.startRecording.bind(this);
-
-    this.hideImagePreviewWrapper = this.hideImagePreviewWrapper.bind(this);
-    this.showImagePreviewWrapper = this.showImagePreviewWrapper.bind(this);
-
-    this.initMediaEvents();
-    this.setHotKeys();
-
+    // Called from MediaCapture.startRecording once recorder is ready
     this.mediaCapture.onRecordingStarted = (micMutedOnStart) => {
       this.showRecordingTimer(micMutedOnStart);
       console.log(
         "Recording started. Stop it using the timer button or browser's stop sharing."
       );
     };
+
+    this.initMediaEvents();
+    this.setHotKeys();
   }
 
+  /* ------------------------------- EVENT BINDING ------------------------------- */
   initMediaEvents() {
-    //image capture events
-    this.bugButtonWrapper.bug_menu_full_page.addEventListener(
-      "click",
-      this.captureFullScreen
-    );
+    const eventMap = {
+      bug_menu_full_page: () => this.captureScreenshot("captureFullScreen"),
+      bug_menu_visible_page: () =>
+        this.captureScreenshot("captureVisibleScreen"),
+      bug_menu_custom_area: () => this.captureScreenshot("captureSelectedArea"),
+      bug_menu_any_page: () => this.captureScreenshot("captureAny"),
+      recordBtn: this.startRecording,
+    };
 
-    this.bugButtonWrapper.bug_menu_visible_page.addEventListener(
-      "click",
-      this.captureVisibleScreen
-    );
-
-    this.bugButtonWrapper.bug_menu_custom_area.addEventListener(
-      "click",
-      this.captureSelectedArea
-    );
-
-    this.bugButtonWrapper.bug_menu_any_page.addEventListener(
-      "click",
-      this.captureUsingMediaCapture
-    );
-
-    //video record events
-
-    this.bugButtonWrapper.recordBtn.addEventListener(
-      "click",
-      this.startRecording
-    );
+    Object.entries(eventMap).forEach(([key, handler]) => {
+      this.bugButtonWrapper[key]?.addEventListener("click", handler);
+    });
   }
 
-  async captureFullScreen() {
+  /* ------------------------------ SCREENSHOT HANDLER ------------------------------ */
+  captureScreenshot = async (method) => {
     try {
       await this.hideImagePreviewWrapper();
-      const imgURL = await this.mediaCapture.captureFullScreen();
+      const imgURL = await this.mediaCapture[method]?.();
       if (!imgURL) return;
 
       const thumbnail = await this.mediaCapture.createImageThumbnail(imgURL);
@@ -77,103 +55,32 @@ export default class Bugscribe {
       this._screenshotPreviews.push({
         type: "image",
         url: imgURL,
-        thumbnail: thumbnail,
+        thumbnail,
         timestamp: Date.now(),
       });
 
       this.showImagePreview(imgURL, thumbnail);
       this.showImagePreviewWrapper();
     } catch (err) {
-      console.error("Error capturing screenshot:", err);
+      console.error(`Error capturing via ${method}:`, err);
     }
-  }
+  };
 
-  async captureVisibleScreen() {
+  /* ------------------------------ VIDEO RECORDING ------------------------------ */
+  startRecording = async () => {
     try {
       await this.hideImagePreviewWrapper();
-      const imgURL = await this.mediaCapture.captureVisibleScreen();
-      if (!imgURL) return;
-
-      const thumbnail = await this.mediaCapture.createImageThumbnail(imgURL);
-
-      this._screenshotPreviews.push({
-        type: "image",
-        url: imgURL,
-        thumbnail: thumbnail,
-        timestamp: Date.now(),
-      });
-
-      this.showImagePreview(imgURL, thumbnail);
-      this.showImagePreviewWrapper();
-    } catch (err) {
-      console.error("Error capturing screenshot:", err);
-    }
-  }
-
-  async captureSelectedArea() {
-    try {
-      await this.hideImagePreviewWrapper();
-      const imgURL = await this.mediaCapture.captureSelectedArea();
-      if (!imgURL) return;
-
-      const thumbnail = await this.mediaCapture.createImageThumbnail(imgURL);
-
-      this._screenshotPreviews.push({
-        type: "image",
-        url: imgURL,
-        thumbnail: thumbnail,
-        timestamp: Date.now(),
-      });
-
-      this.showImagePreview(imgURL, thumbnail);
-      this.showImagePreviewWrapper();
-    } catch (err) {
-      console.error("Error capturing screenshot:", err);
-    }
-  }
-
-  async captureUsingMediaCapture() {
-    try {
-      const imgURL = await this.mediaCapture.captureAny();
-      if (!imgURL) return;
-
-      const thumbnail = await this.mediaCapture.createImageThumbnail(imgURL);
-
-      this._screenshotPreviews.push({
-        type: "image",
-        url: imgURL,
-        thumbnail: thumbnail,
-        timestamp: Date.now(),
-      });
-
-      this.showImagePreview(imgURL, thumbnail);
-    } catch (err) {
-      console.error("Error capturing using MediaCapture:", err);
-    }
-  }
-
-  async startRecording() {
-    try {
-      // Hide previews while setting up recording
-      await this.hideImagePreviewWrapper();
-
       console.log("Starting recording...");
 
-      // Start the actual recording (this shows the browser's picker)
-      const recordingPromise = this.mediaCapture.startRecording(
+      const result = await this.mediaCapture.startRecording(
         this.captureMicrophone,
         this.startWithMicMuted
       );
 
-      console.log(this.startWithMicMuted);
-
-      // Wait for recording to finish (timer will be shown by MediaCapture)
-      const result = await recordingPromise;
-
-      // Hide timer UI
+      // When MediaRecorder stops, we hide the timer
       this.hideRecordingTimer();
 
-      if (!result || !result.url) {
+      if (!result?.url) {
         console.log("Recording was cancelled or failed.");
         this.showImagePreviewWrapper();
         return;
@@ -184,79 +91,65 @@ export default class Bugscribe {
         size: `${(result.size / 1024 / 1024).toFixed(2)}MB`,
       });
 
-      // Create video thumbnail
       const thumbnail = await this.mediaCapture.createVideoThumbnail(
         result.url
       );
 
-      // Store in screenshots array with metadata
       this._screenshotPreviews.push({
         type: "video",
         url: result.url,
-        thumbnail: thumbnail,
+        thumbnail,
         blob: result.blob,
         duration: result.duration,
         size: result.size,
         timestamp: Date.now(),
       });
 
-      // Show thumbnail preview
       this.showVideoPreview(result.url, thumbnail);
-
-      // Show the preview wrapper
       this.showImagePreviewWrapper();
     } catch (err) {
-      console.error("Error during screen recording:", err.message);
+      console.error("Error during screen recording:", err?.message || err);
       this.hideRecordingTimer();
       this.showImagePreviewWrapper();
     }
-  }
+  };
 
-  showImagePreview(imageUrl, thumbnailUrl) {
+  /* ------------------------------ IMAGE PREVIEW ------------------------------ */
+  showImagePreview = (imageUrl, thumbnailUrl) => {
     this.createImagePreviewWrapper();
 
-    const imageWrapper = document.createElement("div");
-    imageWrapper.className = "image-preview-wrapper";
-    imageWrapper.setAttribute("data-image-url", imageUrl);
+    const wrapper = document.createElement("div");
+    wrapper.className = "image-preview-wrapper";
+    wrapper.setAttribute("data-image-url", imageUrl);
 
-    // Show thumbnail
     const thumbnailImg = document.createElement("img");
     thumbnailImg.src = thumbnailUrl;
     thumbnailImg.className = "screenshot-preview image-thumbnail";
+    wrapper.appendChild(thumbnailImg);
 
-    imageWrapper.appendChild(thumbnailImg);
+    wrapper.addEventListener("click", () => this.viewFullImage(imageUrl));
+    this.preview_wrapper.appendChild(wrapper);
+  };
 
-    // Click to view full image
-    imageWrapper.addEventListener("click", () => {
-      this.viewFullImage(imageUrl);
-    });
-
-    this.preview_wrapper.appendChild(imageWrapper);
-  }
-
-  // View full size image in modal
   viewFullImage(imageUrl) {
-    // Create modal overlay
     const modal = document.createElement("div");
     modal.className = "image-modal-overlay";
 
-    const modalContent = document.createElement("div");
-    modalContent.className = "image-modal-content";
+    const content = document.createElement("div");
+    content.className = "image-modal-content";
 
-    const closeBtn = document.createElement("button");
-    closeBtn.className = "image-modal-close";
-    closeBtn.innerHTML = "×";
-    closeBtn.addEventListener("click", () => modal.remove());
+    const close = document.createElement("button");
+    close.className = "image-modal-close";
+    close.innerHTML = "×";
+    close.addEventListener("click", () => modal.remove());
 
     const img = document.createElement("img");
     img.src = imageUrl;
     img.className = "image-modal-viewer";
 
-    modalContent.appendChild(closeBtn);
-    modalContent.appendChild(img);
-    modal.appendChild(modalContent);
+    content.append(close, img);
+    modal.appendChild(content);
 
-    // Close on outside click
     modal.addEventListener("click", (e) => {
       if (e.target === modal) modal.remove();
     });
@@ -264,14 +157,14 @@ export default class Bugscribe {
     document.body.appendChild(modal);
   }
 
-  showVideoPreview(videoUrl, thumbnailUrl) {
+  /* ------------------------------ VIDEO PREVIEW ------------------------------ */
+  showVideoPreview = (videoUrl, thumbnailUrl) => {
     this.createImagePreviewWrapper();
 
-    const videoWrapper = document.createElement("div");
-    videoWrapper.className = "video-preview-wrapper";
-    videoWrapper.setAttribute("data-video-url", videoUrl);
+    const wrapper = document.createElement("div");
+    wrapper.className = "video-preview-wrapper";
+    wrapper.setAttribute("data-video-url", videoUrl);
 
-    // Show thumbnail with play icon overlay
     const thumbnailImg = document.createElement("img");
     thumbnailImg.src = thumbnailUrl;
     thumbnailImg.className = "screenshot-preview video-thumbnail";
@@ -280,29 +173,23 @@ export default class Bugscribe {
     playIcon.className = "video-play-icon";
     playIcon.innerHTML = icons.play;
 
-    videoWrapper.appendChild(thumbnailImg);
-    videoWrapper.appendChild(playIcon);
+    wrapper.append(thumbnailImg, playIcon);
 
-    // Click to play full video
-    videoWrapper.addEventListener("click", () => {
-      this.playFullVideo(videoUrl);
-    });
-
-    this.preview_wrapper.appendChild(videoWrapper);
-  }
+    wrapper.addEventListener("click", () => this.playFullVideo(videoUrl));
+    this.preview_wrapper.appendChild(wrapper);
+  };
 
   playFullVideo(videoUrl) {
-    // Create modal overlay
     const modal = document.createElement("div");
     modal.className = "video-modal-overlay";
 
-    const modalContent = document.createElement("div");
-    modalContent.className = "video-modal-content";
+    const content = document.createElement("div");
+    content.className = "video-modal-content";
 
-    const closeBtn = document.createElement("button");
-    closeBtn.className = "video-modal-close";
-    closeBtn.innerHTML = "×";
-    closeBtn.addEventListener("click", () => modal.remove());
+    const close = document.createElement("button");
+    close.className = "video-modal-close";
+    close.innerHTML = "×";
+    close.addEventListener("click", () => modal.remove());
 
     const video = document.createElement("video");
     video.src = videoUrl;
@@ -310,11 +197,9 @@ export default class Bugscribe {
     video.autoplay = true;
     video.className = "video-modal-player";
 
-    modalContent.appendChild(closeBtn);
-    modalContent.appendChild(video);
-    modal.appendChild(modalContent);
+    content.append(close, video);
+    modal.appendChild(content);
 
-    // Close on outside click
     modal.addEventListener("click", (e) => {
       if (e.target === modal) modal.remove();
     });
@@ -322,6 +207,7 @@ export default class Bugscribe {
     document.body.appendChild(modal);
   }
 
+  /* ------------------------------ RECORDING TIMER ------------------------------ */
   showRecordingTimer(micMutedOnStart = false) {
     // Remove existing timer if any
     this.hideRecordingTimer();
@@ -359,31 +245,44 @@ export default class Bugscribe {
     const micBtn = document.createElement("button");
     micBtn.className = "recording-control-btn recording-mic-btn";
 
-    // Check if microphone is available and if it's muted
-    const hasMicrophone =
-      this.captureMicrophone && this.mediaCapture._activeRecorder?.micStream;
-    const isMicMuted = micMutedOnStart || !hasMicrophone;
+    // Get mic track if available
+    const micTrack =
+      this.mediaCapture.video._activeRecorder?.micStream?.getAudioTracks?.()[0] ||
+      null;
 
+    // Determine initial mic state:
+    // Priority: micUnavailable → micMutedOnStart → real mic state
+    let isMicMuted;
+    if (!micTrack) {
+      // No microphone available → treat as muted
+      isMicMuted = true;
+      console.log("part 1");
+    } else if (typeof micMutedOnStart === "boolean") {
+      // Apply initial user preference passed from startRecording.
+      // The actual micTrack state was set in VideoRecorder.js.
+      // REMOVED: micTrack.enabled = !micMutedOnStart;
+      isMicMuted = micMutedOnStart;
+      console.log("part 2");
+    } else {
+      // Fallback to real live enabled state
+      isMicMuted = !micTrack.enabled;
+      console.log("part 3");
+    }
+
+    console.table({ micMutedOnStart, isMicMuted });
+
+    // Apply button UI
     micBtn.innerHTML = isMicMuted ? icons.microhpone_disabled : icons.microhone;
     micBtn.title = isMicMuted ? "Unmute microphone" : "Mute microphone";
-
-    if (isMicMuted) {
-      micBtn.classList.add("muted");
-    }
+    micBtn.classList.toggle("muted", isMicMuted);
 
     // Microphone toggle functionality
     micBtn.addEventListener("click", () => {
       const isMuted = this.mediaCapture.toggleMicrophone();
 
-      if (isMuted) {
-        micBtn.innerHTML = icons.microhpone_disabled;
-        micBtn.title = "Unmute microphone";
-        micBtn.classList.add("muted");
-      } else {
-        micBtn.innerHTML = icons.microhone;
-        micBtn.title = "Mute microphone";
-        micBtn.classList.remove("muted");
-      }
+      micBtn.innerHTML = isMuted ? icons.microhpone_disabled : icons.microhone;
+      micBtn.title = isMuted ? "Unmute microphone" : "Mute microphone";
+      micBtn.classList.toggle("muted", isMuted);
     });
 
     // Create pause button
@@ -473,85 +372,64 @@ export default class Bugscribe {
   }
 
   hideRecordingTimer() {
-    // Clear interval
     if (this._recordingTimerInterval) {
       clearInterval(this._recordingTimerInterval);
       this._recordingTimerInterval = null;
     }
-
-    // Remove timer element
     const timer = document.getElementById("recording-timer-wrapper");
-    if (timer) {
-      timer.remove();
-    }
+    if (timer) timer.remove();
   }
 
-  hideImagePreviewWrapper() {
+  /* ------------------------------ UI HELPERS ------------------------------ */
+  hideImagePreviewWrapper = () => {
     document
       .querySelectorAll(".bug-element")
       .forEach((el) => el.classList.add("hide_el"));
     return Promise.resolve();
-  }
+  };
 
-  showImagePreviewWrapper() {
+  showImagePreviewWrapper = () => {
     document
       .querySelectorAll(".bug-element")
       .forEach((el) => el.classList.remove("hide_el"));
-  }
+  };
 
-  createImagePreviewWrapper() {
+  createImagePreviewWrapper = () => {
     if (this.preview_wrapper) return;
     const wrapper = document.createElement("div");
     wrapper.id = "bugscribe-preview-wrapper";
     wrapper.className = "bug-element thin-scroll";
     document.body.appendChild(wrapper);
     this.preview_wrapper = wrapper;
-  }
+  };
 
-  showPreview(imgURL) {
-    this.createImagePreviewWrapper();
-    const img = document.createElement("img");
-    img.src = imgURL;
-    img.className = "screenshot-preview";
-    this.preview_wrapper.appendChild(img);
-  }
-
+  /* ------------------------------ HOTKEYS ------------------------------ */
   setHotKeys() {
     document.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.shiftKey) {
         e.preventDefault();
-        switch (e.code) {
-          case "Digit1":
-            this.captureFullScreen();
-            break;
-          case "Digit2":
-            this.captureVisibleScreen();
-            break;
-          case "Digit3":
-            this.captureSelectedArea();
-            break;
-          case "Digit4":
-            this.captureUsingMediaCapture();
-            break;
-          case "Digit5":
-            this.startRecording();
-            break;
-          case "Digit9":
+        const actions = {
+          Digit1: () => this.captureScreenshot("captureFullScreen"),
+          Digit2: () => this.captureScreenshot("captureVisibleScreen"),
+          Digit3: () => this.captureScreenshot("captureSelectedArea"),
+          Digit4: () => this.captureScreenshot("captureAny"),
+          Digit5: this.startRecording,
+          Digit9: () => {
             const logger = new ConsoleCapture();
             console.log("Hello world");
             console.warn("Warning");
             console.error("Error");
             logger.showOverlay();
             logger.clearLogs();
-            break;
-        }
+          },
+        };
+        actions[e.code]?.();
       }
     });
   }
 
-  getScreenshots() {
-    return this._screenshotPreviews;
-  }
+  /* ------------------------------ PUBLIC API ------------------------------ */
+  getScreenshots = () => this._screenshotPreviews;
 }
 
 export { Bugscribe };
