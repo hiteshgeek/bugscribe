@@ -167,7 +167,6 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 
   svg {
-    margin-left: 4px;
     fill: #333;
   }
 }
@@ -326,6 +325,20 @@
 
   &:active {
     transform: scale(0.95);
+  }
+}
+
+.recording-mic-btn {
+  &.muted {
+    background: rgba(255, 68, 68, 0.3);
+
+    svg {
+      fill: #ff4444;
+    }
+
+    &:hover {
+      background: rgba(255, 68, 68, 0.4);
+    }
   }
 }
 

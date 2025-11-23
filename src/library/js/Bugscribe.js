@@ -5,9 +5,12 @@ import { icons } from "./icons.js";
 
 export default class Bugscribe {
   constructor(options = {}) {
-    this.maxRecordingSeconds = 10;
     this._options = options;
-    this.captureMicrophone = true;
+
+    this.maxRecordingSeconds = options.maxRecordingSeconds || 120;
+    this.captureMicrophone = true; //options.captureMicrophone !== false; // Default true
+    this.startWithMicMuted = true; //options.startWithMicMuted || false; // Default false
+
     this._screenshotPreviews = [];
     this.bugButtonWrapper = new BugButtonWrapper(options.button || {});
 
@@ -25,8 +28,8 @@ export default class Bugscribe {
     this.initMediaEvents();
     this.setHotKeys();
 
-    this.mediaCapture.onRecordingStarted = () => {
-      this.showRecordingTimer();
+    this.mediaCapture.onRecordingStarted = (micMutedOnStart) => {
+      this.showRecordingTimer(micMutedOnStart);
       console.log(
         "Recording started. Stop it using the timer button or browser's stop sharing."
       );
@@ -158,8 +161,11 @@ export default class Bugscribe {
 
       // Start the actual recording (this shows the browser's picker)
       const recordingPromise = this.mediaCapture.startRecording(
-        this.captureMicrophone
+        this.captureMicrophone,
+        this.startWithMicMuted
       );
+
+      console.log(this.startWithMicMuted);
 
       // Wait for recording to finish (timer will be shown by MediaCapture)
       const result = await recordingPromise;
@@ -272,11 +278,7 @@ export default class Bugscribe {
 
     const playIcon = document.createElement("div");
     playIcon.className = "video-play-icon";
-    playIcon.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="48" height="48">
-      <path fill="currentColor" d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80L0 432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/>
-    </svg>
-  `;
+    playIcon.innerHTML = icons.play;
 
     videoWrapper.appendChild(thumbnailImg);
     videoWrapper.appendChild(playIcon);
@@ -320,7 +322,7 @@ export default class Bugscribe {
     document.body.appendChild(modal);
   }
 
-  showRecordingTimer() {
+  showRecordingTimer(micMutedOnStart = false) {
     // Remove existing timer if any
     this.hideRecordingTimer();
 
@@ -352,6 +354,37 @@ export default class Bugscribe {
     timerDisplay.appendChild(currentTime);
     timerDisplay.appendChild(separator);
     timerDisplay.appendChild(maxTime);
+
+    // Create microphone toggle button with correct initial state
+    const micBtn = document.createElement("button");
+    micBtn.className = "recording-control-btn recording-mic-btn";
+
+    // Check if microphone is available and if it's muted
+    const hasMicrophone =
+      this.captureMicrophone && this.mediaCapture._activeRecorder?.micStream;
+    const isMicMuted = micMutedOnStart || !hasMicrophone;
+
+    micBtn.innerHTML = isMicMuted ? icons.microhpone_disabled : icons.microhone;
+    micBtn.title = isMicMuted ? "Unmute microphone" : "Mute microphone";
+
+    if (isMicMuted) {
+      micBtn.classList.add("muted");
+    }
+
+    // Microphone toggle functionality
+    micBtn.addEventListener("click", () => {
+      const isMuted = this.mediaCapture.toggleMicrophone();
+
+      if (isMuted) {
+        micBtn.innerHTML = icons.microhpone_disabled;
+        micBtn.title = "Unmute microphone";
+        micBtn.classList.add("muted");
+      } else {
+        micBtn.innerHTML = icons.microhone;
+        micBtn.title = "Mute microphone";
+        micBtn.classList.remove("muted");
+      }
+    });
 
     // Create pause button
     const pauseBtn = document.createElement("button");
@@ -402,6 +435,7 @@ export default class Bugscribe {
 
     timerWrapper.appendChild(recordingDot);
     timerWrapper.appendChild(timerDisplay);
+    timerWrapper.appendChild(micBtn);
     timerWrapper.appendChild(pauseBtn);
     timerWrapper.appendChild(resumeBtn);
     timerWrapper.appendChild(stopBtn);

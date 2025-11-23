@@ -291,7 +291,7 @@ export default class MediaCapture {
     });
   }
 
-  async startRecording(captureMicrophone = true) {
+  async startRecording(captureMicrophone = true, startWithMicMuted = false) {
     let mediaRecorder = null;
     let recordedChunks = [];
     let displayStream = null;
@@ -346,6 +346,17 @@ export default class MediaCapture {
               autoGainControl: true,
             },
           });
+
+          // Mute microphone if startWithMicMuted is true
+          const micTrack = micStream.getAudioTracks()[0];
+          if (micTrack) {
+            micTrack.enabled = !startWithMicMuted;
+            console.log(
+              startWithMicMuted
+                ? "Microphone started muted"
+                : "Microphone started unmuted"
+            );
+          }
 
           const micSource = audioContext.createMediaStreamSource(micStream);
           micSource.connect(audioDestination);
@@ -461,10 +472,12 @@ export default class MediaCapture {
         micStream: micStream,
         combinedStream: combinedStream,
         audioContext: audioContext,
+        micMutedOnStart: startWithMicMuted,
       };
 
+      // Trigger callback AFTER everything is set up and recording has started
       if (this.onRecordingStarted) {
-        this.onRecordingStarted();
+        this.onRecordingStarted(startWithMicMuted);
       }
 
       return recordingPromise;
@@ -529,6 +542,24 @@ export default class MediaCapture {
 
       this._activeRecorder = null;
     }
+  }
+
+  // Toggle microphone mute/unmute
+  toggleMicrophone() {
+    if (this._activeRecorder && this._activeRecorder.micStream) {
+      const micTrack = this._activeRecorder.micStream.getAudioTracks()[0];
+
+      if (micTrack) {
+        micTrack.enabled = !micTrack.enabled;
+        console.log(
+          micTrack.enabled ? "Microphone unmuted" : "Microphone muted"
+        );
+        return !micTrack.enabled; // Return true if muted
+      }
+    }
+
+    console.warn("No microphone track available to toggle");
+    return true; // Return true (muted) if no mic available
   }
 
   // Pause recording
