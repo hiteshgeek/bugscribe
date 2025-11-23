@@ -291,59 +291,131 @@ export default class MediaCapture {
     });
   }
 
-  async startRecording() {
+  async startRecording(captureMicrophone = true) {
     let mediaRecorder = null;
     let recordedChunks = [];
-    let stream = null;
+    let displayStream = null;
+    let micStream = null;
+    let audioContext = null;
+    let audioDestination = null;
+    let combinedStream = null;
     let startTime = Date.now();
 
     try {
-      // Request screen capture with audio options
-      stream = await navigator.mediaDevices.getDisplayMedia({
+      // Request screen capture with audio
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           cursor: "always",
-          displaySurface: "browser",
         },
-        audio: true,
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          sampleRate: 48000,
+        },
       });
 
-      // Check if user granted permission
-      if (!stream) {
+      if (!displayStream) {
         throw new Error("Screen capture was denied");
       }
 
-      // Create MediaRecorder instance
-      let options = { mimeType: "video/webm;codecs=vp9" };
+      const videoTrack = displayStream.getVideoTracks()[0];
+      const systemAudioTrack = displayStream.getAudioTracks()[0];
 
-      // Fallback to vp8 if vp9 is not supported
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options.mimeType = "video/webm;codecs=vp8";
+      // Create audio context for mixing
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      audioDestination = audioContext.createMediaStreamDestination();
+
+      // Add system audio if available
+      if (systemAudioTrack) {
+        const systemAudioStream = new MediaStream([systemAudioTrack]);
+        const systemSource =
+          audioContext.createMediaStreamSource(systemAudioStream);
+        systemSource.connect(audioDestination);
+        console.log("System audio connected");
+      } else {
+        console.warn("No system audio track available");
       }
 
-      // Fallback to default if neither is supported
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        options = {};
+      // Request and add microphone if enabled
+      if (captureMicrophone) {
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+
+          const micSource = audioContext.createMediaStreamSource(micStream);
+          micSource.connect(audioDestination);
+          console.log("Microphone audio connected");
+        } catch (micError) {
+          console.warn("Microphone access denied or not available:", micError);
+        }
       }
 
-      mediaRecorder = new MediaRecorder(stream, options);
+      // Create combined stream with video and mixed audio
+      const audioTracks = audioDestination.stream.getAudioTracks();
 
-      // Create promise that resolves when recording stops
+      if (audioTracks.length > 0) {
+        combinedStream = new MediaStream([videoTrack, audioTracks[0]]);
+        console.log("Combined stream created with audio");
+      } else {
+        combinedStream = new MediaStream([videoTrack]);
+        console.warn("No audio tracks available, recording video only");
+      }
+
+      // Create MediaRecorder
+      let options = {
+        mimeType: "video/webm;codecs=vp9,opus",
+        audioBitsPerSecond: 128000,
+        videoBitsPerSecond: 2500000,
+      };
+
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = "video/webm;codecs=vp8,opus";
+      }
+
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = { mimeType: "video/webm" };
+      }
+
+      console.log("Using mimeType:", options.mimeType);
+
+      mediaRecorder = new MediaRecorder(combinedStream, options);
+
       const recordingPromise = new Promise((resolve, reject) => {
-        // Handle data available event
         mediaRecorder.ondataavailable = (event) => {
           if (event.data && event.data.size > 0) {
             recordedChunks.push(event.data);
           }
         };
 
-        // Handle stop event
         mediaRecorder.onstop = () => {
           // Stop all tracks
-          stream.getTracks().forEach((track) => track.stop());
+          if (displayStream) {
+            displayStream.getTracks().forEach((track) => track.stop());
+          }
+          if (micStream) {
+            micStream.getTracks().forEach((track) => track.stop());
+          }
+          if (combinedStream) {
+            combinedStream.getTracks().forEach((track) => track.stop());
+          }
+
+          // Close audio context only if not already closed
+          if (audioContext && audioContext.state !== "closed") {
+            audioContext.close().catch((err) => {
+              console.warn("Error closing audio context:", err);
+            });
+          }
 
           // Create video blob
           const blob = new Blob(recordedChunks, { type: "video/webm" });
           const videoURL = URL.createObjectURL(blob);
+
+          console.log("Recording stopped, blob size:", blob.size);
 
           resolve({
             url: videoURL,
@@ -354,29 +426,41 @@ export default class MediaCapture {
           });
         };
 
-        // Handle errors during recording
         mediaRecorder.onerror = (event) => {
           console.error("MediaRecorder error:", event.error);
-          stream.getTracks().forEach((track) => track.stop());
+          if (displayStream) {
+            displayStream.getTracks().forEach((track) => track.stop());
+          }
+          if (micStream) {
+            micStream.getTracks().forEach((track) => track.stop());
+          }
+          if (audioContext && audioContext.state !== "closed") {
+            audioContext.close().catch((err) => {
+              console.warn("Error closing audio context:", err);
+            });
+          }
           reject(new Error(`Recording failed: ${event.error.name}`));
         };
       });
 
-      // Track when user stops sharing (clicks "Stop sharing" button in browser)
-      stream.getVideoTracks()[0].addEventListener("ended", () => {
+      // Track when user stops sharing
+      videoTrack.addEventListener("ended", () => {
         if (mediaRecorder && mediaRecorder.state !== "inactive") {
           mediaRecorder.stop();
         }
       });
 
       // Start recording
-      mediaRecorder.start(100); // Collect data every 100ms
+      mediaRecorder.start(100);
+      console.log("MediaRecorder started");
 
       // Store recorder instance
       this._activeRecorder = {
         recorder: mediaRecorder,
-        stream: stream,
-        promise: recordingPromise,
+        displayStream: displayStream,
+        micStream: micStream,
+        combinedStream: combinedStream,
+        audioContext: audioContext,
       };
 
       if (this.onRecordingStarted) {
@@ -385,12 +469,22 @@ export default class MediaCapture {
 
       return recordingPromise;
     } catch (error) {
-      // Clean up if stream was created
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      // Cleanup on error
+      if (displayStream) {
+        displayStream.getTracks().forEach((track) => track.stop());
+      }
+      if (micStream) {
+        micStream.getTracks().forEach((track) => track.stop());
+      }
+      if (combinedStream) {
+        combinedStream.getTracks().forEach((track) => track.stop());
+      }
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close().catch((err) => {
+          console.warn("Error closing audio context:", err);
+        });
       }
 
-      // Handle user rejection or permission denial
       if (error.name === "NotAllowedError") {
         throw new Error("Screen recording permission was denied");
       } else if (error.name === "NotFoundError") {
@@ -403,13 +497,37 @@ export default class MediaCapture {
     }
   }
 
-  // Method to manually stop recording
+  // Updated stopRecording method
   stopRecording() {
     if (this._activeRecorder) {
-      const { recorder } = this._activeRecorder;
+      const {
+        recorder,
+        displayStream,
+        micStream,
+        combinedStream,
+        audioContext,
+      } = this._activeRecorder;
+
       if (recorder && recorder.state !== "inactive") {
         recorder.stop();
       }
+
+      if (displayStream) {
+        displayStream.getTracks().forEach((track) => track.stop());
+      }
+      if (micStream) {
+        micStream.getTracks().forEach((track) => track.stop());
+      }
+      if (combinedStream) {
+        combinedStream.getTracks().forEach((track) => track.stop());
+      }
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close().catch((err) => {
+          console.warn("Error closing audio context:", err);
+        });
+      }
+
+      this._activeRecorder = null;
     }
   }
 

@@ -6,6 +6,7 @@ export default class Bugscribe {
   constructor(options = {}) {
     this.maxRecordingSeconds = 10;
     this._options = options;
+    this.captureMicrophone = true;
     this._screenshotPreviews = [];
     this.bugButtonWrapper = new BugButtonWrapper(options.button || {});
 
@@ -155,7 +156,9 @@ export default class Bugscribe {
       console.log("Starting recording...");
 
       // Start the actual recording (this shows the browser's picker)
-      const recordingPromise = this.mediaCapture.startRecording();
+      const recordingPromise = this.mediaCapture.startRecording(
+        this.captureMicrophone
+      );
 
       // Wait for recording to finish (timer will be shown by MediaCapture)
       const result = await recordingPromise;
