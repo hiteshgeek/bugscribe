@@ -1,8 +1,10 @@
-// VideoRecorder.js
+import CursorHighlighter from "./CursorHighlighter.js";
+
 export default class VideoRecorder {
   constructor() {
     this._activeRecorder = null;
     this.onRecordingStarted = null;
+    this._cursorHighlighter = new CursorHighlighter(); // Initialize the highlighter
   }
 
   async startRecording(captureMicrophone = true, startWithMicMuted = false) {
@@ -75,12 +77,20 @@ export default class VideoRecorder {
 
       mediaRecorder = new MediaRecorder(combinedStream, options);
 
+      // --- START CURSOR HIGHLIGHTER ---
+      this._cursorHighlighter.start();
+      // --------------------------------
+
       const recordingPromise = new Promise((resolve, reject) => {
         mediaRecorder.ondataavailable = (event) => {
           if (event.data?.size > 0) recordedChunks.push(event.data);
         };
 
         mediaRecorder.onstop = () => {
+          // --- STOP CURSOR HIGHLIGHTER ---
+          this._cursorHighlighter.stop();
+          // -------------------------------
+
           displayStream?.getTracks().forEach((t) => t.stop());
           micStream?.getTracks().forEach((t) => t.stop());
           combinedStream?.getTracks().forEach((t) => t.stop());
@@ -124,6 +134,10 @@ export default class VideoRecorder {
 
       return recordingPromise;
     } catch (error) {
+      // --- CLEAN UP CURSOR HIGHLIGHTER ON ERROR ---
+      this._cursorHighlighter.stop();
+      // --------------------------------------------
+
       displayStream?.getTracks().forEach((t) => t.stop());
       micStream?.getTracks().forEach((t) => t.stop());
       combinedStream?.getTracks().forEach((t) => t.stop());

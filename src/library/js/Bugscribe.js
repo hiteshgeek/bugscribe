@@ -3,9 +3,8 @@
 import BugButtonWrapper from "./BugButtonWrapper.js";
 import MediaCapture from "./MediaCapture.js";
 import ConsoleCapture from "./ConsoleCapture.js";
-import PreviewManager from "./PreviewManager.js"; // NEW
-import RecordingTimer from "./RecordingTimer.js"; // NEW
-import { icons } from "./icons.js"; // Keep this if used elsewhere
+import PreviewManager from "./PreviewManager.js";
+import RecordingTimer from "./RecordingTimer.js";
 
 export default class Bugscribe {
   constructor(options = {}) {
