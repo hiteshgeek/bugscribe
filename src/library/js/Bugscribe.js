@@ -5,6 +5,7 @@ import MediaCapture from "./MediaCapture.js";
 import ConsoleCapture from "./ConsoleCapture.js";
 import PreviewManager from "./PreviewManager.js";
 import RecordingTimer from "./RecordingTimer.js";
+import { VideoResolution } from "./VideoRecorder.js";
 
 export default class Bugscribe {
   constructor(options = {}) {
@@ -55,7 +56,7 @@ export default class Bugscribe {
       bug_menu_any_page: () => this.captureScreenshot("captureAny"),
       bug_menu_freeform_area: () =>
         this.captureScreenshot("captureFreeformArea"),
-      recordBtn: this.startRecording,
+      recordBtn: () => this.startRecording(),
       // screenshotButton: () =>
       //  this.captureScreenshot(this.defaultScreenshotMethod),
     };
@@ -99,14 +100,15 @@ export default class Bugscribe {
   };
 
   /* ------------------------------ VIDEO RECORDING ------------------------------ */
-  startRecording = async () => {
+  startRecording = async (resolution = VideoResolution.P1080) => {
     try {
       await this.previewManager.hideWrapper(); // Use PreviewManager
       console.log("Starting recording...");
 
       const result = await this.mediaCapture.startRecording(
         this.captureMicrophone,
-        this.startWithMicMuted
+        this.startWithMicMuted,
+        resolution
       );
 
       // When MediaRecorder stops, we hide the timer
@@ -189,8 +191,11 @@ export default class Bugscribe {
           Digit3: () => this.captureScreenshot("captureSelectedArea"),
           Digit4: () => this.captureScreenshot("captureAny"),
           Digit5: () => this.captureScreenshot("captureFreeformArea"),
-          Digit8: this.startRecording,
-          Digit9: () => {
+          Digit6: () => this.startRecording(VideoResolution.P480),
+          Digit7: () => this.startRecording(VideoResolution.P720),
+          Digit8: () => this.startRecording(),
+          Digit9: () => this.startRecording(VideoResolution.P1440),
+          Digit0: () => {
             const logger = new ConsoleCapture();
             console.log("Hello world");
             console.warn("Warning");

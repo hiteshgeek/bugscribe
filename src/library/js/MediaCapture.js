@@ -38,8 +38,12 @@ export default class MediaCapture {
   }
 
   // Proxy Video Methods
-  startRecording(captureMicrophone, startWithMicMuted) {
-    return this.video.startRecording(captureMicrophone, startWithMicMuted);
+  startRecording(captureMicrophone, startWithMicMuted, resolution) {
+    return this.video.startRecording(
+      captureMicrophone,
+      startWithMicMuted,
+      resolution
+    );
   }
 
   stopRecording() {
