@@ -1,30 +1,56 @@
 // ScreenCapture.js
 export default class ScreenshotCapture {
   async captureAny() {
+    let track = null;
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { mediaSource: "screen" },
       });
 
-      const track = stream.getVideoTracks()[0];
-      const imageCapture = new ImageCapture(track);
-      const bitmap = await imageCapture.grabFrame();
+      track = stream.getVideoTracks()[0];
 
+      // 1. Create a temporary video element to hold the stream frame
+      const video = document.createElement("video");
+      video.srcObject = stream;
+
+      // 2. Crucial step: Wait for the video stream to load metadata and be ready
+      await new Promise((resolve) => {
+        // Use onloadedmetadata to ensure the stream is initialized and dimensions are known
+        video.onloadedmetadata = () => {
+          // Apply a small delay (300ms) here after the video is ready,
+          // which gives the native selection dialog time to close.
+          setTimeout(resolve, 300);
+        };
+
+        // Attempt to play the video (it will be invisible, but required for frame readiness)
+        video.play().catch((e) => {
+          console.warn("Video play error (expected if backgrounded):", e);
+          // Resolve anyway after delay if play fails, to prevent hanging
+          setTimeout(resolve, 300);
+        });
+      });
+
+      // 3. Capture the current stable frame using canvas
       const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       const ctx = canvas.getContext("2d");
-      ctx.drawImage(bitmap, 0, 0);
+
+      // Draw the current stable frame from the video element
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const imgURL = canvas.toDataURL("image/png");
+
+      // 4. Stop the track and stream cleanup
       track.stop();
       return imgURL;
     } catch (err) {
+      if (track) track.stop(); // Ensure cleanup on error/cancellation
       if (err.name === "NotAllowedError" || err.name === "AbortError") {
-        return false;
+        return false; // User cancelled the dialog
       }
 
-      return false;
+      return false; // Other failure
     }
   }
 
