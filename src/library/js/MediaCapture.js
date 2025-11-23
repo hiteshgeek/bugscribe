@@ -70,6 +70,22 @@ export default class MediaCapture {
     return isNowMuted;
   };
 
+  /**
+   * Toggles system audio mute state.
+   * @returns {boolean} New mute state.
+   */
+  toggleSystemAudio() {
+    return this.video.toggleSystemAudio();
+  }
+
+  /**
+   * Checks if system audio is muted.
+   * @returns {boolean}
+   */
+  isSystemAudioMuted() {
+    return this.video.isSystemAudioMuted();
+  }
+
   isRecording = () => {
     return this.video.isRecording();
   };

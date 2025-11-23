@@ -1,6 +1,6 @@
 // RecordingTimer.js
 
-import { icons } from "./icons.js"; // Assuming 'icons.js' provides the necessary icon SVG strings
+import { icons } from "./icons.js";
 
 export default class RecordingTimer {
   /**
@@ -282,6 +282,30 @@ export default class RecordingTimer {
       this.updateMicVisual(isMuted);
     });
 
+    // --- System Audio Button Setup ---
+    const systemAudioBtn = document.createElement("button");
+    systemAudioBtn.className =
+      "recording-control-btn recording-system-audio-btn";
+
+    const systemTrack =
+      this.mediaCapture.video?._activeRecorder?.displayStream?.getAudioTracks?.()[0] ||
+      null;
+    let isSystemMuted = !systemTrack || !systemTrack.enabled; // Default to muted if no track
+
+    systemAudioBtn.innerHTML = isSystemMuted
+      ? icons.speaker_disabled
+      : icons.speaker;
+    systemAudioBtn.title = isSystemMuted
+      ? "Enable system audio"
+      : "Mute system audio";
+    systemAudioBtn.classList.toggle("muted", isSystemMuted);
+
+    systemAudioBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isMuted = this.mediaCapture.toggleSystemAudio();
+      this.updateSystemAudioVisual(isMuted);
+    });
+
     // --- Control Buttons Setup ---
     const pauseBtn = document.createElement("button");
     pauseBtn.className = "recording-control-btn recording-pause-btn";
@@ -337,6 +361,7 @@ export default class RecordingTimer {
       timerDisplay,
       waveformCanvas, // Integrated waveform canvas
       micBtn,
+      systemAudioBtn,
       pauseBtn,
       resumeBtn,
       stopBtn
@@ -402,6 +427,19 @@ export default class RecordingTimer {
       micBtn.innerHTML = isMuted ? icons.microhpone_disabled : icons.microhone;
       micBtn.title = isMuted ? "Unmute microphone" : "Mute microphone";
       micBtn.classList.toggle("muted", isMuted);
+    }
+  }
+
+  /**
+   * Visually updates the system audio button state.
+   * @param {boolean} isMuted - The new mute state (true if muted).
+   */
+  updateSystemAudioVisual(isMuted) {
+    const systemBtn = document.querySelector(".recording-system-audio-btn");
+    if (systemBtn) {
+      systemBtn.innerHTML = isMuted ? icons.speaker_disabled : icons.speaker;
+      systemBtn.title = isMuted ? "Enable system audio" : "Mute system audio";
+      systemBtn.classList.toggle("muted", isMuted);
     }
   }
 

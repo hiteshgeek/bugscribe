@@ -221,6 +221,18 @@ export default class Bugscribe {
             logger.showOverlay();
             logger.clearLogs();
           },
+
+          KeyA: () => {
+            // e.g., Ctrl+Shift+A for system audio
+            if (this.mediaCapture.isRecording()) {
+              const isNowMuted = this.mediaCapture.toggleSystemAudio();
+              this.recordingTimer.updateSystemAudioVisual(isNowMuted);
+              console.log(
+                `System audio toggled via shortcut. Muted: ${isNowMuted}`
+              );
+            }
+          },
+
           KeyS: () => {
             if (this.mediaCapture.isRecording()) {
               this.mediaCapture.stopRecording();

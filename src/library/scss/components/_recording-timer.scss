@@ -150,3 +150,17 @@
   display: block;
   background-color: transparent;
 }
+
+.recording-system-audio-btn {
+  &.muted {
+    background: color-mix(in srgb, var(--timer-danger) 30%, transparent);
+
+    svg {
+      fill: var(--timer-danger);
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--timer-danger) 40%, transparent);
+    }
+  }
+}

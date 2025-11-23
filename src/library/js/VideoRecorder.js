@@ -251,6 +251,22 @@ export default class VideoRecorder {
     return true;
   }
 
+  /**
+   * Toggles system audio mute state.
+   * @returns {boolean} New mute state (true if muted).
+   */
+  toggleSystemAudio() {
+    if (this._activeRecorder?.displayStream) {
+      const systemTrack =
+        this._activeRecorder.displayStream.getAudioTracks()[0];
+      if (systemTrack) {
+        systemTrack.enabled = !systemTrack.enabled;
+        return !systemTrack.enabled;
+      }
+    }
+    return true; // Assume muted if no track
+  }
+
   isRecording() {
     return !!this._activeRecorder;
   }
@@ -258,6 +274,19 @@ export default class VideoRecorder {
   isPaused() {
     // Returns true if the active recorder's state is "paused"
     return this._activeRecorder?.recorder?.state === "paused";
+  }
+
+  /**
+   * Gets current system audio mute state.
+   * @returns {boolean} True if muted.
+   */
+  isSystemAudioMuted() {
+    if (this._activeRecorder?.displayStream) {
+      const systemTrack =
+        this._activeRecorder.displayStream.getAudioTracks()[0];
+      return systemTrack ? !systemTrack.enabled : true;
+    }
+    return true;
   }
 
   /**
