@@ -19,7 +19,7 @@
 .recording-dot {
   width: var(--timer-dot-size);
   height: var(--timer-dot-size);
-  background: var(--timer-danger);
+  background: var(--timer-primary);
   border-radius: 50%;
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -100,7 +100,7 @@
 
 // Stop button
 .recording-stop-btn {
-  background: color-mix(in srgb, var(--timer-danger) 30%, transparent);
+  background: color-mix(in srgb, var(--timer-primary) 70%, transparent);
   padding: 0;
   width: var(--timer-control-size);
   height: var(--timer-control-size);
