@@ -123,6 +123,10 @@ export default class Bugscribe {
       console.log("Recording completed:", {
         duration: `${(result.duration / 1000).toFixed(1)}s`,
         size: `${(result.size / 1024 / 1024).toFixed(2)}MB`,
+        resolution:
+          result.width && result.height
+            ? `${result.width}x${result.height}`
+            : "N/A",
       });
 
       const thumbnail = await this.mediaCapture.createVideoThumbnail(

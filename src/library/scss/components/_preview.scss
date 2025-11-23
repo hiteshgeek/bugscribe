@@ -50,10 +50,10 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 
-  &:hover .video-play-icon {
-    transform: translate(-50%, -50%) scale(1.1);
-    background: rgba(255, 255, 255, 0.95);
-  }
+  // &:hover .video-play-icon {
+  //   transform: translate(-50%, -50%) scale(1.1);
+  //   background: rgba(255, 255, 255, 0.95);
+  // }
 }
 
 .video-thumbnail {

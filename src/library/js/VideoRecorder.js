@@ -1,7 +1,7 @@
 import CursorHighlighter from "./CursorHighlighter.js";
 
 /**
- * Defines standard video resolutions (width x height) to use in constraints.
+ * Defines standard video resolutions (width x height) and corresponding bitrates (bps).
  */
 const VideoResolution = {
   P480: { width: 854, height: 480, bitrate: 1000000 }, // ~1 Mbps
@@ -34,10 +34,6 @@ export default class VideoRecorder {
    * @private
    */
   _cursorHighlighter;
-  /**
-   * @type {number}
-   * @private
-   */
 
   /**
    * Callback executed when recording starts.
@@ -50,19 +46,19 @@ export default class VideoRecorder {
   }
 
   /**
-   * Starts the video recording process, capturing screen and optionally microphone.
+   * Starts the video recording process, capturing screen/window/tab and optionally microphone.
    * @param {boolean} [captureMicrophone=true] - Whether to capture audio from the microphone.
    * @param {boolean} [startWithMicMuted=false] - Whether the microphone should start muted.
    * @param {object} [resolution=VideoResolution.P1080] - The desired resolution constraints (VideoResolution preset).
+   * @param {string | null} [targetElementId=null] - ID of the element to constrain capture to (Region Capture).
    * @returns {Promise<{url: string, blob: Blob, duration: number, size: number, type: string}>} A promise that resolves with the recording data.
    */
   async startRecording(
     captureMicrophone = true,
     startWithMicMuted = false,
-    resolution = VideoResolution.P1080
+    resolution = VideoResolution.P1080,
+    targetElementId = null // ⬅️ NEW PARAMETER for Region Capture
   ) {
-    resolution = VideoResolution.P720;
-
     let mediaRecorder = null;
     let recordedChunks = [];
     let displayStream = null;
@@ -72,16 +68,37 @@ export default class VideoRecorder {
     let combinedStream = null;
     let startTime = Date.now();
 
-    const targetBitrate = resolution.bitrate; // ⬅️ Get bitrate from the resolution object
+    const targetBitrate = resolution.bitrate;
 
     try {
+      const videoConstraints = {
+        cursor: "always",
+        width: resolution.width,
+        height: resolution.height,
+        frameRate: { ideal: 30, max: 60 },
+      };
+
+      // ⬅️ NEW: Implement Region Capture using CropTarget API
+      if (targetElementId && "cropTarget" in navigator.mediaDevices) {
+        const element = document.getElementById(targetElementId);
+        if (element) {
+          // Get the CropTarget from the element
+          const cropTarget =
+            await navigator.mediaDevices.cropTarget.fromElement(element);
+          // Add the cropTarget constraint
+          videoConstraints.cropTarget = cropTarget;
+          console.log(
+            `Attempting to start recording region for element: #${targetElementId}`
+          );
+        } else {
+          console.warn(
+            `Element with ID '${targetElementId}' not found. Defaulting to full screen capture.`
+          );
+        }
+      }
+
       displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          cursor: "always",
-          width: resolution.width,
-          height: resolution.height,
-          frameRate: { ideal: 30, max: 60 },
-        },
+        video: videoConstraints,
         audio: {
           echoCancellation: false,
           noiseSuppression: false,
@@ -127,7 +144,7 @@ export default class VideoRecorder {
       let options = {
         mimeType: "video/webm;codecs=vp9,opus",
         audioBitsPerSecond: 128000,
-        videoBitsPerSecond: targetBitrate, // ⬅️ Apply the specific bitrate
+        videoBitsPerSecond: targetBitrate,
       };
 
       if (!MediaRecorder.isTypeSupported(options.mimeType)) {
@@ -165,6 +182,8 @@ export default class VideoRecorder {
             duration: Date.now() - startTime,
             size: blob.size,
             type: "video",
+            width: resolution.width,
+            height: resolution.height,
           });
         };
 
@@ -207,6 +226,19 @@ export default class VideoRecorder {
 
       throw error;
     }
+  }
+
+  /**
+   * Convenience method to start recording a specific, visible HTML element (Region Capture).
+   * The capture stream must be a screen or window for this to work effectively.
+   * @param {string} targetElementId - The ID of the HTML element to record.
+   * @param {object} [resolution=VideoResolution.P1080] - The desired resolution constraints (bitrate and max size).
+   */
+  async startRecordingRegion(
+    targetElementId,
+    resolution = VideoResolution.P1080
+  ) {
+    return this.startRecording(true, false, resolution, targetElementId);
   }
 
   stopRecording() {
