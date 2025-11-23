@@ -1,10 +1,6 @@
-// cursor.scss
-
-// Define a size variable for the cursor highlight
 $cursor-size: 32px;
 
 .cursor-highlighter {
-  // Base properties
   position: fixed;
   top: 0;
   left: 0;
@@ -12,53 +8,43 @@ $cursor-size: 32px;
   height: $cursor-size;
   border-radius: 50%;
   pointer-events: none;
-  // Z-index handled by JS now, but setting high default:
-  // z-index: 1000000;
-
-  // Center the element on the cursor
   margin-top: calc(-1 * #{$cursor-size} / 2);
   margin-left: calc(-1 * #{$cursor-size} / 2);
-
-  // CRITICAL: Hint to the browser to optimize composition/transformation
   will-change: transform, opacity, box-shadow;
-
-  // Initial Glow State (Base - Primary Color)
-  // Use bug-primary-light for a bright, glowing center
   background: var(--bug-primary-light);
-
-  // Use a transparent border and a shadow that is always active
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4),
-    // Light ring around the center
-    0 0 10px 5px var(--bug-primary); // Primary color glow
-
+    0 0 10px 5px var(--bug-primary);
   opacity: 1;
-
-  // IMPORTANT: Set transition for non-positional properties (like color, shadow, opacity)
-  // but explicitly set TRANSFORM to zero duration.
   transition: background-color var(--anim-fast) ease-in-out,
     box-shadow var(--anim-fast) ease-in-out,
-    opacity var(--anim-fast) ease-in-out,
-    // ENSURE ZERO DELAY ON TRANSFORM
-    transform 0s;
+    opacity var(--anim-fast) ease-in-out, transform 0s;
 
-  // --- State: Clicking (Darker/Deeper) ---
-  &.clicking {
-    // Darker color on click
-    background: var(--bug-primary-dark);
-    box-shadow: 0 0 0 4px var(--bug-primary-light),
-      // A slightly thicker bright ring
-      0 0 10px 5px var(--bug-primary-dark); // Deeper glow
-
-    // Ensure the click transition is instantaneous or very fast
-    transition-duration: 0.1s;
-  }
-
-  // --- State: Scrolling (Lighter/More Subtle) ---
   &.scrolling {
-    // Lighter background and highly transparent shadow
     background: rgba(255, 255, 255, 0.2);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1),
       0 0 3px 1px rgba(255, 255, 255, 0.05);
     opacity: 0.8;
+  }
+
+  // Ripple effect on click
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: $cursor-size;
+    height: $cursor-size;
+    border-radius: 50%;
+    background: var(--bug-primary);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.1); // Start at half size
+    transition: opacity 0.4s, transform 0.4s;
+    z-index: 1;
+  }
+
+  &.ripple::after {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(2); // End at full size
   }
 }

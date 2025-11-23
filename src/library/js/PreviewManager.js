@@ -1,10 +1,10 @@
-// PreviewManager.js
-
 import { icons } from "./icons.js";
 
 export default class PreviewManager {
-  constructor() {
+  // MODIFIED: Accepts onPreviewClickCallback
+  constructor(onPreviewClickCallback) {
     this.preview_wrapper = null;
+    this.onPreviewClick = onPreviewClickCallback; // Store the callback from Bugscribe
   }
 
   // --- UI Wrapper Management ---
@@ -34,19 +34,26 @@ export default class PreviewManager {
 
   // --- Image Preview ---
 
-  showImagePreview = (imageUrl, thumbnailUrl) => {
+  // MODIFIED: Now accepts index instead of full URL
+  showImagePreview = (index, thumbnailUrl) => {
     this.createWrapper();
 
     const wrapper = document.createElement("div");
     wrapper.className = "image-preview-wrapper";
-    wrapper.setAttribute("data-image-url", imageUrl);
+    // MODIFIED: Store index instead of data-image-url
+    wrapper.setAttribute("data-index", index);
 
     const thumbnailImg = document.createElement("img");
     thumbnailImg.src = thumbnailUrl;
     thumbnailImg.className = "screenshot-preview image-thumbnail";
     wrapper.appendChild(thumbnailImg);
 
-    wrapper.addEventListener("click", () => this.viewFullImage(imageUrl));
+    // MODIFIED: The click handler retrieves the data using the index
+    wrapper.addEventListener("click", () => {
+      const mediaData = this.onPreviewClick(index);
+      this.viewFullImage(mediaData.url);
+    });
+
     this.preview_wrapper.appendChild(wrapper);
   };
 
@@ -78,12 +85,14 @@ export default class PreviewManager {
 
   // --- Video Preview ---
 
-  showVideoPreview = (videoUrl, thumbnailUrl) => {
+  // MODIFIED: Now accepts index instead of full URL
+  showVideoPreview = (index, thumbnailUrl) => {
     this.createWrapper();
 
     const wrapper = document.createElement("div");
     wrapper.className = "video-preview-wrapper";
-    wrapper.setAttribute("data-video-url", videoUrl);
+    // MODIFIED: Store index instead of data-video-url
+    wrapper.setAttribute("data-index", index);
 
     const thumbnailImg = document.createElement("img");
     thumbnailImg.src = thumbnailUrl;
@@ -95,7 +104,12 @@ export default class PreviewManager {
 
     wrapper.append(thumbnailImg, playIcon);
 
-    wrapper.addEventListener("click", () => this.playFullVideo(videoUrl));
+    // MODIFIED: The click handler retrieves the data using the index
+    wrapper.addEventListener("click", () => {
+      const mediaData = this.onPreviewClick(index);
+      this.playFullVideo(mediaData.url);
+    });
+
     this.preview_wrapper.appendChild(wrapper);
   };
 

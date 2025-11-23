@@ -18,8 +18,9 @@
 // Image preview
 .image-preview-wrapper {
   position: relative;
-  width: 100%;
-  margin-bottom: 10px;
+  width: 200px;
+  aspect-ratio: 1.75;
+  height: 100%;
   cursor: pointer;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -30,6 +31,7 @@
 .screenshot-preview {
   width: 200px;
   aspect-ratio: 1.75;
+  height: 100%;
   border-radius: var(--radius-md);
   display: block;
 }
@@ -37,7 +39,9 @@
 // Video preview
 .video-preview-wrapper {
   position: relative;
-  width: 100%;
+  width: 200px;
+  aspect-ratio: 1.75;
+  height: 100%;
   cursor: pointer;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -49,7 +53,6 @@
 }
 
 .video-thumbnail {
-  width: 100%;
   display: block;
 }
 
@@ -59,8 +62,8 @@
   left: 50%;
   transform: translate(-50%, -50%);
   @include flex-center;
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   background: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
   pointer-events: none;

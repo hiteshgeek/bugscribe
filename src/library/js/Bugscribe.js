@@ -1,5 +1,3 @@
-// Bugscribe.js (Updated)
-
 import BugButtonWrapper from "./BugButtonWrapper.js";
 import MediaCapture from "./MediaCapture.js";
 import ConsoleCapture from "./ConsoleCapture.js";
@@ -19,7 +17,7 @@ export default class Bugscribe {
     this.mediaCapture = new MediaCapture();
 
     // Initialize new helper classes
-    this.previewManager = new PreviewManager(); // NEW
+    this.previewManager = new PreviewManager(this.getFullMediaData); // MODIFIED: Pass a callback
     this.recordingTimer = new RecordingTimer(
       this.mediaCapture,
       this.maxRecordingSeconds
@@ -62,14 +60,18 @@ export default class Bugscribe {
 
       const thumbnail = await this.mediaCapture.createImageThumbnail(imgURL);
 
-      this._screenshotPreviews.push({
+      const newPreviewData = {
         type: "image",
-        url: imgURL,
+        url: imgURL, // Full URL
         thumbnail,
         timestamp: Date.now(),
-      });
+      };
 
-      this.previewManager.showImagePreview(imgURL, thumbnail); // Use PreviewManager
+      this._screenshotPreviews.push(newPreviewData);
+      const previewIndex = this._screenshotPreviews.length - 1; // Get the index
+
+      // Pass the index/ID instead of the full URL for preview
+      this.previewManager.showImagePreview(previewIndex, thumbnail); // MODIFIED: Pass index
       this.previewManager.showWrapper(); // Use PreviewManager
     } catch (err) {
       console.error(`Error capturing via ${method}:`, err);
@@ -105,23 +107,33 @@ export default class Bugscribe {
         result.url
       );
 
-      this._screenshotPreviews.push({
+      const newPreviewData = {
         type: "video",
-        url: result.url,
+        url: result.url, // Full URL
         thumbnail,
         blob: result.blob,
         duration: result.duration,
         size: result.size,
         timestamp: Date.now(),
-      });
+      };
 
-      this.previewManager.showVideoPreview(result.url, thumbnail); // Use PreviewManager
+      this._screenshotPreviews.push(newPreviewData);
+      const previewIndex = this._screenshotPreviews.length - 1; // Get the index
+
+      // Pass the index/ID instead of the full URL for preview
+      this.previewManager.showVideoPreview(previewIndex, thumbnail); // MODIFIED: Pass index
       this.previewManager.showWrapper(); // Use PreviewManager
     } catch (err) {
       console.error("Error during screen recording:", err?.message || err);
       this.recordingTimer.hide(); // Use RecordingTimer
       this.previewManager.showWrapper(); // Use PreviewManager
     }
+  };
+
+  /* ------------------------------ MEDIA DATA RETRIEVAL ------------------------------ */
+  // NEW method to be passed to PreviewManager
+  getFullMediaData = (index) => {
+    return this._screenshotPreviews[index];
   };
 
   /* ------------------------------ UI HELPERS (Removed/Delegated) ------------------------------ */
