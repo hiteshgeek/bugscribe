@@ -331,8 +331,19 @@ export default class ScreenshotCapture {
       let rafId = null;
       let backdrop = null;
 
-      // Define the required border color once
-      const BORDER_COLOR = "#d81d65";
+      // --- 1. GET CSS VARIABLE VALUE ---
+      // Retrieve the computed value of the CSS variable for use in the canvas
+      const rootStyle = getComputedStyle(document.body);
+      let borderColor = rootStyle.getPropertyValue("--bug-primary").trim();
+
+      // Fallback if the CSS variable is not defined or returns an empty string
+      if (!borderColor || borderColor === "") {
+        borderColor = "#d81d65"; // Use your desired fallback hex color
+      }
+
+      console.log(borderColor);
+      // Note: If the CSS variable is defined as 'var(--bug-primary, #d81d65)' in CSS,
+      // this line will return the computed value (e.g., "rgb(216, 29, 101)").
 
       // 1. Create and APPEND the Backdrop immediately
       backdrop = document.createElement("div");
@@ -372,8 +383,8 @@ export default class ScreenshotCapture {
 
         if (points.length < 1) return;
 
-        // Draw the path using the hardcoded hex value
-        ctx.strokeStyle = BORDER_COLOR;
+        // Draw the path using the computed color
+        ctx.strokeStyle = borderColor;
         ctx.lineWidth = 3;
         ctx.lineJoin = "round";
         ctx.lineCap = "round";
@@ -383,7 +394,7 @@ export default class ScreenshotCapture {
         // Draw a dot if only one point
         if (points.length === 1) {
           ctx.arc(points[0].x, points[0].y, 4, 0, 2 * Math.PI);
-          ctx.fillStyle = BORDER_COLOR;
+          ctx.fillStyle = borderColor;
           ctx.fill();
         } else {
           // Draw the continuous path
