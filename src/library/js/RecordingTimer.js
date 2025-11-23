@@ -457,6 +457,7 @@ export default class RecordingTimer {
    */
   updateSystemAudioVisual(isMuted) {
     const systemBtn = document.querySelector(".recording-system-audio-btn");
+    // Only update if the button is NOT disabled (i.e., the track exists)
     if (systemBtn && !systemBtn.hasAttribute("disabled")) {
       systemBtn.innerHTML = isMuted ? icons.speaker_disabled : icons.speaker;
       systemBtn.title = isMuted ? "Enable system audio" : "Mute system audio";

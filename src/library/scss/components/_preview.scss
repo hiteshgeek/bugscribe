@@ -5,7 +5,8 @@
   bottom: 25px;
   left: 25px;
   z-index: var(--z-timer);
-  background: var(--bug-primary);
+  // background: var(--bug-primary);
+  background: color-mix(in srgb, var(--bug-primary) 35%, transparent);
   padding: 5px;
   border-radius: var(--radius-md);
   max-height: 150px;
@@ -84,10 +85,7 @@
   position: absolute;
   top: 5px;
   right: 5px;
-  background: var(
-    --bug-primary,
-    #ff4d4f
-  ); /* Using --bug-primary as requested, fallback is red */
+  background: color-mix(in srgb, var(--bug-primary) 65%, #fff);
   color: white;
   border: none;
   border-radius: 50%;
@@ -99,7 +97,6 @@
   cursor: pointer;
   z-index: 10;
   box-shadow: var(--shadow-sm);
-  opacity: 0.85;
   @include transition(all);
   display: flex;
   align-items: center;
@@ -114,7 +111,7 @@
 
   &:hover {
     opacity: 1;
-    transform: scale(1.3);
+    background: color-mix(in srgb, var(--bug-primary) 85%, #fff);
   }
 }
 
@@ -123,7 +120,7 @@
   position: absolute;
   bottom: 5px;
   right: 5px;
-  background: var(--bug-secondary, #5aa7ff);
+  background: color-mix(in srgb, #5aa7ff 65%, #fff);
   color: white;
   border: none;
   border-radius: 50%;
@@ -135,7 +132,6 @@
   cursor: pointer;
   z-index: 10;
   box-shadow: var(--shadow-sm);
-  opacity: 0.85;
   @include transition(all);
   display: flex;
   align-items: center;
@@ -150,6 +146,6 @@
 
   &:hover {
     opacity: 1;
-    transform: scale(1.3);
+    background: color-mix(in srgb, #5aa7ff 95%, #fff);
   }
 }

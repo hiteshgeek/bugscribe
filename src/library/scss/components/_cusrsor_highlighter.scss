@@ -26,7 +26,7 @@ $cursor-size: 32px;
     opacity: 0.8;
   }
 
-  // Ripple effect on click
+  // Ripple effect container
   &::after {
     content: "";
     position: absolute;
@@ -38,13 +38,21 @@ $cursor-size: 32px;
     background: var(--bug-primary);
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, -50%) scale(0.1); // Start at half size
-    transition: opacity 0.4s, transform 0.4s;
+    transform: translate(-50%, -50%) scale(0.1);
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
     z-index: 1;
   }
 
-  &.ripple::after {
-    opacity: 0.35;
-    transform: translate(-50%, -50%) scale(2); // End at full size
+  // NEW: State triggered by JavaScript on mousedown
+  &.clicking {
+    // 1. Remove background and shadow from the main circle
+    background: transparent;
+    box-shadow: none;
+
+    // 2. Animate the ::after pseudo-element (the ripple)
+    &::after {
+      opacity: 0.35;
+      transform: translate(-50%, -50%) scale(1.5);
+    }
   }
 }

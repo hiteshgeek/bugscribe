@@ -72,25 +72,28 @@ export default class CursorHighlighter {
     }
   };
 
+  /**
+   * UPDATED: Triggers the 'clicking' visual effect (transparent background + ripple).
+   */
   _onMouseDown = () => {
     if (this.el) {
-      // Remove any existing ripple animation
-      this.el.classList.remove("ripple");
-      // Force reflow to restart animation
-      void this.el.offsetWidth;
-      // Add ripple class for animation
-      this.el.classList.add("ripple");
-      // Clear previous timer if any
+      // 1. Clear any previous timer
       if (this.rippleTimer) clearTimeout(this.rippleTimer);
-      // Remove ripple class after animation duration
+
+      // 2. Add the 'clicking' class to start the ripple animation and remove the background
+      // Note: We don't need to force reflow or remove the class first here, as
+      // the ripple will reset when the class is removed by the timer.
+      this.el.classList.add("clicking");
+
+      // 3. Remove the 'clicking' class after the animation duration (400ms)
       this.rippleTimer = setTimeout(() => {
-        if (this.el) this.el.classList.remove("ripple");
+        if (this.el) this.el.classList.remove("clicking");
       }, 400); // Match SCSS transition duration
     }
   };
 
   _onMouseUp = () => {
-    // No color change, ripple will be removed by timer
+    // No action needed here, the `setTimeout` in `_onMouseDown` handles restoring the state.
   };
 
   _onScroll = () => {
