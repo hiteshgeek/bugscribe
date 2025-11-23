@@ -3,8 +3,8 @@ import { icons } from "./icons.js";
 export default class PreviewManager {
   constructor(onPreviewClickCallback, onDeleteCallback) {
     this.preview_wrapper = null;
-    this.onPreviewClick = onPreviewClickCallback;
-    this.onDelete = onDeleteCallback;
+    this.onPreviewClick = onPreviewClickCallback; // Store the callback from Bugscribe
+    this.onDelete = onDeleteCallback; // Store the delete callback
   }
 
   // --- UI Wrapper Management ---
@@ -44,7 +44,8 @@ export default class PreviewManager {
         this.showVideoPreview(index, item.thumbnail);
       }
     });
-    if (currentPreviews.length === 0) {
+    // Optional: Remove wrapper if empty
+    if (currentPreviews.length === 0 && this.preview_wrapper) {
       this.preview_wrapper.remove();
       this.preview_wrapper = null;
     }
@@ -52,7 +53,6 @@ export default class PreviewManager {
 
   // --- Image Preview ---
 
-  // MODIFIED: Now accepts index instead of full URL
   showImagePreview = (index, thumbnailUrl) => {
     this.createWrapper();
 
@@ -64,18 +64,22 @@ export default class PreviewManager {
     thumbnailImg.src = thumbnailUrl;
     thumbnailImg.className = "screenshot-preview image-thumbnail";
 
-    // NEW: Delete button
     const deleteButton = this._createDeleteButton(index);
+    const downloadButton = this._createDownloadButton(index, "image");
 
-    // MODIFIED: Append both thumbnail and delete button
-    wrapper.append(thumbnailImg, deleteButton);
+    wrapper.append(thumbnailImg, deleteButton, downloadButton);
 
-    // MODIFIED: Click handler for viewing full image (only if not clicking delete)
+    // Click handler for viewing full image
     wrapper.addEventListener("click", (e) => {
-      if (e.target !== deleteButton && !deleteButton.contains(e.target)) {
-        const mediaData = this.onPreviewClick(index);
-        this.viewFullImage(mediaData.url);
+      // Prevent modal opening if delete or download is clicked
+      if (
+        e.target.closest(".preview-delete-btn") ||
+        e.target.closest(".preview-download-btn")
+      ) {
+        return;
       }
+      const mediaData = this.onPreviewClick(index);
+      if (mediaData) this.viewFullImage(mediaData.url);
     });
 
     this.preview_wrapper.appendChild(wrapper);
@@ -124,18 +128,22 @@ export default class PreviewManager {
     playIcon.className = "video-play-icon";
     playIcon.innerHTML = icons.play;
 
-    // NEW: Delete button
     const deleteButton = this._createDeleteButton(index);
+    const downloadButton = this._createDownloadButton(index, "video");
 
-    // MODIFIED: Append thumbnail, play icon, and delete button
-    wrapper.append(thumbnailImg, playIcon, deleteButton);
+    wrapper.append(thumbnailImg, playIcon, deleteButton, downloadButton);
 
-    // MODIFIED: Click handler for playing full video (only if not clicking delete)
+    // Click handler for viewing full video
     wrapper.addEventListener("click", (e) => {
-      if (e.target !== deleteButton && !deleteButton.contains(e.target)) {
-        const mediaData = this.onPreviewClick(index);
-        this.playFullVideo(mediaData.url);
+      // Prevent modal opening if delete or download is clicked
+      if (
+        e.target.closest(".preview-delete-btn") ||
+        e.target.closest(".preview-download-btn")
+      ) {
+        return;
       }
+      const mediaData = this.onPreviewClick(index);
+      if (mediaData) this.playFullVideo(mediaData.url);
     });
 
     this.preview_wrapper.appendChild(wrapper);
@@ -169,15 +177,51 @@ export default class PreviewManager {
     document.body.appendChild(modal);
   }
 
+  // --- Helper Functions ---
+
   _createDeleteButton = (index) => {
     const deleteButton = document.createElement("button");
     deleteButton.className = "preview-delete-btn";
-    deleteButton.innerHTML = "×"; // Using a simple '×' for now
+    deleteButton.innerHTML = icons.cancel;
 
     deleteButton.addEventListener("click", (e) => {
-      e.stopPropagation(); // Prevent the main preview click handler
-      this.onDelete(index); // Call the delete callback from Bugscribe
+      e.stopPropagation();
+      this.onDelete(index);
     });
     return deleteButton;
+  };
+
+  _createDownloadButton = (index, type) => {
+    const downloadButton = document.createElement("button");
+    downloadButton.className = "preview-download-btn";
+    downloadButton.innerHTML = icons.download;
+
+    downloadButton.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const mediaData = this.onPreviewClick(index);
+      // Fallback check in case the index is momentarily invalid during redraw
+      if (mediaData && mediaData.url) {
+        this._triggerDownload(mediaData.url, type);
+      } else {
+        console.warn("Media data not found for download.");
+      }
+    });
+    return downloadButton;
+  };
+
+  _triggerDownload = (dataUrl, type) => {
+    if (!dataUrl) {
+      console.error("No data URL available for download.");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = dataUrl;
+
+    const extension = type === "image" ? "png" : "webm";
+    link.download = `bugscribe_${type}_${Date.now()}.${extension}`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 }
