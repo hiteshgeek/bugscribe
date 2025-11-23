@@ -21,15 +21,6 @@ include_once __DIR__ . '/includes/functions.php';
 <body>
       <img src="src/assets/images/image2.jpg" alt="" class='main_image'>
 
-      <!-- <div class='bug-wrapper'>
-            <button class='bug-btn bug-main' type='button'>1</button>
-            <div class='bug-actions'>
-                  <button class='bug-btn bug-screenshot' type='button'>2</button>
-                  <button class='bug-btn bug-record' type='button'>3</button>
-                  <button class='bug-btn bug-settings' type='button'>4</button>
-            </div>
-      </div> -->
-
       <script type="module" src="<?= asset('bugscribe.js') ?>"></script>
       <script nomodule src="<?= asset('bugscribe.js', 'nomodule') ?>"></script>
 
