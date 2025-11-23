@@ -1,37 +1,301 @@
-/* Dimmed overlay with a clear "hole" for the selection */
+/* Selection area capture */
 .mc-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5); /* Darker dim for better contrast */
+  background: rgba(0, 0, 0, 0.5);
   z-index: 999998;
   pointer-events: auto;
   cursor: crosshair;
   transition: opacity 0.15s ease-in-out;
 }
 
-/* Selection box - clean border only, completely transparent inside */
 .mc-selection-box {
   position: fixed;
   z-index: 999999;
   pointer-events: none;
   display: none;
   box-sizing: border-box;
-
-  /* Clean border to show the selection area */
   border: 2px solid var(--bug-bg-color);
-
-  /* Completely transparent - no background, no filters */
   background: transparent;
   backdrop-filter: none;
   filter: none;
   box-shadow: none;
-
   transition: none;
 }
 
-/* During selection mode */
 .mc-selecting,
 .mc-selecting * {
   cursor: crosshair !important;
   user-select: none !important;
+}
+
+/* Recording timer */
+.recording-timer-wrapper {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  padding: 12px 20px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 10000;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+.recording-dot {
+  width: 12px;
+  height: 12px;
+  background: #ff4444;
+  border-radius: 50%;
+  animation: recording-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+.recording-timer-display {
+  color: #fff;
+  font-family: "SF Mono", "Consolas", "Monaco", monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
+  min-width: 90px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+}
+
+.recording-current-time {
+  color: #fff;
+  transition: color 0.3s ease;
+}
+
+.recording-separator {
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 2px;
+}
+
+.recording-max-time {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+}
+
+@keyframes timer-warning {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.recording-stop-btn {
+  background: #ff4444;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s ease, transform 0.1s ease;
+
+  &:hover {
+    background: #ff2222;
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+/* Video preview */
+.video-preview-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+
+  &:hover .video-play-icon {
+    transform: translate(-50%, -50%) scale(1.1);
+    background: rgba(255, 255, 255, 0.95);
+  }
+}
+
+.video-thumbnail {
+  width: 100%;
+  display: block;
+}
+
+.video-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+  svg {
+    margin-left: 4px;
+    fill: #333;
+  }
+}
+
+/* Video modal */
+.video-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  animation: fadeIn 0.2s ease;
+}
+
+.video-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+
+.video-modal-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  line-height: 1;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.video-modal-player {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* Image preview */
+.image-preview-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 10px;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.image-thumbnail {
+  width: 100%;
+  display: block;
+}
+
+/* Image modal */
+.image-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  animation: fadeIn 0.2s ease;
+  padding: 20px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 95vw;
+  max-height: 95vh;
+}
+
+.image-modal-close {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 2rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+  line-height: 1;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+.image-modal-viewer {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }

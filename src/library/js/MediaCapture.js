@@ -290,4 +290,230 @@ export default class MediaCapture {
       document.addEventListener("keydown", onKeyDown);
     });
   }
+
+  async startRecording() {
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let stream = null;
+    let startTime = Date.now();
+
+    try {
+      // Request screen capture with audio options
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          cursor: "always",
+          displaySurface: "browser",
+        },
+        audio: true,
+      });
+
+      // Check if user granted permission
+      if (!stream) {
+        throw new Error("Screen capture was denied");
+      }
+
+      // Create MediaRecorder instance
+      let options = { mimeType: "video/webm;codecs=vp9" };
+
+      // Fallback to vp8 if vp9 is not supported
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options.mimeType = "video/webm;codecs=vp8";
+      }
+
+      // Fallback to default if neither is supported
+      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+        options = {};
+      }
+
+      mediaRecorder = new MediaRecorder(stream, options);
+
+      // Create promise that resolves when recording stops
+      const recordingPromise = new Promise((resolve, reject) => {
+        // Handle data available event
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+
+        // Handle stop event
+        mediaRecorder.onstop = () => {
+          // Stop all tracks
+          stream.getTracks().forEach((track) => track.stop());
+
+          // Create video blob
+          const blob = new Blob(recordedChunks, { type: "video/webm" });
+          const videoURL = URL.createObjectURL(blob);
+
+          resolve({
+            url: videoURL,
+            blob: blob,
+            duration: Date.now() - startTime,
+            size: blob.size,
+            type: "video",
+          });
+        };
+
+        // Handle errors during recording
+        mediaRecorder.onerror = (event) => {
+          console.error("MediaRecorder error:", event.error);
+          stream.getTracks().forEach((track) => track.stop());
+          reject(new Error(`Recording failed: ${event.error.name}`));
+        };
+      });
+
+      // Track when user stops sharing (clicks "Stop sharing" button in browser)
+      stream.getVideoTracks()[0].addEventListener("ended", () => {
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+        }
+      });
+
+      // Start recording
+      mediaRecorder.start(100); // Collect data every 100ms
+
+      // Store recorder instance
+      this._activeRecorder = {
+        recorder: mediaRecorder,
+        stream: stream,
+        promise: recordingPromise,
+      };
+
+      if (this.onRecordingStarted) {
+        this.onRecordingStarted();
+      }
+
+      return recordingPromise;
+    } catch (error) {
+      // Clean up if stream was created
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+
+      // Handle user rejection or permission denial
+      if (error.name === "NotAllowedError") {
+        throw new Error("Screen recording permission was denied");
+      } else if (error.name === "NotFoundError") {
+        throw new Error("No screen capture source was selected");
+      } else if (error.name === "NotSupportedError") {
+        throw new Error("Screen recording is not supported in this browser");
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  // Method to manually stop recording
+  stopRecording() {
+    if (this._activeRecorder) {
+      const { recorder } = this._activeRecorder;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.stop();
+      }
+    }
+  }
+
+  // Check if recording is in progress
+  isRecording() {
+    return this._activeRecorder !== null;
+  }
+
+  // Create thumbnail from image URL
+  async createImageThumbnail(imageUrl, maxWidth = 300, maxHeight = 200) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate thumbnail dimensions maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = width * ratio;
+          height = height * ratio;
+        }
+
+        // Create canvas for thumbnail
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.8);
+        resolve(thumbnailUrl);
+      };
+
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = imageUrl;
+    });
+  }
+
+  // Create thumbnail from video URL
+  async createVideoThumbnail(
+    videoUrl,
+    maxWidth = 300,
+    maxHeight = 200,
+    timeInSeconds = 1
+  ) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement("video");
+      video.style.display = "none";
+      document.body.appendChild(video);
+
+      video.onloadedmetadata = () => {
+        // Set time to capture frame (default 1 second or video start)
+        video.currentTime = Math.min(timeInSeconds, video.duration);
+      };
+
+      video.onseeked = () => {
+        try {
+          // Calculate thumbnail dimensions maintaining aspect ratio
+          let width = video.videoWidth;
+          let height = video.videoHeight;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = width * ratio;
+            height = height * ratio;
+          }
+
+          // Create canvas for thumbnail
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0, width, height);
+
+          const thumbnailUrl = canvas.toDataURL("image/jpeg", 0.8);
+
+          // Cleanup
+          if (video.parentNode) {
+            document.body.removeChild(video);
+          }
+          video.src = "";
+
+          resolve(thumbnailUrl);
+        } catch (error) {
+          if (video.parentNode) {
+            document.body.removeChild(video);
+          }
+          reject(error);
+        }
+      };
+
+      video.onerror = () => {
+        if (video.parentNode) {
+          document.body.removeChild(video);
+        }
+        reject(new Error("Failed to load video"));
+      };
+
+      video.src = videoUrl;
+      video.load();
+    });
+  }
 }

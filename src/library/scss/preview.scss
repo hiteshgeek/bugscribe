@@ -15,7 +15,8 @@
   max-width: 60vw;
   overflow: auto;
 
-  img.screenshot-preview {
+  img.screenshot-preview,
+  video.screenshot-preview {
     width: 200px;
     aspect-ratio: 1.75;
     border-radius: 6px;
