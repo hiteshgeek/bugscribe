@@ -476,6 +476,17 @@ export default class ScreenshotCapture {
       modalBackdrop.appendChild(selectorContainer);
       document.body.appendChild(modalBackdrop);
 
+      // Prevent clicks inside the container from bubbling to backdrop
+      selectorContainer.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+
+      // Close dialog when clicking outside (on backdrop)
+      modalBackdrop.addEventListener("click", (e) => {
+        cleanup();
+        resolve(null);
+      });
+
       const rectButton = document.getElementById("mc-shape-rect");
       const squareButton = document.getElementById("mc-shape-square");
       const ellipseButton = document.getElementById("mc-shape-ellipse");
