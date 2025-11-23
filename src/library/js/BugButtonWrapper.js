@@ -28,7 +28,22 @@ export default class BugButtonWrapper {
 
     //toggle bug wrapper
     this.mainBtn.addEventListener("click", () => {
+      const isOpening = !wrapper.classList.contains("open");
       wrapper.classList.toggle("open");
+
+      if (isOpening) {
+        // Add 'opened' class after animation finishes
+        wrapper.addEventListener(
+          "transitionend",
+          () => {
+            wrapper.classList.add("opened");
+          },
+          { once: true }
+        );
+      } else {
+        // Remove 'opened' class immediately when closing
+        wrapper.classList.remove("opened");
+      }
     });
 
     //open vertical menu on mouse enter
@@ -52,6 +67,7 @@ export default class BugButtonWrapper {
     document.addEventListener("click", (e) => {
       if (!wrapper.contains(e.target)) {
         wrapper.classList.remove("open");
+        wrapper.classList.remove("opened");
         const verticalIcons =
           this.screenshotButton.querySelector(".vertical-icons");
         verticalIcons.classList.remove("open");

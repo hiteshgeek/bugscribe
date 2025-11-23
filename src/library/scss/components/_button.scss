@@ -13,6 +13,7 @@
   z-index: var(--z-base);
   gap: 0;
   @include transition(gap);
+  overflow: hidden;
 
   &.open {
     gap: var(--bug-wrapper-gap);
@@ -25,6 +26,11 @@
         transform: rotate(-90deg);
       }
     }
+  }
+
+  &.opened {
+    gap: var(--bug-wrapper-gap);
+    overflow: visible;
   }
 
   &.dragging {

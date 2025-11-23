@@ -57,7 +57,7 @@ export default class Bugscribe {
         this.captureScreenshot("captureFreeformArea"),
       recordBtn: this.startRecording,
       // screenshotButton: () =>
-      // 	this.captureScreenshot(this.defaultScreenshotMethod),
+      //  this.captureScreenshot(this.defaultScreenshotMethod),
     };
 
     Object.entries(eventMap).forEach(([key, handler]) => {
@@ -71,13 +71,11 @@ export default class Bugscribe {
       await this.previewManager.hideWrapper(); // 1. Hide the wrapper (Always happens)
       const imgURL = await this.mediaCapture[method]?.();
 
-      // 🛑 FIX START: Handle cancellation/failure
       if (!imgURL) {
         console.log(`Screenshot capture via ${method} was cancelled.`);
         this.previewManager.showWrapper(); // 2. Show the wrapper on cancel/failure
         return;
       }
-      // 🛑 FIX END
 
       const thumbnail = await this.mediaCapture.createImageThumbnail(imgURL);
 
