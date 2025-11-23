@@ -190,12 +190,28 @@ export default class ScreenshotCapture {
 
       // --- Core Logic: Update Selection Visuals ---
       const updateSelection = () => {
-        const rect = {
+        let rect = {
           left: Math.min(startX, endX),
           top: Math.min(startY, endY),
           width: Math.abs(endX - startX),
           height: Math.abs(endY - startY),
         };
+
+        // For square and circle, maintain 1:1 aspect ratio
+        if (shapeType === "square" || shapeType === "circle") {
+          const size = Math.max(rect.width, rect.height);
+
+          // Adjust position based on drag direction
+          if (endX < startX) {
+            rect.left = startX - size;
+          }
+          if (endY < startY) {
+            rect.top = startY - size;
+          }
+
+          rect.width = size;
+          rect.height = size;
+        }
 
         Object.assign(selectionBox.style, {
           left: `${rect.left}px`,
@@ -206,7 +222,7 @@ export default class ScreenshotCapture {
 
         // Apply different styling based on shape type
         let clipPathValue = "";
-        if (shapeType === "rectangle") {
+        if (shapeType === "rectangle" || shapeType === "square") {
           selectionBox.style.borderRadius = "0px";
           clipPathValue = `polygon(
           evenodd,
@@ -217,7 +233,7 @@ export default class ScreenshotCapture {
           ${rect.left + rect.width}px ${rect.top}px,
           ${rect.left}px ${rect.top}px
         )`;
-        } else if (shapeType === "ellipse") {
+        } else if (shapeType === "ellipse" || shapeType === "circle") {
           selectionBox.style.borderRadius = "50%";
 
           const centerX = rect.left + rect.width / 2;
@@ -308,10 +324,10 @@ export default class ScreenshotCapture {
 
           removeSanitizerStyle();
 
-          if (shape === "rectangle") {
+          if (shape === "rectangle" || shape === "square") {
             return screenshotCanvas.toDataURL("image/png");
-          } else if (shape === "ellipse") {
-            // 2. Apply Elliptical clipping
+          } else if (shape === "ellipse" || shape === "circle") {
+            // 2. Apply circular/elliptical clipping
             const finalCanvas = document.createElement("canvas");
             finalCanvas.width = finalRect.width * scale;
             finalCanvas.height = finalRect.height * scale;
@@ -349,12 +365,28 @@ export default class ScreenshotCapture {
         if (!isSelecting) return;
         isSelecting = false;
 
-        const finalRect = {
+        let finalRect = {
           left: Math.min(startX, endX),
           top: Math.min(startY, endY),
           width: Math.abs(endX - startX),
           height: Math.abs(endY - startY),
         };
+
+        // For square and circle, maintain 1:1 aspect ratio
+        if (shapeType === "square" || shapeType === "circle") {
+          const size = Math.max(finalRect.width, finalRect.height);
+
+          // Adjust position based on drag direction
+          if (endX < startX) {
+            finalRect.left = startX - size;
+          }
+          if (endY < startY) {
+            finalRect.top = startY - size;
+          }
+
+          finalRect.width = size;
+          finalRect.height = size;
+        }
 
         if (finalRect.width < 10 || finalRect.height < 10) {
           cleanup();
@@ -385,7 +417,7 @@ export default class ScreenshotCapture {
   /**
    * @private
    * Shows the shape selection dialog before drawing starts.
-   * @returns {Promise<string|null>} Resolves with the shape ('rectangle' or 'ellipse')
+   * @returns {Promise<string|null>} Resolves with the shape ('rectangle', 'square', 'ellipse', or 'circle')
    * or null if cancelled.
    */
   _showShapeSelectionPreDraw() {
@@ -412,26 +444,64 @@ export default class ScreenshotCapture {
         borderRadius: "8px",
         textAlign: "center",
         boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+        maxWidth: "600px",
+        position: "relative",
       });
 
       selectorContainer.innerHTML = `
-      <h3 style="margin-top: 0; font-size: 1.3em;">Choose Capture Shape</h3>
-      <div style="display: flex; gap: 30px; justify-content: center; margin-bottom: 20px;">
-        <button id="mc-shape-rect" data-shape="rectangle" style="padding: 15px 30px; cursor: pointer; border: 1px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; min-width: 120px;">
+      <button id="mc-cancel-btn" style="position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: background 0.2s;" title="Cancel">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+      <h3 style="margin-top: 0; font-size: 1.3em; margin-bottom: 20px;">Choose Capture Shape</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <button id="mc-shape-rect" data-shape="rectangle" style="padding: 15px 20px; cursor: pointer; border: 2px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; transition: all 0.2s;">
           Rectangle
         </button>
-        <button id="mc-shape-ellipse" data-shape="ellipse" style="padding: 15px 30px; cursor: pointer; border: 1px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; min-width: 120px;">
+        <button id="mc-shape-square" data-shape="square" style="padding: 15px 20px; cursor: pointer; border: 2px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; transition: all 0.2s;">
+          Square
+        </button>
+        <button id="mc-shape-ellipse" data-shape="ellipse" style="padding: 15px 20px; cursor: pointer; border: 2px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; transition: all 0.2s;">
           Ellipse/Oval
         </button>
+        <button id="mc-shape-circle" data-shape="circle" style="padding: 15px 20px; cursor: pointer; border: 2px solid #ccc; background-color: white; border-radius: 4px; font-weight: bold; transition: all 0.2s;">
+          Circle
+        </button>
       </div>
-      <p style="color: gray; font-size: 0.9em; margin: 0;">Click to select shape and begin drawing.</p>
+      <p style="color: gray; font-size: 0.9em; margin: 0;">Square and Circle maintain 1:1 aspect ratio</p>
     `;
 
       modalBackdrop.appendChild(selectorContainer);
       document.body.appendChild(modalBackdrop);
 
       const rectButton = document.getElementById("mc-shape-rect");
+      const squareButton = document.getElementById("mc-shape-square");
       const ellipseButton = document.getElementById("mc-shape-ellipse");
+      const circleButton = document.getElementById("mc-shape-circle");
+      const cancelButton = document.getElementById("mc-cancel-btn");
+
+      // Add hover effect to cancel button
+      cancelButton.addEventListener("mouseenter", () => {
+        cancelButton.style.backgroundColor = "#f0f0f0";
+      });
+      cancelButton.addEventListener("mouseleave", () => {
+        cancelButton.style.backgroundColor = "transparent";
+      });
+
+      // Add hover effects to shape buttons
+      const buttons = [rectButton, squareButton, ellipseButton, circleButton];
+      buttons.forEach((btn) => {
+        btn.addEventListener("mouseenter", () => {
+          btn.style.borderColor = "var(--bug-primary, #d81d65)";
+          btn.style.backgroundColor = "#f8f9fa";
+        });
+        btn.addEventListener("mouseleave", () => {
+          btn.style.borderColor = "#ccc";
+          btn.style.backgroundColor = "white";
+        });
+      });
 
       const cleanup = () => {
         modalBackdrop.remove();
@@ -450,9 +520,24 @@ export default class ScreenshotCapture {
         resolve("rectangle");
       });
 
+      squareButton.addEventListener("click", () => {
+        cleanup();
+        resolve("square");
+      });
+
       ellipseButton.addEventListener("click", () => {
         cleanup();
         resolve("ellipse");
+      });
+
+      circleButton.addEventListener("click", () => {
+        cleanup();
+        resolve("circle");
+      });
+
+      cancelButton.addEventListener("click", () => {
+        cleanup();
+        resolve(null);
       });
 
       document.addEventListener("keydown", onKeyDown);
