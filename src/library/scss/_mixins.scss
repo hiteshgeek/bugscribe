@@ -47,10 +47,10 @@
 @mixin hover-lift {
   @include transition(transform, box-shadow);
 
-  &:hover {
-    transform: scale(1.02);
-    box-shadow: var(--shadow-md);
-  }
+  // &:hover {
+  //   transform: scale(1.02);
+  //   box-shadow: var(--shadow-md);
+  // }
 }
 
 // Modal overlay

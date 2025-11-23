@@ -23,7 +23,11 @@ export default class Bugscribe {
     this.mediaCapture = new MediaCapture();
 
     // Initialize new helper classes
-    this.previewManager = new PreviewManager(this.getFullMediaData);
+    this.previewManager = new PreviewManager(
+      this.getFullMediaData,
+      this.deleteMediaData
+    );
+
     this.recordingTimer = new RecordingTimer(
       this.mediaCapture,
       this.maxRecordingSeconds
@@ -151,6 +155,19 @@ export default class Bugscribe {
   /* ------------------------------ MEDIA DATA RETRIEVAL ------------------------------ */
   getFullMediaData = (index) => {
     return this._screenshotPreviews[index];
+  };
+
+  /* ------------------------------ MEDIA DATA DELETION ------------------------------ */
+  deleteMediaData = (index) => {
+    if (index >= 0 && index < this._screenshotPreviews.length) {
+      const deletedItem = this._screenshotPreviews.splice(index, 1);
+      console.log(`Deleted media item at index ${index}:`, deletedItem[0].type);
+
+      // Re-render the entire preview wrapper to update indices
+      this.previewManager.redrawPreviews(this._screenshotPreviews);
+      return true;
+    }
+    return false;
   };
 
   /* ------------------------------ UI HELPERS (Removed/Delegated) ------------------------------ */

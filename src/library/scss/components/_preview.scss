@@ -13,6 +13,10 @@
   display: flex;
   gap: 5px;
   overflow: auto;
+
+  &:empty {
+    display: none;
+  }
 }
 
 // Image preview
@@ -72,5 +76,33 @@
 
   svg {
     fill: #333;
+  }
+}
+
+.preview-delete-btn {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: var(
+    --bug-negative,
+    #ff4d4f
+  ); /* Use a negative/danger color for deletion */
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  z-index: 10; /* Ensure it's above the thumbnail/video */
+  box-shadow: var(--shadow-sm);
+  opacity: 0.85;
+  @include transition(all);
+
+  &:hover {
+    opacity: 1;
+    transform: scale(1.1);
   }
 }

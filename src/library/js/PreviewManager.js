@@ -1,10 +1,10 @@
 import { icons } from "./icons.js";
 
 export default class PreviewManager {
-  // MODIFIED: Accepts onPreviewClickCallback
-  constructor(onPreviewClickCallback) {
+  constructor(onPreviewClickCallback, onDeleteCallback) {
     this.preview_wrapper = null;
-    this.onPreviewClick = onPreviewClickCallback; // Store the callback from Bugscribe
+    this.onPreviewClick = onPreviewClickCallback;
+    this.onDelete = onDeleteCallback;
   }
 
   // --- UI Wrapper Management ---
@@ -32,6 +32,24 @@ export default class PreviewManager {
     this.preview_wrapper = wrapper;
   };
 
+  redrawPreviews = (currentPreviews) => {
+    if (this.preview_wrapper) {
+      this.preview_wrapper.innerHTML = ""; // Clear all existing previews
+    }
+    // Iterate over the remaining media items and re-display them
+    currentPreviews.forEach((item, index) => {
+      if (item.type === "image") {
+        this.showImagePreview(index, item.thumbnail);
+      } else if (item.type === "video") {
+        this.showVideoPreview(index, item.thumbnail);
+      }
+    });
+    if (currentPreviews.length === 0) {
+      this.preview_wrapper.remove();
+      this.preview_wrapper = null;
+    }
+  };
+
   // --- Image Preview ---
 
   // MODIFIED: Now accepts index instead of full URL
@@ -40,18 +58,24 @@ export default class PreviewManager {
 
     const wrapper = document.createElement("div");
     wrapper.className = "image-preview-wrapper";
-    // MODIFIED: Store index instead of data-image-url
     wrapper.setAttribute("data-index", index);
 
     const thumbnailImg = document.createElement("img");
     thumbnailImg.src = thumbnailUrl;
     thumbnailImg.className = "screenshot-preview image-thumbnail";
-    wrapper.appendChild(thumbnailImg);
 
-    // MODIFIED: The click handler retrieves the data using the index
-    wrapper.addEventListener("click", () => {
-      const mediaData = this.onPreviewClick(index);
-      this.viewFullImage(mediaData.url);
+    // NEW: Delete button
+    const deleteButton = this._createDeleteButton(index);
+
+    // MODIFIED: Append both thumbnail and delete button
+    wrapper.append(thumbnailImg, deleteButton);
+
+    // MODIFIED: Click handler for viewing full image (only if not clicking delete)
+    wrapper.addEventListener("click", (e) => {
+      if (e.target !== deleteButton && !deleteButton.contains(e.target)) {
+        const mediaData = this.onPreviewClick(index);
+        this.viewFullImage(mediaData.url);
+      }
     });
 
     this.preview_wrapper.appendChild(wrapper);
@@ -85,13 +109,11 @@ export default class PreviewManager {
 
   // --- Video Preview ---
 
-  // MODIFIED: Now accepts index instead of full URL
   showVideoPreview = (index, thumbnailUrl) => {
     this.createWrapper();
 
     const wrapper = document.createElement("div");
     wrapper.className = "video-preview-wrapper";
-    // MODIFIED: Store index instead of data-video-url
     wrapper.setAttribute("data-index", index);
 
     const thumbnailImg = document.createElement("img");
@@ -102,12 +124,18 @@ export default class PreviewManager {
     playIcon.className = "video-play-icon";
     playIcon.innerHTML = icons.play;
 
-    wrapper.append(thumbnailImg, playIcon);
+    // NEW: Delete button
+    const deleteButton = this._createDeleteButton(index);
 
-    // MODIFIED: The click handler retrieves the data using the index
-    wrapper.addEventListener("click", () => {
-      const mediaData = this.onPreviewClick(index);
-      this.playFullVideo(mediaData.url);
+    // MODIFIED: Append thumbnail, play icon, and delete button
+    wrapper.append(thumbnailImg, playIcon, deleteButton);
+
+    // MODIFIED: Click handler for playing full video (only if not clicking delete)
+    wrapper.addEventListener("click", (e) => {
+      if (e.target !== deleteButton && !deleteButton.contains(e.target)) {
+        const mediaData = this.onPreviewClick(index);
+        this.playFullVideo(mediaData.url);
+      }
     });
 
     this.preview_wrapper.appendChild(wrapper);
@@ -140,4 +168,16 @@ export default class PreviewManager {
 
     document.body.appendChild(modal);
   }
+
+  _createDeleteButton = (index) => {
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "preview-delete-btn";
+    deleteButton.innerHTML = "×"; // Using a simple '×' for now
+
+    deleteButton.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent the main preview click handler
+      this.onDelete(index); // Call the delete callback from Bugscribe
+    });
+    return deleteButton;
+  };
 }
