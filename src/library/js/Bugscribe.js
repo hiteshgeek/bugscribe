@@ -11,9 +11,7 @@ export default class Bugscribe {
   constructor(options = {}) {
     this._options = options;
     this.defaultScreenshotMethod =
-      options.defaultScreenshotMethod || "captureFullScreen";
-
-    //screenshot method options: captureFullScreen, captureVisibleScreen, captureSelectedArea, captureAny, captureFreeformArea
+      options.defaultScreenshotMethod || "captureFullScreen"; //screenshot method options: captureFullScreen, captureVisibleScreen, captureSelectedArea, captureAny, captureFreeformArea
 
     this.maxRecordingSeconds = options.maxRecordingSeconds || 120;
     this.captureMicrophone = true;
@@ -21,9 +19,8 @@ export default class Bugscribe {
 
     this._screenshotPreviews = [];
     this.bugButtonWrapper = new BugButtonWrapper(options.button || {});
-    this.mediaCapture = new MediaCapture();
+    this.mediaCapture = new MediaCapture(); // Initialize new helper classes
 
-    // Initialize new helper classes
     this.previewManager = new PreviewManager(
       this.getFullMediaData,
       this.deleteMediaData
@@ -32,9 +29,8 @@ export default class Bugscribe {
     this.recordingTimer = new RecordingTimer(
       this.mediaCapture,
       this.maxRecordingSeconds
-    );
+    ); // Called from MediaCapture.startRecording once recorder is ready
 
-    // Called from MediaCapture.startRecording once recorder is ready
     this.mediaCapture.onRecordingStarted = (micMutedOnStart) => {
       this.recordingTimer.show(micMutedOnStart);
       console.log(
@@ -42,11 +38,29 @@ export default class Bugscribe {
       );
     };
 
+    // 📢 NEW: Subscribe to MediaCapture's state change events
+    this.mediaCapture.onPause = () => {
+      this.recordingTimer.updateToPaused();
+      console.log("Video recording paused via MediaCapture event.");
+    };
+
+    this.mediaCapture.onResume = () => {
+      this.recordingTimer.updateToResumed();
+      console.log("Video recording resumed via MediaCapture event.");
+    };
+
+    this.mediaCapture.onMicToggled = (isNowMuted) => {
+      this.recordingTimer.updateMicVisual(isNowMuted);
+      console.log(
+        `Microphone toggled via MediaCapture event. Muted: ${isNowMuted}`
+      );
+    };
+    // ------------------------------------------
+
     this.initMediaEvents();
     this.setHotKeys();
-  }
+  } /* ------------------------------- EVENT BINDING ------------------------------- */
 
-  /* ------------------------------- EVENT BINDING ------------------------------- */
   initMediaEvents() {
     const eventMap = {
       // Handlers now include stopPropagation() to prevent event bubbling
@@ -70,9 +84,8 @@ export default class Bugscribe {
         e.stopPropagation();
         this.captureScreenshot("captureFreeformArea");
       },
-      recordBtn: () => this.startRecording(),
+      recordBtn: () => this.startRecording(), // ✅ Main screenshot button enabled
 
-      // ✅ Main screenshot button enabled
       screenshotButton: () =>
         this.captureScreenshot(this.defaultScreenshotMethod),
     };
@@ -80,9 +93,8 @@ export default class Bugscribe {
     Object.entries(eventMap).forEach(([key, handler]) => {
       this.bugButtonWrapper[key]?.addEventListener("click", handler);
     });
-  }
+  } /* ------------------------------ SCREENSHOT HANDLER ------------------------------ */
 
-  /* ------------------------------ SCREENSHOT HANDLER ------------------------------ */
   captureScreenshot = async (method) => {
     try {
       await this.previewManager.hideWrapper(); // 1. Hide the wrapper (Always happens)
@@ -104,18 +116,16 @@ export default class Bugscribe {
       };
 
       this._screenshotPreviews.push(newPreviewData);
-      const previewIndex = this._screenshotPreviews.length - 1; // Get the index
+      const previewIndex = this._screenshotPreviews.length - 1; // Get the index // Pass the index/ID instead of the full URL for preview
 
-      // Pass the index/ID instead of the full URL for preview
       this.previewManager.showImagePreview(previewIndex, thumbnail);
       this.previewManager.showWrapper(); // 3. Show the wrapper on success
     } catch (err) {
       console.error(`Error capturing via ${method}:`, err);
       this.previewManager.showWrapper(); // 4. Show the wrapper on error
     }
-  };
+  }; /* ------------------------------ VIDEO RECORDING ------------------------------ */
 
-  /* ------------------------------ VIDEO RECORDING ------------------------------ */
   startRecording = async (resolution = VideoResolution.P1080) => {
     try {
       await this.previewManager.hideWrapper(); // Use PreviewManager
@@ -125,9 +135,8 @@ export default class Bugscribe {
         this.captureMicrophone,
         this.startWithMicMuted,
         resolution
-      );
+      ); // When MediaRecorder stops, we hide the timer
 
-      // When MediaRecorder stops, we hide the timer
       this.recordingTimer.hide(); // Use RecordingTimer
 
       if (!result?.url) {
@@ -143,9 +152,8 @@ export default class Bugscribe {
           result.width && result.height
             ? `${result.width}x${result.height}`
             : "N/A",
-      });
+      }); // NOTE: Using result.url for thumbnail generation
 
-      // NOTE: Using result.url for thumbnail generation
       const thumbnail = await this.mediaCapture.createVideoThumbnail(
         result.url
       );
@@ -161,9 +169,8 @@ export default class Bugscribe {
       };
 
       this._screenshotPreviews.push(newPreviewData);
-      const previewIndex = this._screenshotPreviews.length - 1; // Get the index
+      const previewIndex = this._screenshotPreviews.length - 1; // Get the index // Pass the index/ID instead of the full URL for preview
 
-      // Pass the index/ID instead of the full URL for preview
       this.previewManager.showVideoPreview(previewIndex, thumbnail);
       this.previewManager.showWrapper(); // Use PreviewManager
     } catch (err) {
@@ -171,33 +178,27 @@ export default class Bugscribe {
       this.recordingTimer.hide(); // Use RecordingTimer
       this.previewManager.showWrapper(); // Use PreviewManager
     }
-  };
+  }; /* ------------------------------ MEDIA DATA RETRIEVAL ------------------------------ */
 
-  /* ------------------------------ MEDIA DATA RETRIEVAL ------------------------------ */
   getFullMediaData = (index) => {
     return this._screenshotPreviews[index];
-  };
+  }; /* ------------------------------ MEDIA DATA DELETION ------------------------------ */
 
-  /* ------------------------------ MEDIA DATA DELETION ------------------------------ */
   deleteMediaData = (index) => {
     if (index >= 0 && index < this._screenshotPreviews.length) {
       const deletedItem = this._screenshotPreviews.splice(index, 1);
-      console.log(`Deleted media item at index ${index}:`, deletedItem[0].type);
+      console.log(`Deleted media item at index ${index}:`, deletedItem[0].type); // Re-render the entire preview wrapper to update indices
 
-      // Re-render the entire preview wrapper to update indices
       this.previewManager.redrawPreviews(this._screenshotPreviews);
       return true;
     }
     return false;
-  };
-
-  /* ------------------------------ UI HELPERS (Removed/Delegated) ------------------------------ */
+  }; /* ------------------------------ UI HELPERS (Removed/Delegated) ------------------------------ */
 
   hideRecordingTimer() {
     this.recordingTimer.hide();
-  }
+  } /* ------------------------------ HOTKEYS ------------------------------ */
 
-  /* ------------------------------ HOTKEYS ------------------------------ */
   setHotKeys() {
     document.addEventListener("keydown", (e) => {
       if (e.ctrlKey && e.shiftKey) {
@@ -229,33 +230,24 @@ export default class Bugscribe {
           KeyP: () => {
             if (this.mediaCapture.isRecording()) {
               if (this.mediaCapture.isPaused()) {
-                this.mediaCapture.resumeRecording();
-                this.recordingTimer.updateToResumed(); // ⬅️ NEW
-                console.log("Video recording resumed via shortcut.");
+                this.mediaCapture.resumeRecording(); // 📢 Simplified: RecordingTimer updates handled by onResume callback
               } else {
-                this.mediaCapture.pauseRecording();
-                this.recordingTimer.updateToPaused();
-                console.log("Video recording paused via shortcut.");
+                this.mediaCapture.pauseRecording(); // 📢 Simplified: RecordingTimer updates handled by onPause callback
               }
             }
           },
 
           KeyM: () => {
             if (this.mediaCapture.isRecording()) {
-              const isNowMuted = this.mediaCapture.toggleMicrophone();
-              this.recordingTimer.updateMicVisual(isNowMuted);
-              console.log(
-                `Microphone toggled via shortcut. Muted: ${isNowMuted}`
-              );
+              this.mediaCapture.toggleMicrophone(); // 📢 Simplified: RecordingTimer updates handled by onMicToggled callback
             }
           },
         };
         actions[e.code]?.();
       }
     });
-  }
+  } /* ------------------------------ PUBLIC API ------------------------------ */
 
-  /* ------------------------------ PUBLIC API ------------------------------ */
   getScreenshots = () => this._screenshotPreviews;
 }
 

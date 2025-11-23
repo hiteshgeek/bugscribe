@@ -9,7 +9,7 @@
   padding: 12px 20px;
   border-radius: var(--timer-border-radius);
   @include flex-center;
-  gap: 12px;
+  gap: 8px; // Reduced gap to compensate for added elements
   z-index: var(--z-timer);
   box-shadow: var(--shadow-lg);
   backdrop-filter: blur(10px);
@@ -47,7 +47,7 @@
 
 .recording-max-time {
   color: var(--timer-text-muted);
-  font-size: 0.95rem;
+  // font-size: 0.95rem;
 }
 
 // Timer warning animation
@@ -122,18 +122,29 @@
 }
 
 // Pause/Resume buttons
-.recording-pause-btn,
-.recording-resume-btn {
+.recording-pause-btn {
   background: rgba(255, 255, 255, 0.15);
+}
+
+.recording-resume-btn {
+  background: color-mix(in srgb, var(--timer-danger) 30%, transparent);
+
+  svg {
+    fill: var(--timer-danger);
+  }
+
+  &:hover {
+    background: color-mix(in srgb, var(--timer-danger) 40%, transparent);
+  }
 }
 
 // Waveform Canvas Styling
 .recording-waveform-canvas {
-  // Canvas dimensions are set in JS (width: 80px, height: 20px),
+  // Canvas dimensions are set in JS (width: 40px, height: 20px),
   // but these properties ensure correct display in the flex container.
-  width: 50px;
+  width: 40px;
   height: 20px;
-  margin-right: 4px; // Small gap between the waveform and the mic button
+  margin-right: 0; // Remove margin to tighten layout
   opacity: 0.8;
 
   display: block;

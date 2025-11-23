@@ -41,6 +41,22 @@ export default class RecordingTimer {
    */
   _elapsedSeconds = 0;
 
+  /**
+   * @type {HTMLButtonElement | null}
+   * @private
+   */
+  pauseBtn = null;
+  /**
+   * @type {HTMLButtonElement | null}
+   * @private
+   */
+  resumeBtn = null;
+  /**
+   * @type {HTMLDivElement | null}
+   * @private
+   */
+  timerDisplay = null;
+
   constructor(mediaCapture, maxRecordingSeconds) {
     this.mediaCapture = mediaCapture;
     this.maxRecordingSeconds = maxRecordingSeconds;
@@ -220,6 +236,9 @@ export default class RecordingTimer {
     // Ensure initial display is 00:00 before interval fires
     this._updateDisplay(currentTimeSpan, timerDisplay);
 
+    // Store reference
+    this.timerDisplay = timerDisplay;
+
     // --- Mic Button & Waveform Setup ---
     const micBtn = document.createElement("button");
     micBtn.className = "recording-control-btn recording-mic-btn";
@@ -241,7 +260,7 @@ export default class RecordingTimer {
 
     // Determine initial mic state
     const micTrack =
-      this.mediaCapture.video._activeRecorder?.micStream?.getAudioTracks?.()[0] ||
+      this.mediaCapture.video?._activeRecorder?.micStream?.getAudioTracks?.()[0] ||
       null;
 
     let isMicMuted;
@@ -257,7 +276,8 @@ export default class RecordingTimer {
     micBtn.title = isMicMuted ? "Unmute microphone" : "Mute microphone";
     micBtn.classList.toggle("muted", isMicMuted);
 
-    micBtn.addEventListener("click", () => {
+    micBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       const isMuted = this.mediaCapture.toggleMicrophone();
       this.updateMicVisual(isMuted);
     });
@@ -267,6 +287,7 @@ export default class RecordingTimer {
     pauseBtn.className = "recording-control-btn recording-pause-btn";
     pauseBtn.innerHTML = icons.pause;
     pauseBtn.title = "Pause recording";
+    pauseBtn.style.display = "flex"; // Ensure visible
 
     const resumeBtn = document.createElement("button");
     resumeBtn.className = "recording-control-btn recording-resume-btn";
@@ -279,15 +300,31 @@ export default class RecordingTimer {
     stopBtn.innerHTML = icons.stop;
     stopBtn.title = "Stop recording";
 
-    pauseBtn.addEventListener("click", () => {
-      this.mediaCapture.pauseRecording();
+    // Store references
+    this.pauseBtn = pauseBtn;
+    this.resumeBtn = resumeBtn;
+
+    pauseBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.mediaCapture.isRecording() && !this.mediaCapture.isPaused()) {
+        this.mediaCapture.pauseRecording();
+        this.updateToPaused();
+      }
     });
 
-    resumeBtn.addEventListener("click", () => {
-      this.mediaCapture.resumeRecording();
+    resumeBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.mediaCapture.isRecording() && this.mediaCapture.isPaused()) {
+        this.mediaCapture.resumeRecording();
+        this.updateToResumed();
+      }
     });
 
-    stopBtn.addEventListener("click", () => {
+    stopBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       this.mediaCapture.stopRecording();
     });
 
@@ -336,14 +373,10 @@ export default class RecordingTimer {
    */
   updateToPaused() {
     this._isPaused = true;
-    const pauseBtn = document.querySelector(".recording-pause-btn");
-    const resumeBtn = document.querySelector(".recording-resume-btn");
-    const timerDisplay = document.querySelector(".recording-timer-display");
-
-    if (pauseBtn && resumeBtn && timerDisplay) {
-      pauseBtn.style.display = "none";
-      resumeBtn.style.display = "flex";
-      timerDisplay.style.opacity = "0.6";
+    if (this.pauseBtn && this.resumeBtn && this.timerDisplay) {
+      this.pauseBtn.style.display = "none";
+      this.resumeBtn.style.display = "flex";
+      this.timerDisplay.style.opacity = "0.6";
     }
   }
 
@@ -352,14 +385,10 @@ export default class RecordingTimer {
    */
   updateToResumed() {
     this._isPaused = false;
-    const pauseBtn = document.querySelector(".recording-pause-btn");
-    const resumeBtn = document.querySelector(".recording-resume-btn");
-    const timerDisplay = document.querySelector(".recording-timer-display");
-
-    if (pauseBtn && resumeBtn && timerDisplay) {
-      resumeBtn.style.display = "none";
-      pauseBtn.style.display = "flex";
-      timerDisplay.style.opacity = "1";
+    if (this.pauseBtn && this.resumeBtn && this.timerDisplay) {
+      this.resumeBtn.style.display = "none";
+      this.pauseBtn.style.display = "flex";
+      this.timerDisplay.style.opacity = "1";
     }
   }
 
@@ -387,6 +416,11 @@ export default class RecordingTimer {
       clearInterval(this.drawWaveformInterval);
       this.drawWaveformInterval = null;
     }
+
+    // Clear references
+    this.pauseBtn = null;
+    this.resumeBtn = null;
+    this.timerDisplay = null;
 
     const timer = document.getElementById("recording-timer-wrapper");
     if (timer) timer.remove();

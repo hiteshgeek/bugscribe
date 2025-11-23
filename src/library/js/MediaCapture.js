@@ -7,16 +7,19 @@ export default class MediaCapture {
   constructor() {
     this.screenshots = new ScreenshotCapture();
     this.video = new VideoRecorder();
-    this.thumbnail = new ThumbnailGenerator();
+    this.thumbnail = new ThumbnailGenerator(); // Proxy callbacks
 
-    // Proxy callbacks
     this.onRecordingStarted = null;
     this.video.onRecordingStarted = (micMuted) => {
       if (this.onRecordingStarted) this.onRecordingStarted(micMuted);
     };
-  }
 
-  // Proxy Screenshot Methods
+    // NEW/UPDATED: Callbacks for state changes (Pause, Resume, Mic Toggle)
+    this.onPause = () => {};
+    this.onResume = () => {};
+    this.onMicToggled = (isMuted) => {};
+  } // Proxy Screenshot Methods
+
   captureAny() {
     return this.screenshots.captureAny();
   }
@@ -35,9 +38,8 @@ export default class MediaCapture {
 
   captureFreeformArea() {
     return this.screenshots.captureFreeformArea();
-  }
+  } // Proxy Video Methods
 
-  // Proxy Video Methods
   startRecording(captureMicrophone, startWithMicMuted, resolution) {
     return this.video.startRecording(
       captureMicrophone,
@@ -50,31 +52,36 @@ export default class MediaCapture {
     return this.video.stopRecording();
   }
 
-  pauseRecording() {
-    return this.video.pauseRecording();
-  }
+  pauseRecording = () => {
+    const result = this.video.pauseRecording();
+    this.onPause();
+    return result;
+  };
 
-  resumeRecording() {
-    return this.video.resumeRecording();
-  }
+  resumeRecording = () => {
+    const result = this.video.resumeRecording();
+    this.onResume();
+    return result;
+  };
 
-  toggleMicrophone() {
-    return this.video.toggleMicrophone();
-  }
+  toggleMicrophone = () => {
+    const isNowMuted = this.video.toggleMicrophone();
+    this.onMicToggled(isNowMuted);
+    return isNowMuted;
+  };
 
-  isRecording() {
+  isRecording = () => {
     return this.video.isRecording();
-  }
+  };
 
-  isPaused() {
+  isPaused = () => {
     return this.video.isPaused();
-  }
+  };
 
   getMicAnalyzer() {
     return this.video.getMicAnalyzer();
-  }
+  } // Proxy Thumbnail Methods
 
-  // Proxy Thumbnail Methods
   createImageThumbnail(url, w, h) {
     return this.thumbnail.createImageThumbnail(url, w, h);
   }
