@@ -1,0 +1,330 @@
+@use "../mixins" as *;
+
+// Modal overlay
+.custom-video-modal-overlay {
+  @include modal-overlay;
+  padding: 20px;
+}
+
+.custom-video-modal-content {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-xl);
+}
+
+.custom-video-player {
+  width: 100%;
+  max-height: calc(90vh - 80px);
+  display: block;
+  background: #000;
+}
+
+// Controls wrapper with auto-hide (fixed pointer-events)
+.custom-video-controls-wrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.7) 70%,
+    transparent 100%
+  );
+  padding: 50px 20px 20px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+  pointer-events: auto;
+  z-index: 2;
+
+  &.show {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+  }
+}
+
+// Controls container
+.custom-video-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--bug-text-light);
+}
+
+// Progress row (top)
+.video-progress-row {
+  width: 100%;
+}
+
+// Bottom controls row
+.video-bottom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.video-controls-left,
+.video-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+// Control buttons
+.video-control-btn {
+  @include button-reset;
+  @include flex-center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--bug-text-light);
+  border-radius: 6px;
+  font-size: 1.1rem;
+  @include transition(all);
+  cursor: pointer;
+  flex-shrink: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &.video-close-btn {
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+}
+
+// Time display
+.video-time {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--bug-text-light);
+  white-space: nowrap;
+  user-select: none;
+  min-width: 95px;
+  text-align: center;
+  pointer-events: auto;
+}
+
+// Progress / Seek bar - OPTIMIZED
+.video-progress-bar {
+  position: relative;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: height 0.2s ease;
+  pointer-events: auto;
+
+  &:hover {
+    height: 7px;
+
+    .video-progress-handle {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-50%) scale(1);
+    }
+  }
+}
+
+.video-progress-buffer,
+.video-progress-filled,
+.video-progress-handle {
+  pointer-events: none;
+}
+
+.video-progress-buffer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  transition: width 0.1s linear; // Smooth but fast transition
+}
+
+.video-progress-filled {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--bug-primary, #ff6b6b);
+  border-radius: 3px;
+  z-index: 1;
+  // NO transition for instant updates
+  transition: none;
+  will-change: width; // GPU optimization
+}
+
+.video-progress-handle {
+  position: absolute;
+  top: 50%;
+  left: 0; // Will be set by JS
+  transform: translateX(-50%) translateY(-50%) scale(0.8);
+  width: 14px;
+  height: 14px;
+  background: var(--bug-text-light);
+  border-radius: 50%;
+  opacity: 0;
+  // Only transition opacity and scale, NOT position
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  will-change: transform, opacity, left; // GPU optimization
+}
+
+// Volume control
+.video-volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-volume-slider {
+  width: 80px;
+  height: 5px;
+  background: transparent;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+
+  &::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(
+      to right,
+      var(--bug-primary, #ff6b6b) 0%,
+      var(--bug-primary, #ff6b6b) var(--volume-percent, 100%),
+      rgba(255, 255, 255, 0.2) var(--volume-percent, 100%),
+      rgba(255, 255, 255, 0.2) 100%
+    );
+    border-radius: 3px;
+  }
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--bug-text-light);
+    border-radius: 50%;
+    margin-top: -4.5px;
+    @include transition(all);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      background: var(--bug-primary, #ff6b6b);
+      transform: scale(1.2);
+    }
+  }
+
+  &::-moz-range-track {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
+
+  &::-moz-range-progress {
+    height: 5px;
+    background: var(--bug-primary, #ff6b6b);
+    border-radius: 3px;
+  }
+
+  &::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--bug-text-light);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    @include transition(all);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      background: var(--bug-primary, #ff6b6b);
+      transform: scale(1.2);
+    }
+  }
+}
+
+// Fullscreen styles
+.custom-video-modal-overlay:fullscreen {
+  .custom-video-modal-content {
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .custom-video-player {
+    max-height: calc(100vh - 100px);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .custom-video-controls {
+    gap: 10px;
+  }
+
+  .video-bottom-controls {
+    gap: 8px;
+  }
+
+  .video-control-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 1rem;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .video-time {
+    font-size: 0.75rem;
+    min-width: 85px;
+  }
+
+  .video-volume-slider {
+    width: 60px;
+  }
+
+  .custom-video-controls-wrapper {
+    padding: 40px 15px 15px;
+  }
+}
+
+// Additional utility enhancements
+.custom-video-controls-wrapper:hover {
+  .video-progress-bar {
+    height: 7px;
+  }
+
+  .video-progress-handle {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-50%) scale(1);
+  }
+}

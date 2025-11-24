@@ -1,10 +1,12 @@
 import { icons } from "./icons.js";
+import CustomVideoPlayer from "./CustomVideoPlayer.js";
 
 export default class PreviewManager {
   constructor(onPreviewClickCallback, onDeleteCallback) {
     this.preview_wrapper = null;
-    this.onPreviewClick = onPreviewClickCallback; // Store the callback from Bugscribe
-    this.onDelete = onDeleteCallback; // Store the delete callback
+    this.onPreviewClick = onPreviewClickCallback;
+    this.onDelete = onDeleteCallback;
+    this.activeVideoPlayer = null;
   }
 
   // --- UI Wrapper Management ---
@@ -34,9 +36,8 @@ export default class PreviewManager {
 
   redrawPreviews = (currentPreviews) => {
     if (this.preview_wrapper) {
-      this.preview_wrapper.innerHTML = ""; // Clear all existing previews
+      this.preview_wrapper.innerHTML = "";
     }
-    // Iterate over the remaining media items and re-display them
     currentPreviews.forEach((item, index) => {
       if (item.type === "image") {
         this.showImagePreview(index, item.thumbnail);
@@ -44,7 +45,6 @@ export default class PreviewManager {
         this.showVideoPreview(index, item.thumbnail);
       }
     });
-    // Optional: Remove wrapper if empty
     if (currentPreviews.length === 0 && this.preview_wrapper) {
       this.preview_wrapper.remove();
       this.preview_wrapper = null;
@@ -69,9 +69,7 @@ export default class PreviewManager {
 
     wrapper.append(thumbnailImg, deleteButton, downloadButton);
 
-    // Click handler for viewing full image
     wrapper.addEventListener("click", (e) => {
-      // Prevent modal opening if delete or download is clicked
       if (
         e.target.closest(".preview-delete-btn") ||
         e.target.closest(".preview-download-btn")
@@ -92,20 +90,143 @@ export default class PreviewManager {
     const content = document.createElement("div");
     content.className = "image-modal-content";
 
+    // Custom image viewer with controls
+    const controls = document.createElement("div");
+    controls.className = "media-controls";
+
     const close = document.createElement("button");
-    close.className = "image-modal-close";
+    close.className = "media-control-btn close-btn";
     close.innerHTML = "×";
-    close.addEventListener("click", () => modal.remove());
+    close.title = "Close";
+
+    const zoomIn = document.createElement("button");
+    zoomIn.className = "media-control-btn";
+    zoomIn.innerHTML = icons.zoomIn || "+";
+    zoomIn.title = "Zoom In";
+
+    const zoomOut = document.createElement("button");
+    zoomOut.className = "media-control-btn";
+    zoomOut.innerHTML = icons.zoomOut || "−";
+    zoomOut.title = "Zoom Out";
+
+    const resetZoom = document.createElement("button");
+    resetZoom.className = "media-control-btn";
+    resetZoom.innerHTML = icons.reset || "⟲";
+    resetZoom.title = "Reset Zoom";
+
+    const download = document.createElement("button");
+    download.className = "media-control-btn";
+    download.innerHTML = icons.download;
+    download.title = "Download";
+
+    controls.append(close, zoomIn, zoomOut, resetZoom, download);
 
     const img = document.createElement("img");
     img.src = imageUrl;
     img.className = "image-modal-viewer";
+    img.draggable = false;
 
-    content.append(close, img);
+    let scale = 1;
+    let isDragging = false;
+    let startX,
+      startY,
+      translateX = 0,
+      translateY = 0;
+
+    const updateTransform = () => {
+      img.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      img.style.cursor = scale > 1 ? "grab" : "default";
+    };
+
+    // Zoom controls
+    zoomIn.addEventListener("click", () => {
+      scale = Math.min(scale + 0.25, 3);
+      updateTransform();
+    });
+
+    zoomOut.addEventListener("click", () => {
+      scale = Math.max(scale - 0.25, 0.5);
+      updateTransform();
+    });
+
+    resetZoom.addEventListener("click", () => {
+      scale = 1;
+      translateX = 0;
+      translateY = 0;
+      updateTransform();
+    });
+
+    // Mouse wheel zoom
+    content.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      scale = Math.min(Math.max(scale + delta, 0.5), 3);
+      updateTransform();
+    });
+
+    // Drag to pan
+    img.addEventListener("mousedown", (e) => {
+      if (scale > 1) {
+        isDragging = true;
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+        img.style.cursor = "grabbing";
+      }
+    });
+
+    document.addEventListener("mousemove", (e) => {
+      if (isDragging) {
+        translateX = e.clientX - startX;
+        translateY = e.clientY - startY;
+        updateTransform();
+      }
+    });
+
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      img.style.cursor = scale > 1 ? "grab" : "default";
+    });
+
+    // Keyboard controls
+    const handleKeyboard = (e) => {
+      switch (e.key) {
+        case "Escape":
+          modal.remove();
+          document.removeEventListener("keydown", handleKeyboard);
+          break;
+        case "+":
+        case "=":
+          zoomIn.click();
+          break;
+        case "-":
+        case "_":
+          zoomOut.click();
+          break;
+        case "0":
+          resetZoom.click();
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyboard);
+
+    close.addEventListener("click", () => {
+      modal.remove();
+      document.removeEventListener("keydown", handleKeyboard);
+    });
+
+    download.addEventListener("click", () => {
+      this._triggerDownload(imageUrl, "image");
+    });
+
+    content.append(controls, img);
     modal.appendChild(content);
 
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.remove();
+      if (e.target === modal) {
+        modal.remove();
+        document.removeEventListener("keydown", handleKeyboard);
+      }
     });
 
     document.body.appendChild(modal);
@@ -133,9 +254,7 @@ export default class PreviewManager {
 
     wrapper.append(thumbnailImg, playIcon, deleteButton, downloadButton);
 
-    // Click handler for viewing full video
     wrapper.addEventListener("click", (e) => {
-      // Prevent modal opening if delete or download is clicked
       if (
         e.target.closest(".preview-delete-btn") ||
         e.target.closest(".preview-download-btn")
@@ -143,38 +262,33 @@ export default class PreviewManager {
         return;
       }
       const mediaData = this.onPreviewClick(index);
-      if (mediaData) this.playFullVideo(mediaData.url);
+      if (mediaData) this.playFullVideo(mediaData.url, mediaData.duration);
     });
 
     this.preview_wrapper.appendChild(wrapper);
   };
 
-  playFullVideo(videoUrl) {
-    const modal = document.createElement("div");
-    modal.className = "video-modal-overlay";
+  playFullVideo(videoUrl, knownDuration = null) {
+    // Close any existing video player
+    if (this.activeVideoPlayer) {
+      this.activeVideoPlayer.destroy();
+    }
 
-    const content = document.createElement("div");
-    content.className = "video-modal-content";
+    // Convert duration from milliseconds to seconds if needed
+    const durationInSeconds = knownDuration ? knownDuration / 1000 : null;
 
-    const close = document.createElement("button");
-    close.className = "video-modal-close";
-    close.innerHTML = "×";
-    close.addEventListener("click", () => modal.remove());
-
-    const video = document.createElement("video");
-    video.src = videoUrl;
-    video.controls = true;
-    video.autoplay = true;
-    video.className = "video-modal-player";
-
-    content.append(close, video);
-    modal.appendChild(content);
-
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.remove();
+    // Create new custom video player with known duration
+    this.activeVideoPlayer = new CustomVideoPlayer(videoUrl, {
+      autoplay: true,
+      showDownload: true,
+      showClose: true,
+      knownDuration: durationInSeconds, // Pass the known duration!
+      onClose: () => {
+        this.activeVideoPlayer = null;
+      },
     });
 
-    document.body.appendChild(modal);
+    this.activeVideoPlayer.open();
   }
 
   // --- Helper Functions ---
@@ -199,7 +313,6 @@ export default class PreviewManager {
     downloadButton.addEventListener("click", (e) => {
       e.stopPropagation();
       const mediaData = this.onPreviewClick(index);
-      // Fallback check in case the index is momentarily invalid during redraw
       if (mediaData && mediaData.url) {
         this._triggerDownload(mediaData.url, type);
       } else {
@@ -224,4 +337,15 @@ export default class PreviewManager {
     link.click();
     document.body.removeChild(link);
   };
+
+  // Cleanup method
+  destroy() {
+    if (this.activeVideoPlayer) {
+      this.activeVideoPlayer.destroy();
+    }
+    if (this.preview_wrapper) {
+      this.preview_wrapper.remove();
+      this.preview_wrapper = null;
+    }
+  }
 }
