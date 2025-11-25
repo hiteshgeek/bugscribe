@@ -46,7 +46,6 @@ export default class Bugscribe {
       );
     };
 
-    // 📢 NEW: Subscribe to MediaCapture's state change events
     this.mediaCapture.onPause = () => {
       this.recordingTimer.updateToPaused();
       console.log("Video recording paused via MediaCapture event.");
@@ -250,16 +249,16 @@ export default class Bugscribe {
           KeyP: () => {
             if (this.mediaCapture.isRecording()) {
               if (this.mediaCapture.isPaused()) {
-                this.mediaCapture.resumeRecording(); // 📢 Simplified: RecordingTimer updates handled by onResume callback
+                this.mediaCapture.resumeRecording();
               } else {
-                this.mediaCapture.pauseRecording(); // 📢 Simplified: RecordingTimer updates handled by onPause callback
+                this.mediaCapture.pauseRecording();
               }
             }
           },
 
           KeyM: () => {
             if (this.mediaCapture.isRecording()) {
-              this.mediaCapture.toggleMicrophone(); // 📢 Simplified: RecordingTimer updates handled by onMicToggled callback
+              this.mediaCapture.toggleMicrophone();
             }
           },
         };

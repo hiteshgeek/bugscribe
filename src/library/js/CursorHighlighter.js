@@ -109,9 +109,10 @@ export default class CursorHighlighter {
       // Hide cursor highlighter when hovering over timer or bug elements
       const target = e.target;
       const isOverTimer = target.closest(".recording-timer-wrapper");
+      const isOverTimerControls = target.closest(".timer-controls-row");
       const isOverBugElement = target.closest(".bug-element");
 
-      if (isOverTimer || isOverBugElement) {
+      if (isOverTimer || isOverTimerControls || isOverBugElement) {
         this.el.style.opacity = "0";
       } else {
         this.el.style.opacity = "1";

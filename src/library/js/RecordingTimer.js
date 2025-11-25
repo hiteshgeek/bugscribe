@@ -57,9 +57,17 @@ export default class RecordingTimer {
    */
   timerDisplay = null;
 
-  constructor(mediaCapture, maxRecordingSeconds) {
+  constructor(mediaCapture, maxRecordingSeconds, config = {}) {
     this.mediaCapture = mediaCapture;
     this.maxRecordingSeconds = maxRecordingSeconds;
+
+    // Configuration options
+    this.config = {
+      initialPosition: config.initialPosition || 'center', // 'left' | 'center' | 'right'
+      initialMinimized: config.initialMinimized || false, // boolean
+      scale: config.scale || 1, // number (0.5 to 2.0 for size scaling)
+      ...config
+    };
   }
 
   /**
@@ -459,7 +467,29 @@ export default class RecordingTimer {
 
     // --- Container to hold timer and controls row ---
     const timerContainer = document.createElement("div");
-    timerContainer.className = "recording-timer-container center";
+    timerContainer.className = `recording-timer-container ${this.config.initialPosition}`;
+
+    // Apply initial minimized state
+    if (this.config.initialMinimized) {
+      timerContainer.classList.add('minimized');
+      minimizeBtn.innerHTML = icons.mazimize;
+      minimizeBtn.title = "Restore timer";
+      maximizeBtn.innerHTML = icons.mazimize;
+      maximizeBtn.title = "Restore timer";
+    }
+
+    // Apply scale transformation
+    if (this.config.scale !== 1) {
+      timerContainer.style.transform = this.config.initialPosition === 'center'
+        ? `translateX(-50%) scale(${this.config.scale})`
+        : `scale(${this.config.scale})`;
+      timerContainer.style.transformOrigin = this.config.initialPosition === 'left'
+        ? 'bottom left'
+        : this.config.initialPosition === 'right'
+          ? 'bottom right'
+          : 'bottom center';
+    }
+
     timerWrapper.append(maximizeBtn); // Add maximize button to timer wrapper
     timerContainer.append(timerWrapper, controlsRow);
 
