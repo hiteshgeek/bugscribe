@@ -13,8 +13,8 @@
 @use "components/selection";
 @use "components/shape_selector";
 @use "components/cusrsor_highlighter";
-@use "components/custom_video_player";
-@use "components/tooltip";
+
+@use "video-player/CustomVideoPlayer";
 
 // Utilities
 @use "utilities/scroll";

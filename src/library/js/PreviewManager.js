@@ -1,5 +1,5 @@
 import { icons } from "./icons.js";
-import CustomVideoPlayer from "./CustomVideoPlayer.js";
+import CustomVideoPlayer from "./video-player/CustomVideoPlayer.js";
 
 export default class PreviewManager {
   constructor(onPreviewClickCallback, onDeleteCallback) {

@@ -1,0 +1,15 @@
+@use "../mixins" as *;
+
+// Import all component partials
+@use "components/modal";
+@use "components/video";
+@use "components/controls";
+@use "components/progress";
+@use "components/volume";
+@use "components/menus";
+@use "components/shortcuts-modal";
+@use "components/tooltip";
+@use "responsive";
+
+// Import modern font
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");

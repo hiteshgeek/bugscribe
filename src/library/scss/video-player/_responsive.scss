@@ -1,0 +1,57 @@
+// Responsive adjustments
+
+@media (max-width: 1460px) {
+  .video-progress-handle {
+    top: 50%;
+    bottom: auto;
+    margin: -7px 0 0 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .custom-video-controls {
+    gap: 10px;
+  }
+
+  .video-bottom-controls {
+    gap: 8px;
+  }
+
+  .video-control-btn {
+    min-width: 32px;
+    height: 32px;
+    font-size: 1rem;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .video-time {
+    font-size: 0.75rem;
+    min-width: 85px;
+  }
+
+  .video-volume-slider {
+    width: 60px;
+  }
+
+  .custom-video-controls-wrapper {
+    padding: 40px 15px 15px;
+  }
+
+  .video-progress-bar {
+    height: 2.5px;
+
+    &:hover {
+      height: 3.5px;
+    }
+  }
+
+  .video-progress-handle {
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+  }
+}

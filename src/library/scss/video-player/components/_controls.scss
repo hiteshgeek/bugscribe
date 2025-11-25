@@ -1,0 +1,115 @@
+@use "../../mixins" as *;
+
+// Controls wrapper with auto-hide
+.custom-video-controls-wrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.9) 0%,
+    rgba(0, 0, 0, 0.7) 70%,
+    transparent 100%
+  );
+  padding: 50px 20px 20px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+  pointer-events: auto;
+  z-index: 2;
+
+  &.show {
+    opacity: 1;
+    transform: translateY(0);
+    visibility: visible;
+  }
+
+  &:hover {
+    .video-progress-bar {
+      height: 4px;
+    }
+
+    .video-progress-handle {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+  }
+}
+
+// Controls container
+.custom-video-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--bug-text-light);
+}
+
+// Progress row (top)
+.video-progress-row {
+  width: 100%;
+}
+
+// Bottom controls row
+.video-bottom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.video-controls-left,
+.video-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+// Control buttons
+.video-control-btn {
+  @include button-reset;
+  @include flex-center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--bug-text-light);
+  border-radius: 50%;
+  font-size: 1.1rem;
+  @include transition(all);
+  cursor: pointer;
+  flex-shrink: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &.video-close-btn {
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+}
+
+// Time display
+.video-time {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--bug-text-light);
+  white-space: nowrap;
+  user-select: none;
+  min-width: 95px;
+  text-align: center;
+  pointer-events: auto;
+}

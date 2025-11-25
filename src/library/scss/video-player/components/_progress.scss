@@ -1,0 +1,67 @@
+@use "../../mixins" as *;
+
+// Progress / Seek bar
+.video-progress-bar {
+  position: relative;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: height 0.2s ease;
+  pointer-events: auto;
+
+  &:hover {
+    height: 4px;
+
+    .video-progress-handle {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+    }
+  }
+}
+
+.video-progress-buffer,
+.video-progress-filled,
+.video-progress-handle {
+  pointer-events: none;
+}
+
+.video-progress-buffer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+.video-progress-filled {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--bug-primary, #ff6b6b);
+  border-radius: 3px;
+  z-index: 1;
+  transition: none;
+  will-change: width;
+}
+
+.video-progress-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  margin: auto 0;
+  left: 0;
+  transform: translateX(-50%) scale(0.8);
+  width: 14px;
+  height: 14px;
+  background: var(--bug-primary);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  will-change: transform, opacity, left;
+}
