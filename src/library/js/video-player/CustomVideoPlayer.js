@@ -3,12 +3,12 @@
  * Coordinates all modules and manages player lifecycle
  */
 
-import VideoState from './core/VideoState.js';
-import VideoControls from './core/VideoControls.js';
-import VideoProgressManager from './core/VideoProgressManager.js';
-import VideoEventHandlers from './core/VideoEventHandlers.js';
-import VideoMenus from './ui/VideoMenus.js';
-import { icons } from './utils/icons.js';
+import VideoState from "./core/VideoState.js";
+import VideoControls from "./core/VideoControls.js";
+import VideoProgressManager from "./core/VideoProgressManager.js";
+import VideoEventHandlers from "./core/VideoEventHandlers.js";
+import VideoMenus from "./ui/VideoMenus.js";
+import { icons } from "../icons.js";
 
 export default class CustomVideoPlayer {
   constructor(videoUrl, options = {}) {
@@ -24,7 +24,7 @@ export default class CustomVideoPlayer {
 
     // Initialize state
     this.state = new VideoState(this.options);
-    
+
     // References
     this.modal = null;
     this.video = null;
@@ -62,7 +62,7 @@ export default class CustomVideoPlayer {
     this.controlsInstance = new VideoControls(this.options);
     const controls = this.controlsInstance.createControls();
     const controlRefs = this.controlsInstance.getControls();
-    
+
     controlsWrapper.appendChild(controls);
 
     // Append to content

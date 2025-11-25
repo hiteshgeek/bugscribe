@@ -71,14 +71,16 @@
   @include flex-center;
   width: 30px;
   height: 30px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(0, 0, 0, 0.6);
   border-radius: 50%;
   pointer-events: none;
   @include transition(all);
   box-shadow: var(--shadow-md);
 
   svg {
-    fill: #333;
+    fill: #fff;
+    width: 15px;
+    height: 15px;
   }
 }
 
