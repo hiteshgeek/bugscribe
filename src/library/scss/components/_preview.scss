@@ -5,18 +5,41 @@
   bottom: 25px;
   left: 25px;
   z-index: var(--z-timer);
-  // background: var(--bug-primary);
-  background: color-mix(in srgb, var(--bug-primary) 35%, transparent);
+  background: var(--bug-primary);
+  // background: color-mix(in srgb, var(--bug-primary) 35%, transparent);
   padding: 5px;
   border-radius: var(--radius-md);
   max-height: 150px;
-  max-width: 60vw;
+  // max-width is set dynamically via JavaScript based on maxVisibleItems config
   display: flex;
   gap: 5px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
 
   &:empty {
     display: none;
+  }
+
+  // Smooth scrolling
+  scroll-behavior: smooth;
+
+  // Custom scrollbar styling
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
   }
 }
 
@@ -31,6 +54,7 @@
   cursor: pointer;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  flex-shrink: 0;
   @include hover-lift;
 }
 
@@ -47,11 +71,14 @@
 .video-preview-wrapper {
   position: relative;
   width: 200px;
+  min-width: 200px;
+  max-width: 200px;
   aspect-ratio: 1.75;
   height: 100%;
   cursor: pointer;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  flex-shrink: 0;
 
   // &:hover .video-play-icon {
   //   transform: translate(-50%, -50%) scale(1.1);
@@ -84,73 +111,337 @@
   }
 }
 
-.preview-delete-btn {
-  padding: 5px;
+// Menu container
+.preview-menu-container {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  background: color-mix(in srgb, var(--bug-primary) 65%, #fff);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-  line-height: 1;
-  text-align: center;
-  font-size: 16px;
-  cursor: pointer;
+  bottom: 6px;
+  right: 6px;
   z-index: 10;
-  box-shadow: var(--shadow-sm);
-  @include transition(all);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  @include transition(opacity, visibility);
 
-  svg {
-    fill: white;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-  }
-
-  &:hover {
+  // Always show on touch devices
+  @media (hover: none) and (pointer: coarse) {
     opacity: 1;
-    background: color-mix(in srgb, var(--bug-primary) 85%, #fff);
+    visibility: visible;
   }
 }
 
-.preview-download-btn {
-  padding: 5px;
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background: color-mix(in srgb, #5aa7ff 65%, #fff);
+// Show menu on preview wrapper hover
+.image-preview-wrapper:hover .preview-menu-container,
+.video-preview-wrapper:hover .preview-menu-container {
+  opacity: 1;
+  visibility: visible;
+}
+
+// Menu button
+.preview-menu-btn {
+  @include button-reset;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.7);
   color: white;
   border: none;
   border-radius: 50%;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   line-height: 1;
-  text-align: center;
-  font-size: 16px;
   cursor: pointer;
-  z-index: 10;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   @include transition(all);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  @include flex-center;
+  backdrop-filter: blur(5px);
 
   svg {
     fill: white;
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
+    width: 12px;
+    height: 12px;
   }
 
   &:hover {
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+// Dropdown menu
+.preview-menu-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 6px;
+  background: rgba(0, 0, 0, 0.95);
+  border-radius: var(--radius-sm);
+  min-width: 120px;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  @include transition(all);
+  overflow: hidden;
+
+  &.show {
     opacity: 1;
-    background: color-mix(in srgb, #5aa7ff 95%, #fff);
+    visibility: visible;
+    transform: translateY(0);
+  }
+}
+
+// Menu options
+.preview-menu-option {
+  @include button-reset;
+  width: 100%;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: white;
+  cursor: pointer;
+  @include transition(background);
+  border: none;
+  text-align: left;
+
+  svg {
+    fill: white;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  span {
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+// Carousel styles
+.media-carousel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  @include flex-center;
+  z-index: 10000;
+  backdrop-filter: blur(10px);
+}
+
+.media-carousel-content {
+  position: relative;
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.carousel-close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  @include button-reset;
+  @include flex-center;
+  width: 44px;
+  height: 44px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  @include transition(all);
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    fill: white;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+.carousel-display-area {
+  flex: 1;
+  width: 100%;
+  @include flex-center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.carousel-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+}
+
+.carousel-video-container {
+  width: 100%;
+  height: 100%;
+  @include flex-center;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
+  .custom-video-modal-content {
+    position: relative;
+    background: transparent;
+    max-width: 100%;
+    max-height: 100%;
+  }
+}
+
+.carousel-nav-btn {
+  @include button-reset;
+  @include flex-center;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  @include transition(all);
+  box-shadow: var(--shadow-lg);
+  z-index: 5;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    fill: white;
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(-50%) scale(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &.carousel-prev-btn {
+    left: 20px;
+  }
+
+  &.carousel-next-btn {
+    right: 20px;
+  }
+}
+
+.carousel-thumbnail-strip {
+  display: flex;
+  gap: 10px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  max-width: 90%;
+  backdrop-filter: blur(10px);
+  z-index: 1;
+  min-height: 90px; // Ensure strip is visible even if empty
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
+
+.carousel-thumbnail {
+  position: relative;
+  min-width: 100px;
+  width: 100px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  @include transition(all);
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &.active {
+    border-color: var(--bug-primary);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  }
+
+  &:hover:not(.active) {
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.carousel-thumb-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  @include flex-center;
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  pointer-events: none;
+
+  svg {
+    fill: white;
+    width: 12px;
+    height: 12px;
   }
 }
 

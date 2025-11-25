@@ -172,3 +172,112 @@
     }
   }
 }
+
+// Position controls
+.timer-position-controls {
+  display: flex;
+  gap: 4px;
+  padding-right: 8px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  margin-right: 8px;
+}
+
+.timer-position-btn {
+  @include button-reset;
+  @include flex-center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  @include transition(all);
+
+  svg {
+    width: 14px;
+    height: 14px;
+    fill: var(--timer-text);
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+// Minimize button
+.timer-minimize-btn {
+  @include button-reset;
+  @include flex-center;
+  width: var(--timer-control-size);
+  height: var(--timer-control-size);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  @include transition(all);
+  margin-left: 4px;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--timer-text);
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.8);
+  }
+}
+
+// Timer positions
+.recording-timer-wrapper {
+  &.left {
+    left: 30px;
+    transform: translateX(0);
+  }
+
+  &.right {
+    left: auto;
+    right: 30px;
+    transform: translateX(0);
+  }
+
+  &.center {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  // Minimized state - hide non-essential controls
+  &.minimized {
+    gap: 6px;
+    padding: 8px 16px;
+
+    .timer-position-controls,
+    .recording-dot,
+    .recording-waveform-canvas,
+    .recording-mic-btn,
+    .recording-system-audio-btn,
+    .recording-pause-btn,
+    .recording-resume-btn {
+      display: none;
+    }
+
+    .recording-separator,
+    .recording-max-time {
+      display: none;
+    }
+
+    .recording-timer-display {
+      min-width: 50px;
+      font-size: 1rem;
+    }
+  }
+}

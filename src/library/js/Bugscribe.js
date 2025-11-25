@@ -21,9 +21,17 @@ export default class Bugscribe {
     this.bugButtonWrapper = new BugButtonWrapper(options.button || {});
     this.mediaCapture = new MediaCapture(); // Initialize new helper classes
 
+    // this.previewManager = new PreviewManager(
+    //   this.getFullMediaData,
+    //   this.deleteMediaData
+    // );
+
     this.previewManager = new PreviewManager(
       this.getFullMediaData,
-      this.deleteMediaData
+      this.deleteMediaData,
+      {
+        viewMode: "carousel",
+      }
     );
 
     this.recordingTimer = new RecordingTimer(
