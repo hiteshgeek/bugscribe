@@ -429,6 +429,12 @@ export default class RecordingTimer {
       this.resumeBtn.style.display = "flex";
       this.timerDisplay.style.opacity = "0.6";
     }
+
+    // Stop recording dot pulsation
+    const recordingDot = document.querySelector(".recording-dot");
+    if (recordingDot) {
+      recordingDot.classList.add("paused");
+    }
   }
 
   /**
@@ -440,6 +446,12 @@ export default class RecordingTimer {
       this.resumeBtn.style.display = "none";
       this.pauseBtn.style.display = "flex";
       this.timerDisplay.style.opacity = "1";
+    }
+
+    // Resume recording dot pulsation
+    const recordingDot = document.querySelector(".recording-dot");
+    if (recordingDot) {
+      recordingDot.classList.remove("paused");
     }
   }
 

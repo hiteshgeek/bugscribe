@@ -22,6 +22,14 @@
   background: var(--timer-primary);
   border-radius: 50%;
   animation: pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+
+  &.paused {
+    animation: none;
+    opacity: 0.5;
+  }
 }
 
 // Timer display

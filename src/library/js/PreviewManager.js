@@ -96,7 +96,7 @@ export default class PreviewManager {
 
     const close = document.createElement("button");
     close.className = "media-control-btn close-btn";
-    close.innerHTML = "×";
+    close.innerHTML = icons.cancel || "+";
     close.title = "Close";
 
     const zoomIn = document.createElement("button");
@@ -119,7 +119,7 @@ export default class PreviewManager {
     download.innerHTML = icons.download;
     download.title = "Download";
 
-    controls.append(close, zoomIn, zoomOut, resetZoom, download);
+    controls.append(zoomIn, zoomOut, resetZoom, download, close);
 
     const img = document.createElement("img");
     img.src = imageUrl;
