@@ -1,6 +1,7 @@
 // RecordingTimer.js
 
 import { icons } from "./icons.js";
+import Tooltip from "./components/Tooltip.js";
 
 export default class RecordingTimer {
   /**
@@ -287,7 +288,9 @@ export default class RecordingTimer {
     }
 
     micBtn.innerHTML = isMicMuted ? icons.microhpone_disabled : icons.microhone;
-    micBtn.title = isMicMuted ? "Unmute microphone" : "Mute microphone";
+    micBtn.setAttribute("data-tooltip-text", isMicMuted ? "Unmute microphone" : "Mute microphone");
+    micBtn.setAttribute("data-tooltip-shortcut", "M");
+    micBtn.setAttribute("data-tooltip-position", "auto");
     micBtn.classList.toggle("muted", isMicMuted);
 
     micBtn.addEventListener("click", (e) => {
@@ -317,9 +320,11 @@ export default class RecordingTimer {
 
     if (trackExists) {
       // CASE 1: Track exists - Button is a functional toggle
-      systemAudioBtn.title = isSystemMuted
+      systemAudioBtn.setAttribute("data-tooltip-text", isSystemMuted
         ? "Enable system audio"
-        : "Mute system audio";
+        : "Mute system audio");
+      systemAudioBtn.setAttribute("data-tooltip-shortcut", "S");
+      systemAudioBtn.setAttribute("data-tooltip-position", "auto");
 
       systemAudioBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -330,8 +335,8 @@ export default class RecordingTimer {
       // CASE 2: Track is missing - Button is a disabled indicator/warning
       systemAudioBtn.setAttribute("disabled", "true");
       systemAudioBtn.style.opacity = "0.4"; // Visual cue for disabled
-      systemAudioBtn.title =
-        "System audio not captured. Stop and restart recording to include it.";
+      systemAudioBtn.setAttribute("data-tooltip-text", "System audio not captured");
+      systemAudioBtn.setAttribute("data-tooltip-position", "auto");
 
       systemAudioBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -344,19 +349,25 @@ export default class RecordingTimer {
     const pauseBtn = document.createElement("button");
     pauseBtn.className = "recording-control-btn recording-pause-btn";
     pauseBtn.innerHTML = icons.pause;
-    pauseBtn.title = "Pause recording";
+    pauseBtn.setAttribute("data-tooltip-text", "Pause recording");
+    pauseBtn.setAttribute("data-tooltip-shortcut", "P");
+    pauseBtn.setAttribute("data-tooltip-position", "auto");
     pauseBtn.style.display = "flex"; // Ensure visible
 
     const resumeBtn = document.createElement("button");
     resumeBtn.className = "recording-control-btn recording-resume-btn";
     resumeBtn.innerHTML = icons.play;
+    resumeBtn.setAttribute("data-tooltip-text", "Resume recording");
+    resumeBtn.setAttribute("data-tooltip-shortcut", "P");
+    resumeBtn.setAttribute("data-tooltip-position", "auto");
     resumeBtn.style.display = "none";
-    resumeBtn.title = "Resume recording";
 
     const stopBtn = document.createElement("button");
     stopBtn.className = "recording-control-btn recording-stop-btn";
     stopBtn.innerHTML = icons.stop;
-    stopBtn.title = "Stop recording";
+    stopBtn.setAttribute("data-tooltip-text", "Stop recording");
+    stopBtn.setAttribute("data-tooltip-shortcut", "Esc");
+    stopBtn.setAttribute("data-tooltip-position", "auto");
 
     // Store references
     this.pauseBtn = pauseBtn;
@@ -408,7 +419,8 @@ export default class RecordingTimer {
     const leftPosBtn = document.createElement("button");
     leftPosBtn.className = "timer-position-btn";
     leftPosBtn.innerHTML = icons.arrow_left;
-    leftPosBtn.title = "Position: Left";
+    leftPosBtn.setAttribute("data-tooltip-text", "Position left");
+    leftPosBtn.setAttribute("data-tooltip-position", "auto");
     leftPosBtn.addEventListener("click", () => {
       timerContainer.classList.remove("center", "right");
       timerContainer.classList.add("left");
@@ -417,7 +429,8 @@ export default class RecordingTimer {
     const centerPosBtn = document.createElement("button");
     centerPosBtn.className = "timer-position-btn";
     centerPosBtn.innerHTML = icons.minus;
-    centerPosBtn.title = "Position: Center";
+    centerPosBtn.setAttribute("data-tooltip-text", "Position center");
+    centerPosBtn.setAttribute("data-tooltip-position", "auto");
     centerPosBtn.addEventListener("click", () => {
       timerContainer.classList.remove("left", "right");
       timerContainer.classList.add("center");
@@ -426,7 +439,8 @@ export default class RecordingTimer {
     const rightPosBtn = document.createElement("button");
     rightPosBtn.className = "timer-position-btn";
     rightPosBtn.innerHTML = icons.arrow_right;
-    rightPosBtn.title = "Position: Right";
+    rightPosBtn.setAttribute("data-tooltip-text", "Position right");
+    rightPosBtn.setAttribute("data-tooltip-position", "auto");
     rightPosBtn.addEventListener("click", () => {
       timerContainer.classList.remove("left", "center");
       timerContainer.classList.add("right");
@@ -438,26 +452,30 @@ export default class RecordingTimer {
     const minimizeBtn = document.createElement("button");
     minimizeBtn.className = "timer-minimize-btn";
     minimizeBtn.innerHTML = icons.minimize;
-    minimizeBtn.title = "Minimize timer";
+    minimizeBtn.setAttribute("data-tooltip-text", "Minimize timer");
+    minimizeBtn.setAttribute("data-tooltip-position", "auto");
     minimizeBtn.addEventListener("click", () => {
       const isMinimized = timerContainer.classList.toggle("minimized");
-      minimizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      const tooltipText = isMinimized ? "Restore timer" : "Minimize timer";
       minimizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
-      maximizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      Tooltip.updateText(minimizeBtn, tooltipText);
       maximizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
+      Tooltip.updateText(maximizeBtn, tooltipText);
     });
 
     // --- Maximize Button (full-size, only visible when minimized) ---
     const maximizeBtn = document.createElement("button");
     maximizeBtn.className = "recording-control-btn timer-maximize-btn";
     maximizeBtn.innerHTML = icons.mazimize;
-    maximizeBtn.title = "Restore timer";
+    maximizeBtn.setAttribute("data-tooltip-text", "Restore timer");
+    maximizeBtn.setAttribute("data-tooltip-position", "auto");
     maximizeBtn.addEventListener("click", () => {
       const isMinimized = timerContainer.classList.toggle("minimized");
-      minimizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      const tooltipText = isMinimized ? "Restore timer" : "Minimize timer";
       minimizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
-      maximizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      Tooltip.updateText(minimizeBtn, tooltipText);
       maximizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
+      Tooltip.updateText(maximizeBtn, tooltipText);
     });
 
     // --- Controls Row (toolbar left, minimize right) ---
@@ -494,6 +512,11 @@ export default class RecordingTimer {
     timerContainer.append(timerWrapper, controlsRow);
 
     document.body.appendChild(timerContainer);
+
+    // --- Initialize Tooltips ---
+    setTimeout(() => {
+      Tooltip.initAll(timerContainer);
+    }, 0);
 
     // --- Start Waveform Drawing ---
     if (analyzer && dataArray) {
@@ -564,7 +587,8 @@ export default class RecordingTimer {
     const micBtn = document.querySelector(".recording-mic-btn");
     if (micBtn) {
       micBtn.innerHTML = isMuted ? icons.microhpone_disabled : icons.microhone;
-      micBtn.title = isMuted ? "Unmute microphone" : "Mute microphone";
+      const tooltipText = isMuted ? "Unmute microphone" : "Mute microphone";
+      Tooltip.updateText(micBtn, tooltipText);
       micBtn.classList.toggle("muted", isMuted);
     }
   }
@@ -579,7 +603,8 @@ export default class RecordingTimer {
     // Only update if the button is NOT disabled (i.e., the track exists)
     if (systemBtn && !systemBtn.hasAttribute("disabled")) {
       systemBtn.innerHTML = isMuted ? icons.speaker_disabled : icons.speaker;
-      systemBtn.title = isMuted ? "Enable system audio" : "Mute system audio";
+      const tooltipText = isMuted ? "Enable system audio" : "Mute system audio";
+      Tooltip.updateText(systemBtn, tooltipText);
       systemBtn.classList.toggle("muted", isMuted);
     }
   }

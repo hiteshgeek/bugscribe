@@ -3,7 +3,7 @@
  */
 
 import { icons } from "../../icons.js";
-import Tooltip from "../ui/Tooltip.js";
+import Tooltip from "../../components/Tooltip.js";
 
 export default class VideoControls {
   constructor(options = {}) {

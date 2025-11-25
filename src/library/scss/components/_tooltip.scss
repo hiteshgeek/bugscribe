@@ -1,4 +1,8 @@
-/* Modern Tooltip System with Keyboard Shortcut Support */
+@use "../mixins" as *;
+
+/* ============================================
+   Modern Tooltip System with Position Awareness
+   ============================================ */
 
 /* Tooltip container - apply this class to any element that needs a tooltip */
 .has-tooltip {
@@ -6,13 +10,10 @@
   cursor: pointer;
 }
 
-/* Tooltip content */
+/* Tooltip content - Base styles */
 .has-tooltip::before {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
   background: rgba(28, 28, 28, 0.95);
   backdrop-filter: blur(10px);
   color: #ffffff;
@@ -24,26 +25,23 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-  z-index: 1000;
+  @include transition(opacity, transform, visibility);
+  z-index: 10000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Tooltip arrow */
+/* Tooltip arrow - Base styles */
 .has-tooltip::after {
   content: "";
   position: absolute;
-  bottom: calc(100% + 2px);
-  left: 50%;
-  transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: rgba(28, 28, 28, 0.95);
+  width: 0;
+  height: 0;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-  z-index: 1000;
+  @include transition(opacity, visibility);
+  z-index: 10000;
 }
 
 /* Show tooltip on hover */
@@ -53,53 +51,55 @@
   visibility: visible;
 }
 
-.has-tooltip:hover::before {
+/* ============================================
+   Position Variants
+   ============================================ */
+
+/* Top position (default) */
+.has-tooltip::before,
+.has-tooltip.tooltip-top::before {
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+}
+
+.has-tooltip:hover::before,
+.has-tooltip.tooltip-top:hover::before {
   transform: translateX(-50%) translateY(0);
 }
 
-/* Tooltip with keyboard shortcut */
-.has-tooltip[data-shortcut]::before {
-  content: attr(data-tooltip) " ";
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px 8px 12px;
+.has-tooltip::after,
+.has-tooltip.tooltip-top::after {
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(28, 28, 28, 0.95);
 }
 
-/* Keyboard shortcut badge inside tooltip */
-.has-tooltip[data-shortcut]::before {
-  content: attr(data-tooltip) " " attr(data-shortcut);
-  background: linear-gradient(
-    135deg,
-    rgba(28, 28, 28, 0.98),
-    rgba(40, 40, 40, 0.98)
-  );
-}
-
-/* Custom tooltip styling using CSS pseudo-element hack */
-.has-tooltip[data-shortcut]::before {
-  content: attr(data-tooltip);
-  /* We'll handle the shortcut badge with JavaScript instead for better styling */
-}
-
-/* Tooltip positions */
-.has-tooltip.tooltip-top::before {
-  bottom: calc(100% + 10px);
-  top: auto;
-}
-
+/* Bottom position */
 .has-tooltip.tooltip-bottom::before {
   top: calc(100% + 10px);
   bottom: auto;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+}
+
+.has-tooltip.tooltip-bottom:hover::before {
+  transform: translateX(-50%) translateY(0);
 }
 
 .has-tooltip.tooltip-bottom::after {
   top: calc(100% + 2px);
   bottom: auto;
-  border-top-color: transparent;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
   border-bottom-color: rgba(28, 28, 28, 0.95);
+  border-top-color: transparent;
 }
 
+/* Left position */
 .has-tooltip.tooltip-left::before {
   left: auto;
   right: calc(100% + 10px);
@@ -118,10 +118,12 @@
   top: 50%;
   bottom: auto;
   transform: translateY(-50%);
-  border-top-color: transparent;
+  border: 4px solid transparent;
   border-left-color: rgba(28, 28, 28, 0.95);
+  border-top-color: transparent;
 }
 
+/* Right position */
 .has-tooltip.tooltip-right::before {
   left: calc(100% + 10px);
   right: auto;
@@ -140,16 +142,17 @@
   top: 50%;
   bottom: auto;
   transform: translateY(-50%);
-  border-top-color: transparent;
+  border: 4px solid transparent;
   border-right-color: rgba(28, 28, 28, 0.95);
+  border-top-color: transparent;
 }
 
-/* Tooltip with shortcut - Enhanced version with JS */
+/* ============================================
+   Tooltip with Keyboard Shortcut (JS-based)
+   ============================================ */
+
 .tooltip-wrapper {
   position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-4px);
   background: linear-gradient(
     135deg,
     rgba(28, 28, 28, 0.98),
@@ -165,25 +168,88 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-  z-index: 1000;
+  @include transition(opacity, transform, visibility);
+  z-index: 10000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   gap: 8px;
+
+  /* Default position - top */
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+
+  &.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Top position */
+  &.tooltip-top {
+    bottom: calc(100% + 10px);
+    top: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(-4px);
+
+    &.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  /* Bottom position */
+  &.tooltip-bottom {
+    top: calc(100% + 10px);
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(4px);
+
+    &.show {
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  /* Left position */
+  &.tooltip-left {
+    left: auto;
+    right: calc(100% + 10px);
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%) translateX(-4px);
+
+    &.show {
+      transform: translateY(-50%) translateX(0);
+    }
+  }
+
+  /* Right position */
+  &.tooltip-right {
+    left: calc(100% + 10px);
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%) translateX(4px);
+
+    &.show {
+      transform: translateY(-50%) translateX(0);
+    }
+  }
 }
 
+/* Default show state (top position) */
 .tooltip-wrapper.show {
-  opacity: 1;
-  visibility: visible;
   transform: translateX(-50%) translateY(0);
 }
 
+/* Tooltip text */
 .tooltip-text {
   color: rgba(255, 255, 255, 0.95);
 }
 
+/* Keyboard shortcut badge */
 .tooltip-shortcut {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
@@ -192,11 +258,16 @@
   font-size: 0.75rem;
   font-weight: 600;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", monospace;
+  font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Consolas",
+    monospace;
   letter-spacing: 0.3px;
+  text-transform: uppercase;
 }
 
-/* Responsive adjustments */
+/* ============================================
+   Responsive adjustments
+   ============================================ */
+
 @media (max-width: 768px) {
   .has-tooltip::before,
   .tooltip-wrapper {
@@ -208,4 +279,32 @@
     font-size: 0.688rem;
     padding: 2px 6px;
   }
+}
+
+/* ============================================
+   Accessibility
+   ============================================ */
+
+/* Ensure tooltips don't interfere with keyboard navigation */
+.has-tooltip:focus-visible::before,
+.has-tooltip:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.has-tooltip:focus-visible::before {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Position-specific focus states */
+.has-tooltip.tooltip-bottom:focus-visible::before {
+  transform: translateX(-50%) translateY(0);
+}
+
+.has-tooltip.tooltip-left:focus-visible::before {
+  transform: translateY(-50%) translateX(0);
+}
+
+.has-tooltip.tooltip-right:focus-visible::before {
+  transform: translateY(-50%) translateX(0);
 }
