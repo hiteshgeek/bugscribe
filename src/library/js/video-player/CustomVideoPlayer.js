@@ -19,6 +19,7 @@ export default class CustomVideoPlayer {
       showClose: options.showClose !== false,
       onClose: options.onClose || null,
       knownDuration: options.knownDuration || null,
+      controlsAutoHideDelay: options.controlsAutoHideDelay || 3000, // Default 3 seconds
       ...options,
     };
 
@@ -33,6 +34,7 @@ export default class CustomVideoPlayer {
     this.progressManager = null;
     this.eventHandlers = null;
     this.menus = null;
+    this.hideControlsTimeout = null;
   }
 
   /**
@@ -60,13 +62,18 @@ export default class CustomVideoPlayer {
 
     // Initialize controls
     this.controlsInstance = new VideoControls(this.options);
-    const controls = this.controlsInstance.createControls();
+    const { controls, closeButton } = this.controlsInstance.createControls();
     const controlRefs = this.controlsInstance.getControls();
 
     controlsWrapper.appendChild(controls);
 
     // Append to content
     content.append(this.video, this.centerIcon, controlsWrapper);
+
+    // Add close button to top-right of content if it exists
+    if (closeButton) {
+      content.appendChild(closeButton);
+    }
     this.modal.appendChild(content);
 
     // Add to DOM
@@ -137,24 +144,52 @@ export default class CustomVideoPlayer {
    * @private
    */
   _setupControlsAutoHide(content, controlsWrapper) {
-    let hideTimeout;
-
     const showControls = () => {
       controlsWrapper.classList.add("show");
-      clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(() => {
-        if (this.state.isPlaying && !this.state.isSeeking) {
-          controlsWrapper.classList.remove("show");
-        }
-      }, 3000);
+      clearTimeout(this.hideControlsTimeout);
+
+      // Auto-hide controls after delay when playing
+      if (this.state.isPlaying && !this.state.isSeeking) {
+        this.hideControlsTimeout = setTimeout(() => {
+          if (this.state.isPlaying && !this.state.isSeeking) {
+            controlsWrapper.classList.remove("show");
+          }
+        }, this.options.controlsAutoHideDelay);
+      }
     };
 
+    const hideControls = () => {
+      clearTimeout(this.hideControlsTimeout);
+      if (this.state.isPlaying && !this.state.isSeeking) {
+        controlsWrapper.classList.remove("show");
+      }
+    };
+
+    // Show controls immediately on mouse enter
+    content.addEventListener("mouseenter", () => {
+      controlsWrapper.classList.add("show");
+      clearTimeout(this.hideControlsTimeout);
+    });
+
+    // Hide controls immediately on mouse leave (only when playing)
+    content.addEventListener("mouseleave", hideControls);
+
+    // Show controls on any mouse movement with auto-hide
     content.addEventListener("mousemove", showControls);
 
+    // Always show controls when paused
     this.video.addEventListener("play", showControls);
-    this.video.addEventListener("pause", () =>
-      controlsWrapper.classList.add("show")
-    );
+    this.video.addEventListener("pause", () => {
+      controlsWrapper.classList.add("show");
+      clearTimeout(this.hideControlsTimeout);
+    });
+
+    // Initial auto-hide after delay
+    this.hideControlsTimeout = setTimeout(() => {
+      if (this.state.isPlaying && !this.state.isSeeking) {
+        controlsWrapper.classList.remove("show");
+      }
+    }, this.options.controlsAutoHideDelay);
   }
 
   /**
@@ -163,6 +198,12 @@ export default class CustomVideoPlayer {
   close() {
     if (this.video) {
       this.video.pause();
+    }
+
+    // Clear auto-hide timeout
+    if (this.hideControlsTimeout) {
+      clearTimeout(this.hideControlsTimeout);
+      this.hideControlsTimeout = null;
     }
 
     // Cleanup state

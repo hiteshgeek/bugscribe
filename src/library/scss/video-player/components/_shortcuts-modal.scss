@@ -81,12 +81,12 @@
 
   &:hover {
     background: rgba(255, 255, 255, 0.15);
-    transform: scale(1.05);
+    transform: scale(1.1);
     border-color: rgba(255, 255, 255, 0.2);
   }
 
   &:active {
-    transform: scale(0.95);
+    transform: scale(0.8) !important;
   }
 }
 
@@ -121,7 +121,8 @@
   min-width: 110px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   letter-spacing: 0.5px;
   flex-shrink: 0;
 }

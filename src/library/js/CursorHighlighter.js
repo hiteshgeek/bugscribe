@@ -10,10 +10,10 @@ export default class CursorHighlighter {
 
     // Configuration for click colors
     this.config = {
-      clickColor: config.clickColor || 'var(--bug-primary)',
-      rightClickColor: config.rightClickColor || 'magenta',
-      doubleClickColor: config.doubleClickColor || 'blue',
-      ...config
+      clickColor: config.clickColor || "var(--bug-primary)",
+      rightClickColor: config.rightClickColor || "orange",
+      doubleClickColor: config.doubleClickColor || "green",
+      ...config,
     };
   }
 
@@ -27,9 +27,15 @@ export default class CursorHighlighter {
     this.el.style.zIndex = "1000000";
 
     // Apply custom colors via CSS variables
-    this.el.style.setProperty('--click-color', this.config.clickColor);
-    this.el.style.setProperty('--right-click-color', this.config.rightClickColor);
-    this.el.style.setProperty('--double-click-color', this.config.doubleClickColor);
+    this.el.style.setProperty("--click-color", this.config.clickColor);
+    this.el.style.setProperty(
+      "--right-click-color",
+      this.config.rightClickColor
+    );
+    this.el.style.setProperty(
+      "--double-click-color",
+      this.config.doubleClickColor
+    );
 
     document.body.appendChild(this.el);
 
@@ -68,8 +74,12 @@ export default class CursorHighlighter {
       capture: true,
     });
     document.addEventListener("mouseup", this._onMouseUp, { capture: true });
-    document.addEventListener("dblclick", this._onDoubleClick, { capture: true });
-    document.addEventListener("contextmenu", this._onContextMenu, { capture: true });
+    document.addEventListener("dblclick", this._onDoubleClick, {
+      capture: true,
+    });
+    document.addEventListener("contextmenu", this._onContextMenu, {
+      capture: true,
+    });
     window.addEventListener("scroll", this._onScroll, { capture: true });
   }
 
@@ -81,8 +91,12 @@ export default class CursorHighlighter {
       capture: true,
     });
     document.removeEventListener("mouseup", this._onMouseUp, { capture: true });
-    document.removeEventListener("dblclick", this._onDoubleClick, { capture: true });
-    document.removeEventListener("contextmenu", this._onContextMenu, { capture: true });
+    document.removeEventListener("dblclick", this._onDoubleClick, {
+      capture: true,
+    });
+    document.removeEventListener("contextmenu", this._onContextMenu, {
+      capture: true,
+    });
     window.removeEventListener("scroll", this._onScroll, { capture: true });
   }
 
@@ -91,6 +105,17 @@ export default class CursorHighlighter {
       const offsetX = e.clientX + CursorHighlighter.HOTSPOT_OFFSET_X;
       const offsetY = e.clientY + CursorHighlighter.HOTSPOT_OFFSET_Y;
       this.el.style.transform = `translate3d(${offsetX}px, ${offsetY}px, 0)`;
+
+      // Hide cursor highlighter when hovering over timer or bug elements
+      const target = e.target;
+      const isOverTimer = target.closest(".recording-timer-wrapper");
+      const isOverBugElement = target.closest(".bug-element");
+
+      if (isOverTimer || isOverBugElement) {
+        this.el.style.opacity = "0";
+      } else {
+        this.el.style.opacity = "1";
+      }
     }
   };
 

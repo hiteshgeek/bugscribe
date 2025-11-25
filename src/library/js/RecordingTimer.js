@@ -153,6 +153,12 @@ export default class RecordingTimer {
   _drawWaveform(context, analyzer, dataArray) {
     if (!analyzer || !dataArray) return;
 
+    // Stop drawing waveform when paused
+    if (this._isPaused) {
+      context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+      return;
+    }
+
     const width = context.canvas.width;
     const height = context.canvas.height;
     const barCount = 5; // Number of bars for a professional, segmented look

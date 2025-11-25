@@ -12,7 +12,7 @@ export default class VideoControls {
 
   /**
    * Create all video controls
-   * @returns {HTMLElement} Controls container
+   * @returns {Object} Controls container and close button
    */
   createControls() {
     const controls = document.createElement("div");
@@ -23,13 +23,22 @@ export default class VideoControls {
 
     controls.append(progressRow, bottomRow);
 
+    // Create close button separately (for top-right positioning)
+    let closeButton = null;
+    if (this.options.showClose !== false) {
+      closeButton = this._createCloseButton();
+    }
+
     // Initialize tooltips after a tick
     setTimeout(() => {
       const allControls = controls.querySelectorAll("[data-tooltip-text]");
       allControls.forEach((control) => Tooltip.init(control));
+      if (closeButton) {
+        Tooltip.init(closeButton);
+      }
     }, 0);
 
-    return controls;
+    return { controls, closeButton };
   }
 
   /**
@@ -153,17 +162,20 @@ export default class VideoControls {
 
     rightControls.append(this.pipBtn, this.fullscreenBtn);
 
-    // Close Button
-    if (this.options.showClose !== false) {
-      this.closeBtn = document.createElement("button");
-      this.closeBtn.className = "video-control-btn video-close-btn";
-      this.closeBtn.innerHTML = "×";
-      this.closeBtn.setAttribute("data-tooltip-text", "Close");
-      this.closeBtn.setAttribute("data-tooltip-shortcut", "Esc");
-      rightControls.append(this.closeBtn);
-    }
-
     return rightControls;
+  }
+
+  /**
+   * Create close button for top-right positioning
+   * @private
+   */
+  _createCloseButton() {
+    this.closeBtn = document.createElement("button");
+    this.closeBtn.className = "video-control-btn video-close-btn video-close-btn-top";
+    this.closeBtn.innerHTML = "×";
+    this.closeBtn.setAttribute("data-tooltip-text", "Close");
+    this.closeBtn.setAttribute("data-tooltip-shortcut", "Esc");
+    return this.closeBtn;
   }
 
   /**

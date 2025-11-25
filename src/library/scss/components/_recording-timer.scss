@@ -79,7 +79,7 @@
   }
 
   &:active {
-    transform: scale(0.95);
+    transform: scale(0.8) !important;
   }
 }
 
@@ -113,7 +113,7 @@
 
   &:hover {
     background: color-mix(in srgb, var(--timer-danger) 50%, transparent);
-    transform: scale(1.05);
+    transform: scale(1.1);
   }
 
   svg {
