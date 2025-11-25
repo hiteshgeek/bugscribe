@@ -1,18 +1,94 @@
 @use "../mixins" as *;
 
-.recording-timer-wrapper {
+// Container for timer, toolbar, and minimize button
+.recording-timer-container {
   position: fixed;
   bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--timer-bg);
+  z-index: var(--z-timer);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+
+  &.left {
+    left: 30px;
+  }
+
+  &.right {
+    right: 30px;
+  }
+
+  &.center {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  // Minimized state
+  &.minimized {
+    .recording-timer-wrapper {
+      gap: 6px;
+      padding: 8px 16px;
+
+      .recording-dot,
+      .recording-waveform-canvas,
+      .recording-mic-btn,
+      .recording-system-audio-btn,
+      .recording-pause-btn,
+      .recording-resume-btn {
+        display: none;
+      }
+
+      .recording-separator,
+      .recording-max-time {
+        display: none;
+      }
+
+      .recording-timer-display {
+        min-width: 50px;
+        font-size: 1rem;
+      }
+
+      // Show the full-size maximize button when minimized
+      .timer-maximize-btn {
+        display: flex;
+      }
+    }
+
+    .timer-controls-row {
+      display: none;
+    }
+  }
+
+  // Hide maximize button when not minimized
+  &:not(.minimized) {
+    .timer-maximize-btn {
+      display: none;
+    }
+  }
+}
+
+.recording-timer-wrapper {
+  background: color-mix(in srgb, var(--timer-bg) 40%, transparent);
   padding: 12px 20px;
   border-radius: var(--timer-border-radius);
   @include flex-center;
-  gap: 8px; // Reduced gap to compensate for added elements
-  z-index: var(--z-timer);
+  gap: 8px;
   box-shadow: var(--shadow-lg);
   backdrop-filter: blur(10px);
+  @include transition(background);
+
+  &:hover {
+    background: var(--timer-bg);
+  }
+}
+
+// Row container for toolbar and minimize button
+.timer-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 90%;
+  gap: 8px;
 }
 
 // Recording indicator dot
@@ -173,24 +249,60 @@
   }
 }
 
-// Position controls
-.timer-position-controls {
+// Position toolbar (on left side of controls row)
+.timer-position-toolbar {
   display: flex;
   gap: 4px;
-  padding-right: 8px;
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
-  margin-right: 8px;
+  background: color-mix(in srgb, var(--timer-bg) 40%, transparent);
+  padding: 4px 8px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
+  @include transition(background);
+
+  &:hover {
+    background: var(--timer-bg);
+  }
 }
 
 .timer-position-btn {
   @include button-reset;
   @include flex-center;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
   @include transition(all);
+
+  svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--timer-text);
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+// Minimize button (on right side of controls row)
+.timer-minimize-btn {
+  @include button-reset;
+  @include flex-center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--timer-bg) 40%, transparent);
+  cursor: pointer;
+  @include transition(all);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
 
   svg {
     width: 14px;
@@ -199,85 +311,16 @@
   }
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: scale(1.05);
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
-}
-
-// Minimize button
-.timer-minimize-btn {
-  @include button-reset;
-  @include flex-center;
-  width: var(--timer-control-size);
-  height: var(--timer-control-size);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  cursor: pointer;
-  @include transition(all);
-  margin-left: 4px;
-
-  svg {
-    width: 18px;
-    height: 18px;
-    fill: var(--timer-text);
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: var(--timer-bg);
     transform: scale(1.1);
   }
 
   &:active {
-    transform: scale(0.8);
+    transform: scale(0.9);
   }
 }
 
-// Timer positions
-.recording-timer-wrapper {
-  &.left {
-    left: 30px;
-    transform: translateX(0);
-  }
-
-  &.right {
-    left: auto;
-    right: 30px;
-    transform: translateX(0);
-  }
-
-  &.center {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
-  }
-
-  // Minimized state - hide non-essential controls
-  &.minimized {
-    gap: 6px;
-    padding: 8px 16px;
-
-    .timer-position-controls,
-    .recording-dot,
-    .recording-waveform-canvas,
-    .recording-mic-btn,
-    .recording-system-audio-btn,
-    .recording-pause-btn,
-    .recording-resume-btn {
-      display: none;
-    }
-
-    .recording-separator,
-    .recording-max-time {
-      display: none;
-    }
-
-    .recording-timer-display {
-      min-width: 50px;
-      font-size: 1rem;
-    }
-  }
+// Maximize button (full-size, only visible when minimized)
+.timer-maximize-btn {
+  display: none; // Hidden by default, shown only when minimized
 }

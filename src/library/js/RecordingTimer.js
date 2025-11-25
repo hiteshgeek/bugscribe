@@ -378,58 +378,11 @@ export default class RecordingTimer {
       this.mediaCapture.stopRecording();
     });
 
-    // --- Position Controls (Left/Center/Right) ---
-    const positionControls = document.createElement("div");
-    positionControls.className = "timer-position-controls";
-
-    const leftPosBtn = document.createElement("button");
-    leftPosBtn.className = "timer-position-btn";
-    leftPosBtn.innerHTML = icons.arrow_left;
-    leftPosBtn.title = "Position: Left";
-    leftPosBtn.addEventListener("click", () => {
-      timerWrapper.classList.remove("center", "right");
-      timerWrapper.classList.add("left");
-    });
-
-    const centerPosBtn = document.createElement("button");
-    centerPosBtn.className = "timer-position-btn";
-    centerPosBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3h6v2H9V3m0 16h6v2H9v-2m-6-8h18v2H3v-2z"/></svg>`;
-    centerPosBtn.title = "Position: Center";
-    centerPosBtn.addEventListener("click", () => {
-      timerWrapper.classList.remove("left", "right");
-      timerWrapper.classList.add("center");
-    });
-
-    const rightPosBtn = document.createElement("button");
-    rightPosBtn.className = "timer-position-btn";
-    rightPosBtn.innerHTML = icons.arrow_right;
-    rightPosBtn.title = "Position: Right";
-    rightPosBtn.addEventListener("click", () => {
-      timerWrapper.classList.remove("left", "center");
-      timerWrapper.classList.add("right");
-    });
-
-    positionControls.append(leftPosBtn, centerPosBtn, rightPosBtn);
-
-    // --- Minimize Toggle Button ---
-    const minimizeBtn = document.createElement("button");
-    minimizeBtn.className = "timer-minimize-btn";
-    minimizeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/><path d="M7 11h10v2H7z"/></svg>`;
-    minimizeBtn.title = "Minimize timer";
-    minimizeBtn.addEventListener("click", () => {
-      const isMinimized = timerWrapper.classList.toggle("minimized");
-      minimizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
-      minimizeBtn.innerHTML = isMinimized
-        ? `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>`
-        : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/><path d="M7 11h10v2H7z"/></svg>`;
-    });
-
     // --- Append to Wrapper ---
     const recordingDot = document.createElement("div");
     recordingDot.className = "recording-dot";
 
     timerWrapper.append(
-      positionControls,
       recordingDot,
       timerDisplay,
       waveformCanvas, // Integrated waveform canvas
@@ -437,10 +390,80 @@ export default class RecordingTimer {
       systemAudioBtn,
       pauseBtn,
       resumeBtn,
-      stopBtn,
-      minimizeBtn
+      stopBtn
     );
-    document.body.appendChild(timerWrapper);
+
+    // --- Position Controls Toolbar (outside timer, at bottom) ---
+    const positionToolbar = document.createElement("div");
+    positionToolbar.className = "timer-position-toolbar";
+
+    const leftPosBtn = document.createElement("button");
+    leftPosBtn.className = "timer-position-btn";
+    leftPosBtn.innerHTML = icons.arrow_left;
+    leftPosBtn.title = "Position: Left";
+    leftPosBtn.addEventListener("click", () => {
+      timerContainer.classList.remove("center", "right");
+      timerContainer.classList.add("left");
+    });
+
+    const centerPosBtn = document.createElement("button");
+    centerPosBtn.className = "timer-position-btn";
+    centerPosBtn.innerHTML = icons.minus;
+    centerPosBtn.title = "Position: Center";
+    centerPosBtn.addEventListener("click", () => {
+      timerContainer.classList.remove("left", "right");
+      timerContainer.classList.add("center");
+    });
+
+    const rightPosBtn = document.createElement("button");
+    rightPosBtn.className = "timer-position-btn";
+    rightPosBtn.innerHTML = icons.arrow_right;
+    rightPosBtn.title = "Position: Right";
+    rightPosBtn.addEventListener("click", () => {
+      timerContainer.classList.remove("left", "center");
+      timerContainer.classList.add("right");
+    });
+
+    positionToolbar.append(leftPosBtn, centerPosBtn, rightPosBtn);
+
+    // --- Minimize Toggle Button (small, for toolbar) ---
+    const minimizeBtn = document.createElement("button");
+    minimizeBtn.className = "timer-minimize-btn";
+    minimizeBtn.innerHTML = icons.minimize;
+    minimizeBtn.title = "Minimize timer";
+    minimizeBtn.addEventListener("click", () => {
+      const isMinimized = timerContainer.classList.toggle("minimized");
+      minimizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      minimizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
+      maximizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      maximizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
+    });
+
+    // --- Maximize Button (full-size, only visible when minimized) ---
+    const maximizeBtn = document.createElement("button");
+    maximizeBtn.className = "recording-control-btn timer-maximize-btn";
+    maximizeBtn.innerHTML = icons.mazimize;
+    maximizeBtn.title = "Restore timer";
+    maximizeBtn.addEventListener("click", () => {
+      const isMinimized = timerContainer.classList.toggle("minimized");
+      minimizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      minimizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
+      maximizeBtn.title = isMinimized ? "Restore timer" : "Minimize timer";
+      maximizeBtn.innerHTML = isMinimized ? icons.mazimize : icons.minimize;
+    });
+
+    // --- Controls Row (toolbar left, minimize right) ---
+    const controlsRow = document.createElement("div");
+    controlsRow.className = "timer-controls-row";
+    controlsRow.append(positionToolbar, minimizeBtn);
+
+    // --- Container to hold timer and controls row ---
+    const timerContainer = document.createElement("div");
+    timerContainer.className = "recording-timer-container center";
+    timerWrapper.append(maximizeBtn); // Add maximize button to timer wrapper
+    timerContainer.append(timerWrapper, controlsRow);
+
+    document.body.appendChild(timerContainer);
 
     // --- Start Waveform Drawing ---
     if (analyzer && dataArray) {
@@ -548,7 +571,8 @@ export default class RecordingTimer {
     this.resumeBtn = null;
     this.timerDisplay = null;
 
-    const timer = document.getElementById("recording-timer-wrapper");
-    if (timer) timer.remove();
+    // Remove the entire container (includes toolbar and minimize button)
+    const container = document.querySelector(".recording-timer-container");
+    if (container) container.remove();
   }
 }
