@@ -1,9 +1,20 @@
 export default class CursorHighlighter {
-  constructor() {
+  constructor(config = {}) {
     this.el = null;
     this.isScrolling = false;
     this.scrollTimer = null;
     this.rippleTimer = null;
+    this.lastClickTime = 0;
+    this.clickCount = 0;
+    this.doubleClickTimer = null;
+
+    // Configuration for click colors
+    this.config = {
+      clickColor: config.clickColor || 'var(--bug-primary)',
+      rightClickColor: config.rightClickColor || 'magenta',
+      doubleClickColor: config.doubleClickColor || 'blue',
+      ...config
+    };
   }
 
   static HOTSPOT_OFFSET_X = 2;
@@ -14,6 +25,12 @@ export default class CursorHighlighter {
     this.el.id = "recording-cursor-highlighter";
     this.el.className = "cursor-highlighter";
     this.el.style.zIndex = "1000000";
+
+    // Apply custom colors via CSS variables
+    this.el.style.setProperty('--click-color', this.config.clickColor);
+    this.el.style.setProperty('--right-click-color', this.config.rightClickColor);
+    this.el.style.setProperty('--double-click-color', this.config.doubleClickColor);
+
     document.body.appendChild(this.el);
 
     // Set initial position to current mouse position if available
@@ -38,6 +55,7 @@ export default class CursorHighlighter {
     this._unbindEvents();
     if (this.scrollTimer) clearTimeout(this.scrollTimer);
     if (this.rippleTimer) clearTimeout(this.rippleTimer);
+    if (this.doubleClickTimer) clearTimeout(this.doubleClickTimer);
     if (this.el) this.el.remove();
     this.el = null;
   }
@@ -50,6 +68,8 @@ export default class CursorHighlighter {
       capture: true,
     });
     document.addEventListener("mouseup", this._onMouseUp, { capture: true });
+    document.addEventListener("dblclick", this._onDoubleClick, { capture: true });
+    document.addEventListener("contextmenu", this._onContextMenu, { capture: true });
     window.addEventListener("scroll", this._onScroll, { capture: true });
   }
 
@@ -61,6 +81,8 @@ export default class CursorHighlighter {
       capture: true,
     });
     document.removeEventListener("mouseup", this._onMouseUp, { capture: true });
+    document.removeEventListener("dblclick", this._onDoubleClick, { capture: true });
+    document.removeEventListener("contextmenu", this._onContextMenu, { capture: true });
     window.removeEventListener("scroll", this._onScroll, { capture: true });
   }
 
@@ -74,21 +96,32 @@ export default class CursorHighlighter {
 
   /**
    * UPDATED: Triggers the 'clicking' visual effect (transparent background + ripple).
+   * Detects right-click based on button property.
    */
-  _onMouseDown = () => {
+  _onMouseDown = (e) => {
     if (this.el) {
-      // 1. Clear any previous timer
+      // Clear any previous timer
       if (this.rippleTimer) clearTimeout(this.rippleTimer);
 
-      // 2. Add the 'clicking' class to start the ripple animation and remove the background
-      // Note: We don't need to force reflow or remove the class first here, as
-      // the ripple will reset when the class is removed by the timer.
-      this.el.classList.add("clicking");
+      // Remove all clicking classes first to reset the animation
+      this.el.classList.remove("clicking", "right-clicking", "double-clicking");
 
-      // 3. Remove the 'clicking' class after the animation duration (400ms)
-      this.rippleTimer = setTimeout(() => {
-        if (this.el) this.el.classList.remove("clicking");
-      }, 400); // Match SCSS transition duration
+      // Force a reflow to restart the animation
+      void this.el.offsetWidth;
+
+      // Check if it's a right-click (button === 2)
+      if (e.button === 2) {
+        this.el.classList.add("right-clicking");
+        this.rippleTimer = setTimeout(() => {
+          if (this.el) this.el.classList.remove("right-clicking");
+        }, 500);
+      } else {
+        // Regular left-click
+        this.el.classList.add("clicking");
+        this.rippleTimer = setTimeout(() => {
+          if (this.el) this.el.classList.remove("clicking");
+        }, 500);
+      }
     }
   };
 
@@ -108,5 +141,38 @@ export default class CursorHighlighter {
         this.el.classList.remove("scrolling");
       }
     }, 150);
+  };
+
+  /**
+   * Handles double-click event with blue color.
+   */
+  _onDoubleClick = () => {
+    if (this.el) {
+      // Clear any previous timer
+      if (this.rippleTimer) clearTimeout(this.rippleTimer);
+
+      // Remove all clicking classes first
+      this.el.classList.remove("clicking", "right-clicking", "double-clicking");
+
+      // Force a reflow
+      void this.el.offsetWidth;
+
+      // Add double-clicking class
+      this.el.classList.add("double-clicking");
+
+      // Remove the class after animation
+      this.rippleTimer = setTimeout(() => {
+        if (this.el) this.el.classList.remove("double-clicking");
+      }, 500);
+    }
+  };
+
+  /**
+   * Handles context menu (right-click) event.
+   * The actual visual effect is handled in _onMouseDown.
+   */
+  _onContextMenu = () => {
+    // This event fires after mousedown for right-clicks
+    // We don't need to do anything here as the visual effect is already triggered
   };
 }

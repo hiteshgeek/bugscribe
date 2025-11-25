@@ -11,9 +11,9 @@ $cursor-size: 32px;
   margin-top: calc(-1 * #{$cursor-size} / 2);
   margin-left: calc(-1 * #{$cursor-size} / 2);
   will-change: transform, opacity, box-shadow;
-  background: var(--bug-primary-light);
+  background: color-mix(in srgb, var(--bug-primary) 75%, transparent);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4),
-    0 0 10px 5px var(--bug-primary);
+    0 0 12px 3px var(--bug-primary);
   opacity: 1;
   transition: background-color var(--anim-fast) ease-in-out,
     box-shadow var(--anim-fast) ease-in-out,
@@ -38,21 +38,67 @@ $cursor-size: 32px;
     background: var(--bug-primary);
     opacity: 0;
     pointer-events: none;
-    transform: translate(-50%, -50%) scale(0.1);
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    transform: translate(-50%, -50%) scale(0);
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
     z-index: 1;
   }
 
-  // NEW: State triggered by JavaScript on mousedown
+  // State triggered by JavaScript on mousedown
   &.clicking {
-    // 1. Remove background and shadow from the main circle
-    background: transparent;
-    box-shadow: none;
+    // Keep the original circle visible during animation
+    background: color-mix(in srgb, var(--click-color, var(--bug-primary)) 40%, transparent);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2),
+      0 0 8px 2px var(--click-color, var(--bug-primary));
 
-    // 2. Animate the ::after pseudo-element (the ripple)
+    // Animate the ::after pseudo-element (the ripple)
     &::after {
-      opacity: 0.35;
-      transform: translate(-50%, -50%) scale(1.5);
+      background: var(--click-color, var(--bug-primary));
+      opacity: 0.8;
+      transform: translate(-50%, -50%) scale(1);
+      animation: ripple-expand 0.5s ease-out forwards;
     }
+  }
+
+  // Right-click state with configurable color
+  &.right-clicking {
+    background: color-mix(in srgb, var(--right-click-color, magenta) 40%, transparent);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2),
+      0 0 8px 2px var(--right-click-color, magenta);
+
+    &::after {
+      background: var(--right-click-color, magenta);
+      opacity: 0.8;
+      transform: translate(-50%, -50%) scale(1);
+      animation: ripple-expand 0.5s ease-out forwards;
+    }
+  }
+
+  // Double-click state with configurable color
+  &.double-clicking {
+    background: color-mix(in srgb, var(--double-click-color, blue) 40%, transparent);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2),
+      0 0 8px 2px var(--double-click-color, blue);
+
+    &::after {
+      background: var(--double-click-color, blue);
+      opacity: 0.8;
+      transform: translate(-50%, -50%) scale(1);
+      animation: ripple-expand 0.5s ease-out forwards;
+    }
+  }
+}
+
+// Keyframe animation for ripple effect
+@keyframes ripple-expand {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0;
   }
 }

@@ -2,8 +2,8 @@
  * VideoControls - Creates and manages video player UI controls
  */
 
-import { icons } from '../utils/icons.js';
-import Tooltip from '../ui/Tooltip.js';
+import { icons } from "../../icons.js";
+import Tooltip from "../ui/Tooltip.js";
 
 export default class VideoControls {
   constructor(options = {}) {
@@ -89,7 +89,11 @@ export default class VideoControls {
     this.playPauseBtn = this._createButton(icons.play, "Play", "K");
 
     // Backward 10 seconds
-    this.backward10Btn = this._createButton(icons.backward10, "Backward 10s", "J");
+    this.backward10Btn = this._createButton(
+      icons.backward10,
+      "Backward 10s",
+      "J"
+    );
 
     // Forward 10 seconds
     this.forward10Btn = this._createButton(icons.forward10, "Forward 10s", "L");
@@ -141,7 +145,11 @@ export default class VideoControls {
     this.pipBtn = this._createButton(icons.pip, "Picture in Picture", "I");
 
     // Fullscreen Button
-    this.fullscreenBtn = this._createButton(icons.fullscreen, "Fullscreen", "F");
+    this.fullscreenBtn = this._createButton(
+      icons.fullscreen,
+      "Fullscreen",
+      "F"
+    );
 
     rightControls.append(this.pipBtn, this.fullscreenBtn);
 

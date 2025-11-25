@@ -2,8 +2,8 @@
  * VideoEventHandlers - Manages all event listeners for video player
  */
 
-import { icons } from '../utils/icons.js';
-import VideoUtils from '../utils/VideoUtils.js';
+import { icons } from "../../icons.js";
+import VideoUtils from "../utils/VideoUtils.js";
 
 export default class VideoEventHandlers {
   constructor(video, state, controls, progressManager, menus, options) {
@@ -43,10 +43,10 @@ export default class VideoEventHandlers {
     this._attachVideoListeners();
     this._attachKeyboardListeners();
     this._attachFullscreenListeners();
-    
+
     // Start progress sync
     this.progressManager.startProgressSync();
-    
+
     // Initial update
     this.progressManager.updateProgress();
   }
@@ -56,7 +56,9 @@ export default class VideoEventHandlers {
    * @private
    */
   _attachPlaybackListeners() {
-    this.controls.playPauseBtn.addEventListener("click", () => this.togglePlayPause());
+    this.controls.playPauseBtn.addEventListener("click", () =>
+      this.togglePlayPause()
+    );
     this.video.addEventListener("click", () => this.togglePlayPause());
 
     this.controls.backward10Btn.addEventListener("click", () => {
@@ -73,7 +75,9 @@ export default class VideoEventHandlers {
     });
 
     if (this.controls.pipBtn) {
-      this.controls.pipBtn.addEventListener("click", () => this.togglePictureInPicture());
+      this.controls.pipBtn.addEventListener("click", () =>
+        this.togglePictureInPicture()
+      );
     }
 
     if (this.controls.closeBtn) {
@@ -108,11 +112,14 @@ export default class VideoEventHandlers {
    */
   _attachVolumeListeners() {
     this.controls.volumeBtn.addEventListener("click", () => this.toggleMute());
-    
+
     this.controls.volumeSlider.addEventListener("input", (e) => {
       const volume = e.target.value / 100;
       this.video.volume = volume;
-      this.controls.volumeSlider.style.setProperty("--volume-level", `${e.target.value}%`);
+      this.controls.volumeSlider.style.setProperty(
+        "--volume-level",
+        `${e.target.value}%`
+      );
       this._updateVolumeIcon();
     });
   }
@@ -129,13 +136,15 @@ export default class VideoEventHandlers {
       this.menus.toggleSpeedMenu(this.state.speedMenuOpen);
     });
 
-    this.controls.speedMenu.querySelectorAll(".video-speed-option").forEach((option) => {
-      option.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const speed = parseFloat(option.dataset.speed);
-        this.setPlaybackSpeed(speed);
+    this.controls.speedMenu
+      .querySelectorAll(".video-speed-option")
+      .forEach((option) => {
+        option.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const speed = parseFloat(option.dataset.speed);
+          this.setPlaybackSpeed(speed);
+        });
       });
-    });
 
     // Settings menu
     this.controls.settingsBtn.addEventListener("click", (e) => {
@@ -155,11 +164,17 @@ export default class VideoEventHandlers {
 
     // Close menus on outside click
     document.addEventListener("click", (e) => {
-      if (this.state.speedMenuOpen && !e.target.closest(".video-speed-control")) {
+      if (
+        this.state.speedMenuOpen &&
+        !e.target.closest(".video-speed-control")
+      ) {
         this.state.closeSpeedMenu();
         this.menus.toggleSpeedMenu(false);
       }
-      if (this.state.settingsMenuOpen && !e.target.closest(".video-settings-control")) {
+      if (
+        this.state.settingsMenuOpen &&
+        !e.target.closest(".video-settings-control")
+      ) {
         this.state.closeSettingsMenu();
         this.menus.toggleSettingsMenu(false);
       }
@@ -178,13 +193,19 @@ export default class VideoEventHandlers {
    * @private
    */
   _attachVideoListeners() {
-    this.video.addEventListener("progress", () => this.progressManager.updateBuffer());
+    this.video.addEventListener("progress", () =>
+      this.progressManager.updateBuffer()
+    );
     this.video.addEventListener("loadedmetadata", () => {
       this.progressManager.updateProgress();
       this.progressManager.updateBuffer();
     });
-    this.video.addEventListener("loadeddata", () => this.progressManager.updateProgress());
-    this.video.addEventListener("canplay", () => this.progressManager.updateProgress());
+    this.video.addEventListener("loadeddata", () =>
+      this.progressManager.updateProgress()
+    );
+    this.video.addEventListener("canplay", () =>
+      this.progressManager.updateProgress()
+    );
 
     this.video.addEventListener("play", () => {
       this.state.isPlaying = true;
@@ -198,7 +219,7 @@ export default class VideoEventHandlers {
     this.video.addEventListener("ended", () => {
       this.state.isPlaying = false;
       this.controls.playPauseBtn.innerHTML = icons.play;
-      
+
       if (!isFinite(this.video.duration) && this.video.currentTime > 0) {
         this.state.estimatedDuration = this.video.currentTime;
         this.progressManager.updateProgress();
@@ -268,15 +289,23 @@ export default class VideoEventHandlers {
    * @private
    */
   _attachFullscreenListeners() {
-    this.controls.fullscreenBtn.addEventListener("click", () => this.toggleFullscreen());
+    this.controls.fullscreenBtn.addEventListener("click", () =>
+      this.toggleFullscreen()
+    );
 
     document.addEventListener("fullscreenchange", () => {
       if (document.fullscreenElement) {
         this.controls.fullscreenBtn.innerHTML = icons.fullscreen_off;
-        this.controls.fullscreenBtn.setAttribute("data-tooltip-text", "Exit fullscreen");
+        this.controls.fullscreenBtn.setAttribute(
+          "data-tooltip-text",
+          "Exit fullscreen"
+        );
       } else {
         this.controls.fullscreenBtn.innerHTML = icons.fullscreen;
-        this.controls.fullscreenBtn.setAttribute("data-tooltip-text", "Fullscreen");
+        this.controls.fullscreenBtn.setAttribute(
+          "data-tooltip-text",
+          "Fullscreen"
+        );
       }
     });
   }
@@ -372,12 +401,14 @@ export default class VideoEventHandlers {
     this.state.setPlaybackRate(speed);
     this.video.playbackRate = speed;
 
-    this.controls.speedMenu.querySelectorAll(".video-speed-option").forEach((option) => {
-      option.classList.remove("active");
-      if (parseFloat(option.dataset.speed) === speed) {
-        option.classList.add("active");
-      }
-    });
+    this.controls.speedMenu
+      .querySelectorAll(".video-speed-option")
+      .forEach((option) => {
+        option.classList.remove("active");
+        if (parseFloat(option.dataset.speed) === speed) {
+          option.classList.add("active");
+        }
+      });
 
     this.state.closeSpeedMenu();
     this.menus.toggleSpeedMenu(false);
@@ -389,12 +420,12 @@ export default class VideoEventHandlers {
   close() {
     this.video.pause();
     document.removeEventListener("keydown", this.handleKeyboard);
-    
+
     if (this.modal) {
       this.modal.remove();
       this.modal = null;
     }
-    
+
     if (this.onClose) this.onClose();
   }
 

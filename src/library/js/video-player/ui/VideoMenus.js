@@ -2,7 +2,7 @@
  * VideoMenus - Manages speed menu, settings menu, and keyboard shortcuts modal
  */
 
-import { icons } from '../utils/icons.js';
+import { icons } from "../../icons.js";
 
 export default class VideoMenus {
   constructor(speedMenu, settingsMenu) {
