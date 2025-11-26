@@ -64,30 +64,49 @@ export default class RecordingTimer {
 
     // Configuration options
     this.config = {
-      initialPosition: config.initialPosition || 'center', // 'left' | 'center' | 'right'
+      initialPosition: config.initialPosition || "center", // 'left' | 'center' | 'right'
       initialMinimized: config.initialMinimized || false, // boolean
       scale: config.scale || 1, // number (0.5 to 2.0 for size scaling)
       minScale: config.minScale || 0.5,
       maxScale: config.maxScale || 2.0,
       scaleStep: config.scaleStep || 0.1,
+      countdownMode: config.countdownMode || false, // boolean - start with countdown from max time
+      allowTimerToggle: config.allowTimerToggle !== false, // boolean - allow clicking to toggle timer display mode
 
       // Visibility options
       showMicButton: config.showMicButton !== false, // boolean
       showSystemAudioButton: config.showSystemAudioButton !== false, // boolean
       showPauseButton: config.showPauseButton !== false, // boolean
       showStopButton: config.showStopButton !== false, // boolean
+      showRecordingTime: config.showRecordingTime !== false, // boolean
       showWaveform: config.showWaveform !== false, // boolean
       showDot: config.showDot !== false, // boolean
       showMaxTime: config.showMaxTime !== false, // boolean
       showPositionToolbar: config.showPositionToolbar !== false, // boolean
       showScalingToolbar: config.showScalingToolbar !== false, // boolean
+      showResetScaleButton: config.showResetScaleButton !== false, // boolean
       showMinimizeButton: config.showMinimizeButton !== false, // boolean
+      showHideToggle: config.showHideToggle !== false, // boolean
+      showDotOnHidden: config.showDotOnHidden !== false, // boolean - show dot when timer is hidden (overrides showDot)
 
-      ...config
+      ...config,
     };
 
     // Current scale state
     this.currentScale = this.config.scale;
+
+    // Timer display mode state
+    this.isCountdownMode = this.config.countdownMode;
+
+    // Hidden state for hide/show toggle
+    this.isHidden = false;
+    this.previousPosition = null;
+    this.previousState = null;
+
+    // Store references for keyboard shortcuts
+    this.timerContainer = null;
+    this.minimizeBtn = null;
+    this.maximizeBtn = null;
   }
 
   /**
@@ -109,7 +128,15 @@ export default class RecordingTimer {
    * @private
    */
   _updateDisplay(currentTimeSpan, timerDisplay) {
-    currentTimeSpan.textContent = this._formatTime(this._elapsedSeconds);
+    // Display elapsed time or countdown based on mode
+    const timeToDisplay = this.isCountdownMode
+      ? this.maxRecordingSeconds - this._elapsedSeconds
+      : this._elapsedSeconds;
+
+    const formattedTime = this._formatTime(Math.max(0, timeToDisplay));
+    currentTimeSpan.textContent = this.isCountdownMode
+      ? `-${formattedTime}`
+      : formattedTime;
 
     if (this.maxRecordingSeconds - this._elapsedSeconds <= 30) {
       currentTimeSpan.style.color = "#ff4444";
@@ -257,23 +284,38 @@ export default class RecordingTimer {
     timerDisplay.className = "recording-timer-display";
 
     const maxTimeContent = this._formatTime(this.maxRecordingSeconds);
+    const initialTime = this.isCountdownMode ? maxTimeContent : "00:00";
 
     if (this.config.showMaxTime) {
       timerDisplay.innerHTML = `
-               <span class="recording-current-time">00:00</span>
+               <span class="recording-current-time">${initialTime}</span>
                <span class="recording-separator"> / </span>
                <span class="recording-max-time">${maxTimeContent}</span>
              `;
     } else {
       timerDisplay.innerHTML = `
-               <span class="recording-current-time">00:00</span>
+               <span class="recording-current-time">${initialTime}</span>
              `;
     }
     const currentTimeSpan = timerDisplay.querySelector(
       ".recording-current-time"
     );
 
-    // Ensure initial display is 00:00 before interval fires
+    // Add click handler to toggle timer display mode (if allowed and maxTime is shown)
+    if (this.config.allowTimerToggle && this.config.showMaxTime) {
+      timerDisplay.style.cursor = "pointer";
+      timerDisplay.setAttribute("data-tooltip-text", "Toggle timer mode");
+      timerDisplay.addEventListener("click", () => {
+        this.isCountdownMode = !this.isCountdownMode;
+        const tooltipText = this.isCountdownMode
+          ? "Showing countdown (click to switch to elapsed)"
+          : "Showing elapsed time (click to switch to countdown)";
+        Tooltip.updateText(timerDisplay, tooltipText);
+        this._updateDisplay(currentTimeSpan, timerDisplay);
+      });
+    }
+
+    // Ensure initial display is correct before interval fires
     this._updateDisplay(currentTimeSpan, timerDisplay);
 
     // Store reference
@@ -313,7 +355,10 @@ export default class RecordingTimer {
     }
 
     micBtn.innerHTML = isMicMuted ? icons.microhpone_disabled : icons.microhone;
-    micBtn.setAttribute("data-tooltip-text", isMicMuted ? "Unmute microphone" : "Mute microphone");
+    micBtn.setAttribute(
+      "data-tooltip-text",
+      isMicMuted ? "Unmute microphone" : "Mute microphone"
+    );
     micBtn.setAttribute("data-tooltip-shortcut", "M");
     micBtn.setAttribute("data-tooltip-position", "auto");
     micBtn.classList.toggle("muted", isMicMuted);
@@ -345,9 +390,10 @@ export default class RecordingTimer {
 
     if (trackExists) {
       // CASE 1: Track exists - Button is a functional toggle
-      systemAudioBtn.setAttribute("data-tooltip-text", isSystemMuted
-        ? "Enable system audio"
-        : "Mute system audio");
+      systemAudioBtn.setAttribute(
+        "data-tooltip-text",
+        isSystemMuted ? "Enable system audio" : "Mute system audio"
+      );
       systemAudioBtn.setAttribute("data-tooltip-shortcut", "S");
       systemAudioBtn.setAttribute("data-tooltip-position", "auto");
 
@@ -360,7 +406,10 @@ export default class RecordingTimer {
       // CASE 2: Track is missing - Button is a disabled indicator/warning
       systemAudioBtn.setAttribute("disabled", "true");
       systemAudioBtn.style.opacity = "0.4"; // Visual cue for disabled
-      systemAudioBtn.setAttribute("data-tooltip-text", "System audio not captured");
+      systemAudioBtn.setAttribute(
+        "data-tooltip-text",
+        "System audio not captured"
+      );
       systemAudioBtn.setAttribute("data-tooltip-position", "auto");
 
       systemAudioBtn.addEventListener("click", (e) => {
@@ -426,12 +475,22 @@ export default class RecordingTimer {
     const recordingDot = document.createElement("div");
     recordingDot.className = "recording-dot";
 
+    // Store reference to recording dot
+    this.recordingDot = recordingDot;
+
     // Append elements based on visibility config
-    if (this.config.showDot) {
+    // Always append dot if showDotOnHidden is true (even if showDot is false)
+    if (this.config.showDot || this.config.showDotOnHidden) {
       timerWrapper.append(recordingDot);
+      // If showDot is false but showDotOnHidden is true, add class to hide it in normal state
+      if (!this.config.showDot && this.config.showDotOnHidden) {
+        recordingDot.classList.add("hide-dot-normal");
+      }
     }
 
-    timerWrapper.append(timerDisplay);
+    if (this.config.showRecordingTime) {
+      timerWrapper.append(timerDisplay);
+    }
 
     if (this.config.showWaveform) {
       timerWrapper.append(waveformCanvas);
@@ -465,6 +524,7 @@ export default class RecordingTimer {
     leftPosBtn.addEventListener("click", () => {
       timerContainer.classList.remove("center", "right");
       timerContainer.classList.add("left");
+      this.updatePositionButtonsVisibility("left");
     });
 
     const centerPosBtn = document.createElement("button");
@@ -475,6 +535,7 @@ export default class RecordingTimer {
     centerPosBtn.addEventListener("click", () => {
       timerContainer.classList.remove("left", "right");
       timerContainer.classList.add("center");
+      this.updatePositionButtonsVisibility("center");
     });
 
     const rightPosBtn = document.createElement("button");
@@ -485,9 +546,15 @@ export default class RecordingTimer {
     rightPosBtn.addEventListener("click", () => {
       timerContainer.classList.remove("left", "center");
       timerContainer.classList.add("right");
+      this.updatePositionButtonsVisibility("right");
     });
 
     positionToolbar.append(leftPosBtn, centerPosBtn, rightPosBtn);
+
+    // Store position button references
+    this.leftPosBtn = leftPosBtn;
+    this.centerPosBtn = centerPosBtn;
+    this.rightPosBtn = rightPosBtn;
 
     // --- Minimize Toggle Button (small, for toolbar) ---
     const minimizeBtn = document.createElement("button");
@@ -535,45 +602,94 @@ export default class RecordingTimer {
     increaseScaleBtn.setAttribute("data-tooltip-text", "Increase size");
     increaseScaleBtn.setAttribute("data-tooltip-position", "auto");
 
+    const resetScaleBtn = document.createElement("button");
+    resetScaleBtn.className = "timer-scaling-btn timer-reset-scale-btn";
+    resetScaleBtn.innerHTML = icons.equal;
+    resetScaleBtn.setAttribute("data-tooltip-text", "Reset size");
+    resetScaleBtn.setAttribute("data-tooltip-position", "auto");
+
     // Scaling button event handlers
     decreaseScaleBtn.addEventListener("click", () => {
-      const newScale = Math.max(this.config.minScale, this.currentScale - this.config.scaleStep);
+      const newScale = Math.max(
+        this.config.minScale,
+        this.currentScale - this.config.scaleStep
+      );
       this.updateScale(newScale, timerContainer);
     });
 
     increaseScaleBtn.addEventListener("click", () => {
-      const newScale = Math.min(this.config.maxScale, this.currentScale + this.config.scaleStep);
+      const newScale = Math.min(
+        this.config.maxScale,
+        this.currentScale + this.config.scaleStep
+      );
       this.updateScale(newScale, timerContainer);
     });
 
-    scalingToolbar.append(decreaseScaleBtn, increaseScaleBtn);
+    resetScaleBtn.addEventListener("click", () => {
+      this.updateScale(this.config.scale, timerContainer);
+    });
+
+    // Append buttons in order: minus, equals, plus
+    scalingToolbar.append(decreaseScaleBtn);
+    if (this.config.showResetScaleButton) {
+      scalingToolbar.append(resetScaleBtn);
+    }
+    scalingToolbar.append(increaseScaleBtn);
 
     // Store references for scale buttons
     this.decreaseScaleBtn = decreaseScaleBtn;
     this.increaseScaleBtn = increaseScaleBtn;
+    this.resetScaleBtn = resetScaleBtn;
 
-    // --- Right Controls Group (scaling + minimize) ---
-    const rightControlsGroup = document.createElement("div");
-    rightControlsGroup.className = "timer-right-controls-group";
+    // --- Hide/Show Toggle Button (for toolbar) ---
+    let hideShowToggle = null;
+    if (this.config.showHideToggle) {
+      hideShowToggle = document.createElement("button");
+      hideShowToggle.className = "timer-minimize-btn";
+      hideShowToggle.innerHTML = icons.hide;
+      hideShowToggle.setAttribute("data-tooltip-text", "Hide timer");
+      hideShowToggle.setAttribute("data-tooltip-position", "auto");
+
+      hideShowToggle.addEventListener("click", () => {
+        this.toggleHideShow();
+      });
+    }
+
+    // --- Left Controls Group (position + scaling toolbars) ---
+    const leftControlsGroup = document.createElement("div");
+    leftControlsGroup.className = "timer-left-controls-group";
+
+    if (this.config.showPositionToolbar) {
+      leftControlsGroup.append(positionToolbar);
+    }
 
     if (this.config.showScalingToolbar) {
-      rightControlsGroup.append(scalingToolbar);
+      leftControlsGroup.append(scalingToolbar);
     }
+
+    // --- Right Controls Group (minimize + hide) ---
+    const rightControlsGroup = document.createElement("div");
+    rightControlsGroup.className = "timer-right-controls-group";
 
     if (this.config.showMinimizeButton) {
       rightControlsGroup.append(minimizeBtn);
     }
 
-    // --- Controls Row (toolbar left, right controls right) ---
+    if (this.config.showHideToggle && hideShowToggle) {
+      rightControlsGroup.append(hideShowToggle);
+    }
+
+    // --- Controls Row (left controls left, right controls right) ---
     const controlsRow = document.createElement("div");
     controlsRow.className = "timer-controls-row";
 
-    if (this.config.showPositionToolbar) {
-      controlsRow.append(positionToolbar);
+    // Append left controls if any are visible
+    if (this.config.showPositionToolbar || this.config.showScalingToolbar) {
+      controlsRow.append(leftControlsGroup);
     }
 
-    // Only append right controls if any are visible
-    if (this.config.showScalingToolbar || this.config.showMinimizeButton) {
+    // Append right controls if any are visible
+    if (this.config.showMinimizeButton || this.config.showHideToggle) {
       controlsRow.append(rightControlsGroup);
     }
 
@@ -583,7 +699,7 @@ export default class RecordingTimer {
 
     // Apply initial minimized state
     if (this.config.initialMinimized) {
-      timerContainer.classList.add('minimized');
+      timerContainer.classList.add("minimized");
       minimizeBtn.innerHTML = icons.mazimize;
       minimizeBtn.title = "Restore timer";
       maximizeBtn.innerHTML = icons.mazimize;
@@ -592,25 +708,58 @@ export default class RecordingTimer {
 
     // Apply scale transformation
     if (this.config.scale !== 1) {
-      timerContainer.style.transform = this.config.initialPosition === 'center'
-        ? `translateX(-50%) scale(${this.config.scale})`
-        : `scale(${this.config.scale})`;
-      timerContainer.style.transformOrigin = this.config.initialPosition === 'left'
-        ? 'bottom left'
-        : this.config.initialPosition === 'right'
-          ? 'bottom right'
-          : 'bottom center';
+      timerContainer.style.transform =
+        this.config.initialPosition === "center"
+          ? `translateX(-50%) scale(${this.config.scale})`
+          : `scale(${this.config.scale})`;
+      timerContainer.style.transformOrigin =
+        this.config.initialPosition === "left"
+          ? "bottom left"
+          : this.config.initialPosition === "right"
+          ? "bottom right"
+          : "bottom center";
     }
 
-    timerWrapper.append(maximizeBtn); // Add maximize button to timer wrapper
+    // --- Show Button (appears inside timer when hidden) ---
+    const showBtn = document.createElement("button");
+    showBtn.className = "recording-control-btn timer-show-btn";
+    showBtn.innerHTML = icons.show;
+    showBtn.setAttribute("data-tooltip-text", "Show timer");
+    showBtn.setAttribute("data-tooltip-position", "auto");
+    showBtn.addEventListener("click", () => {
+      this.toggleHideShow();
+    });
+
+    timerWrapper.append(maximizeBtn, showBtn); // Add maximize and show buttons to timer wrapper
     timerContainer.append(timerWrapper, controlsRow);
 
     document.body.appendChild(timerContainer);
 
+    // Store references for keyboard shortcuts
+    this.timerContainer = timerContainer;
+    this.minimizeBtn = minimizeBtn;
+    this.maximizeBtn = maximizeBtn;
+    this.hideShowToggle = hideShowToggle;
+    this.showBtn = showBtn;
+
     // --- Initialize Tooltips ---
     setTimeout(() => {
       Tooltip.initAll(timerContainer);
+      if (hideShowToggle) {
+        Tooltip.init(hideShowToggle);
+      }
     }, 0);
+
+    // --- Initialize Button States ---
+    // Set initial position button visibility based on initialPosition
+    this.updatePositionButtonsVisibility(this.config.initialPosition);
+
+    // Set initial equals button disabled state based on current scale
+    if (this.resetScaleBtn) {
+      const isAtDefault = Math.abs(this.currentScale - this.config.scale) < 0.01;
+      this.resetScaleBtn.disabled = isAtDefault;
+      this.resetScaleBtn.style.opacity = isAtDefault ? "0.4" : "1";
+    }
 
     // --- Start Waveform Drawing ---
     if (analyzer && dataArray) {
@@ -712,10 +861,13 @@ export default class RecordingTimer {
     this.currentScale = newScale;
 
     // Update transform based on position
-    const position = timerContainer.classList.contains('left') ? 'left' :
-                    timerContainer.classList.contains('right') ? 'right' : 'center';
+    const position = timerContainer.classList.contains("left")
+      ? "left"
+      : timerContainer.classList.contains("right")
+      ? "right"
+      : "center";
 
-    if (position === 'center') {
+    if (position === "center") {
       timerContainer.style.transform = `translateX(-50%) scale(${newScale})`;
     } else {
       timerContainer.style.transform = `scale(${newScale})`;
@@ -724,12 +876,218 @@ export default class RecordingTimer {
     // Update button states
     if (this.decreaseScaleBtn) {
       this.decreaseScaleBtn.disabled = newScale <= this.config.minScale;
-      this.decreaseScaleBtn.style.opacity = newScale <= this.config.minScale ? '0.4' : '1';
+      this.decreaseScaleBtn.style.opacity =
+        newScale <= this.config.minScale ? "0.4" : "1";
     }
     if (this.increaseScaleBtn) {
       this.increaseScaleBtn.disabled = newScale >= this.config.maxScale;
-      this.increaseScaleBtn.style.opacity = newScale >= this.config.maxScale ? '0.4' : '1';
+      this.increaseScaleBtn.style.opacity =
+        newScale >= this.config.maxScale ? "0.4" : "1";
     }
+    if (this.resetScaleBtn) {
+      const isAtDefault = Math.abs(newScale - this.config.scale) < 0.01;
+      this.resetScaleBtn.disabled = isAtDefault;
+      this.resetScaleBtn.style.opacity = isAtDefault ? "0.4" : "1";
+    }
+  }
+
+  /**
+   * Updates position button visibility based on current position
+   * Hides the button corresponding to the current position
+   * @param {string} position - Current position: 'left', 'center', or 'right'
+   */
+  updatePositionButtonsVisibility(position) {
+    if (!this.leftPosBtn || !this.centerPosBtn || !this.rightPosBtn) return;
+
+    // Show all buttons first
+    this.leftPosBtn.style.display = "flex";
+    this.centerPosBtn.style.display = "flex";
+    this.rightPosBtn.style.display = "flex";
+
+    // Hide the button corresponding to current position
+    if (position === "left") {
+      this.leftPosBtn.style.display = "none";
+    } else if (position === "center") {
+      this.centerPosBtn.style.display = "none";
+    } else if (position === "right") {
+      this.rightPosBtn.style.display = "none";
+    }
+  }
+
+  /**
+   * Toggles the timer minimize/maximize state
+   * Can be called from keyboard shortcuts
+   */
+  toggleMinimize() {
+    if (!this.timerContainer) return;
+
+    const isMinimized = this.timerContainer.classList.toggle("minimized");
+    const tooltipText = isMinimized ? "Restore timer" : "Minimize timer";
+
+    if (this.minimizeBtn) {
+      this.minimizeBtn.innerHTML = isMinimized
+        ? icons.mazimize
+        : icons.minimize;
+      Tooltip.updateText(this.minimizeBtn, tooltipText);
+    }
+
+    if (this.maximizeBtn) {
+      this.maximizeBtn.innerHTML = isMinimized
+        ? icons.mazimize
+        : icons.minimize;
+      Tooltip.updateText(this.maximizeBtn, tooltipText);
+    }
+  }
+
+  /**
+   * Toggles hide/show state of the timer
+   * Can be called from keyboard shortcuts
+   */
+  toggleHideShow() {
+    if (!this.timerContainer) return;
+
+    if (!this.isHidden) {
+      // Hide: Store current state and show only dot + show button
+      this.isHidden = true;
+      this.previousPosition = this.timerContainer.classList.contains('left') ? 'left' :
+                              this.timerContainer.classList.contains('right') ? 'right' : 'center';
+      this.previousState = {
+        minimized: this.timerContainer.classList.contains('minimized'),
+        transform: this.timerContainer.style.transform
+      };
+
+      // Remove position classes and add hidden state
+      this.timerContainer.classList.remove('left', 'center', 'right');
+      this.timerContainer.classList.add('left', 'hidden');
+
+      // Add class to control dot visibility on hidden state
+      if (!this.config.showDotOnHidden) {
+        this.timerContainer.classList.add('hide-dot-on-hidden');
+      }
+
+      // Update hide button if exists
+      if (this.hideShowToggle) {
+        this.hideShowToggle.innerHTML = icons.show;
+        Tooltip.updateText(this.hideShowToggle, "Show timer");
+      }
+
+    } else {
+      // Show: Restore previous state
+      this.isHidden = false;
+
+      // Restore position
+      this.timerContainer.classList.remove('left', 'center', 'right', 'hidden', 'hide-dot-on-hidden');
+      this.timerContainer.classList.add(this.previousPosition);
+
+      // Restore minimized state
+      if (this.previousState.minimized) {
+        this.timerContainer.classList.add('minimized');
+      }
+
+      // Restore transform
+      this.timerContainer.style.transform = this.previousState.transform;
+
+      // Update position button visibility
+      this.updatePositionButtonsVisibility(this.previousPosition);
+
+      // Update hide button if exists
+      if (this.hideShowToggle) {
+        this.hideShowToggle.innerHTML = icons.hide;
+        Tooltip.updateText(this.hideShowToggle, "Hide timer");
+      }
+    }
+  }
+
+  /**
+   * Shows keyboard shortcuts modal
+   */
+  showShortcutsModal() {
+    // Create modal overlay
+    const modalOverlay = document.createElement("div");
+    modalOverlay.className = "recording-shortcuts-modal-overlay";
+
+    // Create modal content
+    const modalContent = document.createElement("div");
+    modalContent.className = "recording-shortcuts-modal";
+
+    // Create header
+    const header = document.createElement("div");
+    header.className = "recording-shortcuts-header";
+    header.innerHTML = `
+      <h2>Recording Keyboard Shortcuts</h2>
+      <button class="recording-shortcuts-close">${icons.cancel}</button>
+    `;
+
+    // Create shortcuts list
+    const shortcutsList = document.createElement("div");
+    shortcutsList.className = "recording-shortcuts-list";
+    shortcutsList.innerHTML = `
+      <div class="shortcut-item">
+        <span class="shortcut-label">Stop Recording</span>
+        <span class="shortcut-keys">
+          <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> or <kbd>Esc</kbd>
+        </span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-label">Pause/Resume Recording</span>
+        <span class="shortcut-keys">
+          <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>P</kbd>
+        </span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-label">Toggle Microphone</span>
+        <span class="shortcut-keys">
+          <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>
+        </span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-label">Toggle System Audio</span>
+        <span class="shortcut-keys">
+          <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd>
+        </span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-label">Minimize/Maximize Timer</span>
+        <span class="shortcut-keys">
+          <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd>
+        </span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-label">Hide/Show Timer</span>
+        <span class="shortcut-keys">
+          <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd>
+        </span>
+      </div>
+      <div class="shortcut-item">
+        <span class="shortcut-label">Show Shortcuts</span>
+        <span class="shortcut-keys">
+          <kbd>Ctrl</kbd> + <kbd>F1</kbd>
+        </span>
+      </div>
+    `;
+
+    modalContent.append(header, shortcutsList);
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+
+    // Close handlers
+    const closeModal = () => {
+      modalOverlay.remove();
+    };
+
+    header.querySelector(".recording-shortcuts-close").addEventListener("click", closeModal);
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) closeModal();
+    });
+
+    // ESC to close
+    const escHandler = (e) => {
+      if (e.key === "Escape") {
+        closeModal();
+        document.removeEventListener("keydown", escHandler);
+      }
+    };
+    document.addEventListener("keydown", escHandler);
   }
 
   hide() {

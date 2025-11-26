@@ -106,6 +106,11 @@
     animation: none;
     opacity: 0.5;
   }
+
+  // Hide dot in normal state when showDot is false but showDotOnHidden is true
+  &.hide-dot-normal {
+    display: none;
+  }
 }
 
 // Timer display
@@ -220,6 +225,11 @@
   &:hover {
     background: color-mix(in srgb, var(--timer-danger) 40%, transparent);
   }
+}
+
+// Show button (hidden by default, shown only when timer is hidden)
+.timer-show-btn {
+  display: none;
 }
 
 // Waveform Canvas Styling
@@ -371,9 +381,204 @@
   }
 }
 
-// Right controls group (scaling + minimize)
+// Left controls group (position + scaling)
+.timer-left-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// Right controls group (minimize + hide)
 .timer-right-controls-group {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+// Hidden state - only show pulsating dot and show button
+.recording-timer-container.hidden {
+  left: 20px !important;
+  bottom: 30px;
+  transform: none !important;
+
+  .recording-timer-wrapper {
+    gap: 8px;
+    padding: 12px;
+    min-width: auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    // Hide everything except the dot and show button
+    .recording-timer-display,
+    .recording-waveform-canvas,
+    .recording-mic-btn,
+    .recording-system-audio-btn,
+    .recording-pause-btn,
+    .recording-resume-btn,
+    .recording-control-btn:not(.timer-show-btn),
+    .timer-maximize-btn {
+      display: none !important;
+    }
+
+    // Show only the pulsating dot (override hide-dot-normal class when in hidden state)
+    .recording-dot {
+      display: block !important;
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    // Show the show button
+    .timer-show-btn {
+      display: flex !important;
+    }
+  }
+
+  // Hide all controls and toolbars
+  .timer-controls-row {
+    display: none;
+  }
+
+  // Hide dot on hidden state when showDotOnHidden is false
+  &.hide-dot-on-hidden {
+    .recording-dot {
+      display: none !important;
+    }
+  }
+}
+
+// Pulsating dot animation for hidden state
+@keyframes pulse-dot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.7;
+  }
+}
+
+// Recording shortcuts modal
+.recording-shortcuts-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 100000;
+  @include flex-center;
+  animation: fadeIn 0.2s ease;
+  font-family: "Inter", sans-serif;
+}
+
+.recording-shortcuts-modal {
+  background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.3s ease;
+}
+
+.recording-shortcuts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .recording-shortcuts-close {
+    @include button-reset;
+    width: 32px;
+    height: 32px;
+    @include flex-center;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    @include transition(all);
+
+    svg {
+      width: 18px;
+      height: 18px;
+      fill: #fff;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+.recording-shortcuts-list {
+  padding: 16px 24px 24px;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .shortcut-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.938rem;
+    font-weight: 500;
+  }
+
+  .shortcut-keys {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+
+    kbd {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Consolas", monospace;
+      color: #fff;
+      font-weight: 600;
+      min-width: 28px;
+      text-align: center;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

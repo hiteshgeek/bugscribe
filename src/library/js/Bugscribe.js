@@ -39,6 +39,28 @@ export default class Bugscribe {
       this.maxRecordingSeconds
     ); // Called from MediaCapture.startRecording once recorder is ready
 
+    // {
+    //   showDot: false,
+    //   showDotOnHidden: true,
+    // }
+    // this.recordingTimer = new RecordingTimer(this.mediaCapture, 300, {
+    //   showDot: false,
+    //   showWaveform: false,
+
+    //   showRecordingTime: false,
+    //   showMaxTime: true,
+
+    //   showMicButton: false,
+    //   showSystemAudioButton: false,
+
+    //   showPauseButton: false,
+    //   showStopButton: true,
+
+    //   showPositionToolbar: false,
+    //   showScalingToolbar: true,
+    //   showMinimizeButton: false,
+    // });
+
     this.mediaCapture.onRecordingStarted = (micMutedOnStart) => {
       this.recordingTimer.show(micMutedOnStart);
       console.log(
@@ -208,6 +230,22 @@ export default class Bugscribe {
 
   setHotKeys() {
     document.addEventListener("keydown", (e) => {
+      // ESC key to stop recording
+      if (e.key === "Escape" && this.mediaCapture.isRecording()) {
+        e.preventDefault();
+        this.mediaCapture.stopRecording();
+        return;
+      }
+
+      // Ctrl+F1 to show recording shortcuts modal
+      if (e.ctrlKey && e.key === "F1") {
+        e.preventDefault();
+        if (this.recordingTimer) {
+          this.recordingTimer.showShortcutsModal();
+        }
+        return;
+      }
+
       if (e.ctrlKey && e.shiftKey) {
         e.preventDefault();
         const actions = {
@@ -259,6 +297,20 @@ export default class Bugscribe {
           KeyM: () => {
             if (this.mediaCapture.isRecording()) {
               this.mediaCapture.toggleMicrophone();
+            }
+          },
+
+          KeyT: () => {
+            // Toggle timer minimize/maximize
+            if (this.recordingTimer) {
+              this.recordingTimer.toggleMinimize();
+            }
+          },
+
+          KeyH: () => {
+            // Toggle timer hide/show
+            if (this.recordingTimer) {
+              this.recordingTimer.toggleHideShow();
             }
           },
         };
