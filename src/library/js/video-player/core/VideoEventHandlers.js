@@ -374,8 +374,28 @@ export default class VideoEventHandlers {
    * Toggle fullscreen
    */
   toggleFullscreen() {
-    if (!document.fullscreenElement && this.modal) {
-      this.modal.requestFullscreen();
+    if (!document.fullscreenElement) {
+      // Try to find the fullscreen target element
+      let fullscreenTarget = this.modal;
+
+      // If modal doesn't exist or isn't connected, try to find the carousel overlay
+      if (!fullscreenTarget || !fullscreenTarget.isConnected) {
+        fullscreenTarget = document.querySelector('.media-carousel-overlay');
+      }
+
+      // If still not found, try to find any parent modal-like container
+      if (!fullscreenTarget || !fullscreenTarget.isConnected) {
+        fullscreenTarget = this.video?.closest('.custom-video-modal-overlay, .image-modal-overlay, .media-carousel-overlay');
+      }
+
+      // Request fullscreen on the found element
+      if (fullscreenTarget && fullscreenTarget.isConnected) {
+        fullscreenTarget.requestFullscreen().catch((err) => {
+          console.error("Failed to enter fullscreen:", err);
+        });
+      } else {
+        console.warn("No valid fullscreen target found");
+      }
     } else {
       document.exitFullscreen();
     }

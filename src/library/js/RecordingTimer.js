@@ -67,8 +67,27 @@ export default class RecordingTimer {
       initialPosition: config.initialPosition || 'center', // 'left' | 'center' | 'right'
       initialMinimized: config.initialMinimized || false, // boolean
       scale: config.scale || 1, // number (0.5 to 2.0 for size scaling)
+      minScale: config.minScale || 0.5,
+      maxScale: config.maxScale || 2.0,
+      scaleStep: config.scaleStep || 0.1,
+
+      // Visibility options
+      showMicButton: config.showMicButton !== false, // boolean
+      showSystemAudioButton: config.showSystemAudioButton !== false, // boolean
+      showPauseButton: config.showPauseButton !== false, // boolean
+      showStopButton: config.showStopButton !== false, // boolean
+      showWaveform: config.showWaveform !== false, // boolean
+      showDot: config.showDot !== false, // boolean
+      showMaxTime: config.showMaxTime !== false, // boolean
+      showPositionToolbar: config.showPositionToolbar !== false, // boolean
+      showScalingToolbar: config.showScalingToolbar !== false, // boolean
+      showMinimizeButton: config.showMinimizeButton !== false, // boolean
+
       ...config
     };
+
+    // Current scale state
+    this.currentScale = this.config.scale;
   }
 
   /**
@@ -239,11 +258,17 @@ export default class RecordingTimer {
 
     const maxTimeContent = this._formatTime(this.maxRecordingSeconds);
 
-    timerDisplay.innerHTML = `
-    			 <span class="recording-current-time">00:00</span>
-    			 <span class="recording-separator"> / </span>
-    			 <span class="recording-max-time">${maxTimeContent}</span>
-    		 `;
+    if (this.config.showMaxTime) {
+      timerDisplay.innerHTML = `
+               <span class="recording-current-time">00:00</span>
+               <span class="recording-separator"> / </span>
+               <span class="recording-max-time">${maxTimeContent}</span>
+             `;
+    } else {
+      timerDisplay.innerHTML = `
+               <span class="recording-current-time">00:00</span>
+             `;
+    }
     const currentTimeSpan = timerDisplay.querySelector(
       ".recording-current-time"
     );
@@ -397,20 +422,36 @@ export default class RecordingTimer {
       this.mediaCapture.stopRecording();
     });
 
-    // --- Append to Wrapper ---
+    // --- Append to Wrapper (with visibility checks) ---
     const recordingDot = document.createElement("div");
     recordingDot.className = "recording-dot";
 
-    timerWrapper.append(
-      recordingDot,
-      timerDisplay,
-      waveformCanvas, // Integrated waveform canvas
-      micBtn,
-      systemAudioBtn,
-      pauseBtn,
-      resumeBtn,
-      stopBtn
-    );
+    // Append elements based on visibility config
+    if (this.config.showDot) {
+      timerWrapper.append(recordingDot);
+    }
+
+    timerWrapper.append(timerDisplay);
+
+    if (this.config.showWaveform) {
+      timerWrapper.append(waveformCanvas);
+    }
+
+    if (this.config.showMicButton) {
+      timerWrapper.append(micBtn);
+    }
+
+    if (this.config.showSystemAudioButton) {
+      timerWrapper.append(systemAudioBtn);
+    }
+
+    if (this.config.showPauseButton) {
+      timerWrapper.append(pauseBtn, resumeBtn);
+    }
+
+    if (this.config.showStopButton) {
+      timerWrapper.append(stopBtn);
+    }
 
     // --- Position Controls Toolbar (outside timer, at bottom) ---
     const positionToolbar = document.createElement("div");
@@ -478,10 +519,63 @@ export default class RecordingTimer {
       Tooltip.updateText(maximizeBtn, tooltipText);
     });
 
-    // --- Controls Row (toolbar left, minimize right) ---
+    // --- Scaling Controls Toolbar ---
+    const scalingToolbar = document.createElement("div");
+    scalingToolbar.className = "timer-scaling-toolbar";
+
+    const decreaseScaleBtn = document.createElement("button");
+    decreaseScaleBtn.className = "timer-scaling-btn";
+    decreaseScaleBtn.innerHTML = icons.minus;
+    decreaseScaleBtn.setAttribute("data-tooltip-text", "Decrease size");
+    decreaseScaleBtn.setAttribute("data-tooltip-position", "auto");
+
+    const increaseScaleBtn = document.createElement("button");
+    increaseScaleBtn.className = "timer-scaling-btn";
+    increaseScaleBtn.innerHTML = icons.plus;
+    increaseScaleBtn.setAttribute("data-tooltip-text", "Increase size");
+    increaseScaleBtn.setAttribute("data-tooltip-position", "auto");
+
+    // Scaling button event handlers
+    decreaseScaleBtn.addEventListener("click", () => {
+      const newScale = Math.max(this.config.minScale, this.currentScale - this.config.scaleStep);
+      this.updateScale(newScale, timerContainer);
+    });
+
+    increaseScaleBtn.addEventListener("click", () => {
+      const newScale = Math.min(this.config.maxScale, this.currentScale + this.config.scaleStep);
+      this.updateScale(newScale, timerContainer);
+    });
+
+    scalingToolbar.append(decreaseScaleBtn, increaseScaleBtn);
+
+    // Store references for scale buttons
+    this.decreaseScaleBtn = decreaseScaleBtn;
+    this.increaseScaleBtn = increaseScaleBtn;
+
+    // --- Right Controls Group (scaling + minimize) ---
+    const rightControlsGroup = document.createElement("div");
+    rightControlsGroup.className = "timer-right-controls-group";
+
+    if (this.config.showScalingToolbar) {
+      rightControlsGroup.append(scalingToolbar);
+    }
+
+    if (this.config.showMinimizeButton) {
+      rightControlsGroup.append(minimizeBtn);
+    }
+
+    // --- Controls Row (toolbar left, right controls right) ---
     const controlsRow = document.createElement("div");
     controlsRow.className = "timer-controls-row";
-    controlsRow.append(positionToolbar, minimizeBtn);
+
+    if (this.config.showPositionToolbar) {
+      controlsRow.append(positionToolbar);
+    }
+
+    // Only append right controls if any are visible
+    if (this.config.showScalingToolbar || this.config.showMinimizeButton) {
+      controlsRow.append(rightControlsGroup);
+    }
 
     // --- Container to hold timer and controls row ---
     const timerContainer = document.createElement("div");
@@ -606,6 +700,35 @@ export default class RecordingTimer {
       const tooltipText = isMuted ? "Enable system audio" : "Mute system audio";
       Tooltip.updateText(systemBtn, tooltipText);
       systemBtn.classList.toggle("muted", isMuted);
+    }
+  }
+
+  /**
+   * Updates the timer scale/size
+   * @param {number} newScale - New scale value
+   * @param {HTMLElement} timerContainer - Timer container element
+   */
+  updateScale(newScale, timerContainer) {
+    this.currentScale = newScale;
+
+    // Update transform based on position
+    const position = timerContainer.classList.contains('left') ? 'left' :
+                    timerContainer.classList.contains('right') ? 'right' : 'center';
+
+    if (position === 'center') {
+      timerContainer.style.transform = `translateX(-50%) scale(${newScale})`;
+    } else {
+      timerContainer.style.transform = `scale(${newScale})`;
+    }
+
+    // Update button states
+    if (this.decreaseScaleBtn) {
+      this.decreaseScaleBtn.disabled = newScale <= this.config.minScale;
+      this.decreaseScaleBtn.style.opacity = newScale <= this.config.minScale ? '0.4' : '1';
+    }
+    if (this.increaseScaleBtn) {
+      this.increaseScaleBtn.disabled = newScale >= this.config.maxScale;
+      this.increaseScaleBtn.style.opacity = newScale >= this.config.maxScale ? '0.4' : '1';
     }
   }
 

@@ -147,30 +147,60 @@ class Tooltip {
     // Remove existing position classes
     element.classList.remove('tooltip-top', 'tooltip-bottom', 'tooltip-left', 'tooltip-right');
 
-    // Determine best position
+    // Get tooltip content to measure
+    const tooltipText = element.getAttribute('data-tooltip');
+    if (!tooltipText) return;
+
+    // Create temporary element to measure tooltip size
+    const tempTooltip = document.createElement('div');
+    tempTooltip.style.cssText = `
+      position: fixed;
+      visibility: hidden;
+      white-space: nowrap;
+      padding: 5px 10px;
+      font-size: 0.813rem;
+      font-weight: 500;
+      border-radius: 6px;
+      pointer-events: none;
+    `;
+    tempTooltip.textContent = tooltipText;
+    document.body.appendChild(tempTooltip);
+    const tooltipWidth = tempTooltip.offsetWidth;
+    const tooltipHeight = tempTooltip.offsetHeight;
+    document.body.removeChild(tempTooltip);
+
+    // Calculate available space
     const spaceTop = rect.top;
     const spaceBottom = viewportHeight - rect.bottom;
     const spaceLeft = rect.left;
     const spaceRight = viewportWidth - rect.right;
+    const elementCenterX = rect.left + rect.width / 2;
 
-    // Priority: top > bottom > left > right
-    // Check if there's enough space on top
-    if (spaceTop > 60) {
+    // Calculate minimum space needed (tooltip size + gap + some margin)
+    const minVerticalSpace = tooltipHeight + 20;
+    const minHorizontalSpace = tooltipWidth + 20;
+
+    // Check if tooltip would go off-screen horizontally for top/bottom positions
+    const halfTooltipWidth = tooltipWidth / 2;
+    const wouldOverflowLeft = elementCenterX - halfTooltipWidth < 10;
+    const wouldOverflowRight = elementCenterX + halfTooltipWidth > viewportWidth - 10;
+
+    // Priority: top > bottom > left > right (but only if fits)
+    if (spaceTop >= minVerticalSpace && !wouldOverflowLeft && !wouldOverflowRight) {
       element.classList.add('tooltip-top');
-    }
-    // Check if there's enough space on bottom
-    else if (spaceBottom > 60) {
+    } else if (spaceBottom >= minVerticalSpace && !wouldOverflowLeft && !wouldOverflowRight) {
       element.classList.add('tooltip-bottom');
-    }
-    // Check if there's enough space on left
-    else if (spaceLeft > 150) {
+    } else if (spaceLeft >= minHorizontalSpace) {
       element.classList.add('tooltip-left');
-    }
-    // Default to right if there's space, otherwise top
-    else if (spaceRight > 150) {
+    } else if (spaceRight >= minHorizontalSpace) {
       element.classList.add('tooltip-right');
     } else {
-      element.classList.add('tooltip-top');
+      // Fallback to position with most space
+      const maxSpace = Math.max(spaceTop, spaceBottom, spaceLeft, spaceRight);
+      if (maxSpace === spaceTop) element.classList.add('tooltip-top');
+      else if (maxSpace === spaceBottom) element.classList.add('tooltip-bottom');
+      else if (maxSpace === spaceLeft) element.classList.add('tooltip-left');
+      else element.classList.add('tooltip-right');
     }
   }
 
@@ -188,34 +218,55 @@ class Tooltip {
     // Remove existing position classes
     wrapper.classList.remove('tooltip-top', 'tooltip-bottom', 'tooltip-left', 'tooltip-right');
 
-    // Determine best position
+    // Get wrapper dimensions (show temporarily to measure)
+    const originalDisplay = wrapper.style.display;
+    const originalOpacity = wrapper.style.opacity;
+    const originalVisibility = wrapper.style.visibility;
+
+    wrapper.style.display = 'flex';
+    wrapper.style.opacity = '0';
+    wrapper.style.visibility = 'visible';
+    const wrapperRect = wrapper.getBoundingClientRect();
+
+    wrapper.style.display = originalDisplay;
+    wrapper.style.opacity = originalOpacity;
+    wrapper.style.visibility = originalVisibility;
+
+    const tooltipHeight = wrapperRect.height;
+    const tooltipWidth = wrapperRect.width;
+
+    // Calculate available space
     const spaceTop = rect.top;
     const spaceBottom = viewportHeight - rect.bottom;
     const spaceLeft = rect.left;
     const spaceRight = viewportWidth - rect.right;
+    const elementCenterX = rect.left + rect.width / 2;
 
-    // Get wrapper dimensions (show temporarily to measure)
-    wrapper.style.opacity = '0';
-    wrapper.style.visibility = 'visible';
-    const wrapperRect = wrapper.getBoundingClientRect();
-    wrapper.style.opacity = '';
-    wrapper.style.visibility = '';
+    // Calculate minimum space needed (tooltip size + gap + margin)
+    const minVerticalSpace = tooltipHeight + 20;
+    const minHorizontalSpace = tooltipWidth + 20;
 
-    const tooltipHeight = wrapperRect.height || 40; // Fallback height
-    const tooltipWidth = wrapperRect.width || 100; // Fallback width
+    // Check if tooltip would go off-screen horizontally for top/bottom positions
+    const halfTooltipWidth = tooltipWidth / 2;
+    const wouldOverflowLeft = elementCenterX - halfTooltipWidth < 10;
+    const wouldOverflowRight = elementCenterX + halfTooltipWidth > viewportWidth - 10;
 
-    // Priority: top > bottom > left > right
-    if (spaceTop > tooltipHeight + 15) {
+    // Priority: top > bottom > left > right (but only if fits)
+    if (spaceTop >= minVerticalSpace && !wouldOverflowLeft && !wouldOverflowRight) {
       wrapper.classList.add('tooltip-top');
-    } else if (spaceBottom > tooltipHeight + 15) {
+    } else if (spaceBottom >= minVerticalSpace && !wouldOverflowLeft && !wouldOverflowRight) {
       wrapper.classList.add('tooltip-bottom');
-    } else if (spaceLeft > tooltipWidth + 15) {
+    } else if (spaceLeft >= minHorizontalSpace) {
       wrapper.classList.add('tooltip-left');
-    } else if (spaceRight > tooltipWidth + 15) {
+    } else if (spaceRight >= minHorizontalSpace) {
       wrapper.classList.add('tooltip-right');
     } else {
-      // Default to top if no good position found
-      wrapper.classList.add('tooltip-top');
+      // Fallback to position with most space
+      const maxSpace = Math.max(spaceTop, spaceBottom, spaceLeft, spaceRight);
+      if (maxSpace === spaceTop) wrapper.classList.add('tooltip-top');
+      else if (maxSpace === spaceBottom) wrapper.classList.add('tooltip-bottom');
+      else if (maxSpace === spaceLeft) wrapper.classList.add('tooltip-left');
+      else wrapper.classList.add('tooltip-right');
     }
   }
 

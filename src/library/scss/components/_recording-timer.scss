@@ -324,3 +324,56 @@
 .timer-maximize-btn {
   display: none; // Hidden by default, shown only when minimized
 }
+
+// Scaling toolbar
+.timer-scaling-toolbar {
+  display: flex;
+  gap: 2px;
+  background: color-mix(in srgb, var(--timer-bg) 40%, transparent);
+  padding: 4px;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
+  @include transition(background);
+
+  &:hover {
+    background: var(--timer-bg);
+  }
+}
+
+.timer-scaling-btn {
+  @include button-reset;
+  @include flex-center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  @include transition(all);
+
+  svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--timer-text);
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.9);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+// Right controls group (scaling + minimize)
+.timer-right-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
