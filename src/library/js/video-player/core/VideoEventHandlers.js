@@ -207,6 +207,13 @@ export default class VideoEventHandlers {
       this.progressManager.updateProgress()
     );
 
+    // Listen for duration changes to update display when actual duration becomes available
+    this.video.addEventListener("durationchange", () => {
+      if (isFinite(this.video.duration) && this.video.duration > 0) {
+        this.progressManager.updateProgress();
+      }
+    });
+
     this.video.addEventListener("play", () => {
       this.state.isPlaying = true;
       this.progressManager.updateProgress();
@@ -300,12 +307,20 @@ export default class VideoEventHandlers {
           "data-tooltip-text",
           "Exit fullscreen"
         );
+        // Add fullscreen class to video element
+        if (this.video) {
+          this.video.classList.add("full-screen-player");
+        }
       } else {
         this.controls.fullscreenBtn.innerHTML = icons.fullscreen;
         this.controls.fullscreenBtn.setAttribute(
           "data-tooltip-text",
           "Fullscreen"
         );
+        // Remove fullscreen class from video element
+        if (this.video) {
+          this.video.classList.remove("full-screen-player");
+        }
       }
     });
   }

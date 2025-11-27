@@ -20,15 +20,52 @@
   box-shadow: var(--shadow-xl);
 }
 
-// Fullscreen styles
-.custom-video-modal-overlay:fullscreen {
+// Fullscreen styles - need vendor prefixes for cross-browser support
+.custom-video-modal-overlay:fullscreen,
+.custom-video-modal-overlay:-webkit-full-screen,
+.custom-video-modal-overlay:-moz-full-screen,
+.custom-video-modal-overlay:-ms-fullscreen {
+  // Override modal overlay styles
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  background: #000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  // Modal content container - make it fill the screen
   .custom-video-modal-content {
-    max-width: 100vw;
-    max-height: 100vh;
-    border-radius: 0;
+    position: relative !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
 
+  // Video element - fill the screen with proper aspect ratio
   .custom-video-player {
-    max-height: calc(100vh - 100px);
+    max-height: 100vh !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    width: 100vw !important;
+    object-fit: contain !important;
+    background: #000 !important;
+  }
+
+  // Controls wrapper - position over video
+  .custom-video-controls-wrapper {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
   }
 }

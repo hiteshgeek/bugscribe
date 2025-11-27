@@ -33,15 +33,23 @@ export default class VideoState {
   estimateDuration(video) {
     let duration = video.duration;
 
+    // If we have a valid finite duration from the video, use it
+    if (isFinite(duration) && duration > 0) {
+      // Update estimated duration with actual duration once available
+      if (!this.estimatedDuration || duration > this.estimatedDuration) {
+        this.estimatedDuration = duration;
+      }
+      return duration;
+    }
+
+    // If duration is infinite or invalid, use estimation
     if (!isFinite(duration)) {
       if (this.estimatedDuration) {
         duration = this.estimatedDuration;
       } else if (this.maxTimeObserved > 0) {
-        this.estimatedDuration = Math.max(
-          this.estimatedDuration || 0,
-          this.maxTimeObserved + 10
-        );
-        duration = this.estimatedDuration;
+        // Only estimate if we don't have one yet
+        // Add a small buffer for streams, but don't keep updating it
+        duration = this.maxTimeObserved + 10;
       }
     }
 

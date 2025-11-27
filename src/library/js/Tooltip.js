@@ -22,14 +22,7 @@ export default class Tooltip {
 
     if (!text) return;
 
-    // If no shortcut, use simple CSS-based tooltip
-    if (!shortcut) {
-      element.classList.add("has-tooltip");
-      element.setAttribute("data-tooltip", text);
-      return;
-    }
-
-    // Create tooltip wrapper for shortcut support
+    // Always use tooltip-wrapper for consistency (even without shortcuts)
     const wrapper = document.createElement("div");
     wrapper.className = "tooltip-wrapper";
 
@@ -37,12 +30,15 @@ export default class Tooltip {
     textSpan.className = "tooltip-text";
     textSpan.textContent = text;
 
-    const shortcutSpan = document.createElement("span");
-    shortcutSpan.className = "tooltip-shortcut";
-    shortcutSpan.textContent = shortcut;
-
     wrapper.appendChild(textSpan);
-    wrapper.appendChild(shortcutSpan);
+
+    // Add shortcut if provided
+    if (shortcut) {
+      const shortcutSpan = document.createElement("span");
+      shortcutSpan.className = "tooltip-shortcut";
+      shortcutSpan.textContent = shortcut;
+      wrapper.appendChild(shortcutSpan);
+    }
 
     // Position wrapper
     element.style.position = "relative";
@@ -61,6 +57,25 @@ export default class Tooltip {
   static initAll(container = document) {
     const elements = container.querySelectorAll("[data-tooltip-text]");
     elements.forEach((element) => Tooltip.init(element));
+  }
+
+  static updateText(element, newText) {
+    // Update the data attribute
+    element.setAttribute("data-tooltip-text", newText);
+
+    // Find and update the tooltip wrapper text
+    const wrapper = element.querySelector(".tooltip-wrapper");
+    if (wrapper) {
+      const textSpan = wrapper.querySelector(".tooltip-text");
+      if (textSpan) {
+        textSpan.textContent = newText;
+      }
+    }
+
+    // Also update CSS-based tooltip if it exists
+    if (element.classList.contains("has-tooltip")) {
+      element.setAttribute("data-tooltip", newText);
+    }
   }
 
   static remove(element) {

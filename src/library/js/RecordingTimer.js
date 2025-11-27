@@ -88,6 +88,8 @@ export default class RecordingTimer {
       showMinimizeButton: config.showMinimizeButton !== false, // boolean
       showHideToggle: config.showHideToggle !== false, // boolean
       showDotOnHidden: config.showDotOnHidden !== false, // boolean - show dot when timer is hidden (overrides showDot)
+      autoHideToolbars: config.autoHideToolbars || true, // boolean - auto-hide toolbars on mouse idle
+      autoHideDelay: config.autoHideDelay || 5000, // number - delay in ms before hiding toolbars (default 5 seconds)
 
       ...config,
     };
@@ -102,6 +104,9 @@ export default class RecordingTimer {
     this.isHidden = false;
     this.previousPosition = null;
     this.previousState = null;
+
+    // Auto-hide state
+    this.autoHideTimeout = null;
 
     // Store references for keyboard shortcuts
     this.timerContainer = null;
@@ -304,12 +309,14 @@ export default class RecordingTimer {
     // Add click handler to toggle timer display mode (if allowed and maxTime is shown)
     if (this.config.allowTimerToggle && this.config.showMaxTime) {
       timerDisplay.style.cursor = "pointer";
-      timerDisplay.setAttribute("data-tooltip-text", "Toggle timer mode");
+      timerDisplay.setAttribute("data-tooltip-text", "Click to toggle timer mode");
+      timerDisplay.setAttribute("data-tooltip-shortcut", "Click");
+      timerDisplay.setAttribute("data-tooltip-position", "auto");
       timerDisplay.addEventListener("click", () => {
         this.isCountdownMode = !this.isCountdownMode;
         const tooltipText = this.isCountdownMode
-          ? "Showing countdown (click to switch to elapsed)"
-          : "Showing elapsed time (click to switch to countdown)";
+          ? "Countdown mode (click to switch)"
+          : "Elapsed mode (click to switch)";
         Tooltip.updateText(timerDisplay, tooltipText);
         this._updateDisplay(currentTimeSpan, timerDisplay);
       });
@@ -756,9 +763,15 @@ export default class RecordingTimer {
 
     // Set initial equals button disabled state based on current scale
     if (this.resetScaleBtn) {
-      const isAtDefault = Math.abs(this.currentScale - this.config.scale) < 0.01;
+      const isAtDefault =
+        Math.abs(this.currentScale - this.config.scale) < 0.01;
       this.resetScaleBtn.disabled = isAtDefault;
       this.resetScaleBtn.style.opacity = isAtDefault ? "0.4" : "1";
+    }
+
+    // --- Setup Auto-hide for Toolbars ---
+    if (this.config.autoHideToolbars && controlsRow) {
+      this._setupAutoHideToolbars(timerContainer, controlsRow);
     }
 
     // --- Start Waveform Drawing ---
@@ -949,20 +962,23 @@ export default class RecordingTimer {
     if (!this.isHidden) {
       // Hide: Store current state and show only dot + show button
       this.isHidden = true;
-      this.previousPosition = this.timerContainer.classList.contains('left') ? 'left' :
-                              this.timerContainer.classList.contains('right') ? 'right' : 'center';
+      this.previousPosition = this.timerContainer.classList.contains("left")
+        ? "left"
+        : this.timerContainer.classList.contains("right")
+        ? "right"
+        : "center";
       this.previousState = {
-        minimized: this.timerContainer.classList.contains('minimized'),
-        transform: this.timerContainer.style.transform
+        minimized: this.timerContainer.classList.contains("minimized"),
+        transform: this.timerContainer.style.transform,
       };
 
       // Remove position classes and add hidden state
-      this.timerContainer.classList.remove('left', 'center', 'right');
-      this.timerContainer.classList.add('left', 'hidden');
+      this.timerContainer.classList.remove("left", "center", "right");
+      this.timerContainer.classList.add("left", "hidden");
 
       // Add class to control dot visibility on hidden state
       if (!this.config.showDotOnHidden) {
-        this.timerContainer.classList.add('hide-dot-on-hidden');
+        this.timerContainer.classList.add("hide-dot-on-hidden");
       }
 
       // Update hide button if exists
@@ -970,18 +986,23 @@ export default class RecordingTimer {
         this.hideShowToggle.innerHTML = icons.show;
         Tooltip.updateText(this.hideShowToggle, "Show timer");
       }
-
     } else {
       // Show: Restore previous state
       this.isHidden = false;
 
       // Restore position
-      this.timerContainer.classList.remove('left', 'center', 'right', 'hidden', 'hide-dot-on-hidden');
+      this.timerContainer.classList.remove(
+        "left",
+        "center",
+        "right",
+        "hidden",
+        "hide-dot-on-hidden"
+      );
       this.timerContainer.classList.add(this.previousPosition);
 
       // Restore minimized state
       if (this.previousState.minimized) {
-        this.timerContainer.classList.add('minimized');
+        this.timerContainer.classList.add("minimized");
       }
 
       // Restore transform
@@ -996,6 +1017,48 @@ export default class RecordingTimer {
         Tooltip.updateText(this.hideShowToggle, "Hide timer");
       }
     }
+  }
+
+  /**
+   * Setup auto-hide functionality for toolbars
+   * @private
+   */
+  _setupAutoHideToolbars(timerContainer, controlsRow) {
+    // Initially hide the controls row
+    controlsRow.classList.add("auto-hidden");
+
+    const showToolbars = () => {
+      controlsRow.classList.remove("auto-hidden");
+
+      // Clear existing timeout
+      if (this.autoHideTimeout) {
+        clearTimeout(this.autoHideTimeout);
+      }
+
+      // Set new timeout to hide after delay
+      this.autoHideTimeout = setTimeout(() => {
+        controlsRow.classList.add("auto-hidden");
+      }, this.config.autoHideDelay);
+    };
+
+    const hideToolbars = () => {
+      if (this.autoHideTimeout) {
+        clearTimeout(this.autoHideTimeout);
+      }
+      controlsRow.classList.add("auto-hidden");
+    };
+
+    // Show toolbars on mouse enter
+    timerContainer.addEventListener("mouseenter", showToolbars);
+
+    // Reset timer on mouse move
+    timerContainer.addEventListener("mousemove", showToolbars);
+
+    // Hide immediately on mouse leave
+    timerContainer.addEventListener("mouseleave", hideToolbars);
+
+    // Store reference for cleanup
+    this.controlsRow = controlsRow;
   }
 
   /**
@@ -1075,7 +1138,9 @@ export default class RecordingTimer {
       modalOverlay.remove();
     };
 
-    header.querySelector(".recording-shortcuts-close").addEventListener("click", closeModal);
+    header
+      .querySelector(".recording-shortcuts-close")
+      .addEventListener("click", closeModal);
     modalOverlay.addEventListener("click", (e) => {
       if (e.target === modalOverlay) closeModal();
     });
@@ -1100,6 +1165,12 @@ export default class RecordingTimer {
     if (this.drawWaveformInterval) {
       clearInterval(this.drawWaveformInterval);
       this.drawWaveformInterval = null;
+    }
+
+    // Clear auto-hide timeout
+    if (this.autoHideTimeout) {
+      clearTimeout(this.autoHideTimeout);
+      this.autoHideTimeout = null;
     }
 
     // Clear references
