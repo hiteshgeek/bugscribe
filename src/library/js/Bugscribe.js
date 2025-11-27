@@ -31,6 +31,7 @@ export default class Bugscribe {
       this.deleteMediaData,
       {
         viewMode: "carousel",
+        onDeleteAll: this.deleteAllMediaData,
       }
     );
 
@@ -222,6 +223,17 @@ export default class Bugscribe {
       return true;
     }
     return false;
+  };
+
+  deleteAllMediaData = () => {
+    if (this._screenshotPreviews.length === 0) {
+      return false;
+    }
+    const count = this._screenshotPreviews.length;
+    this._screenshotPreviews = [];
+    console.log(`Deleted all ${count} media items`);
+    this.previewManager.redrawPreviews(this._screenshotPreviews);
+    return true;
   }; /* ------------------------------ UI HELPERS (Removed/Delegated) ------------------------------ */
 
   hideRecordingTimer() {

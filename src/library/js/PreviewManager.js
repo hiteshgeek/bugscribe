@@ -6,6 +6,7 @@ export default class PreviewManager {
     this.preview_wrapper = null;
     this.onPreviewClick = onPreviewClickCallback;
     this.onDelete = onDeleteCallback;
+    this.onDeleteAll = config.onDeleteAll; // Callback for delete all
     this.activeVideoPlayer = null;
     this.currentMediaList = []; // Store all media items for carousel
     this.config = {
@@ -46,14 +47,35 @@ export default class PreviewManager {
 
     wrapper.style.maxWidth = `${maxWidth}px`;
 
+    // Create Remove All button
+    const removeAllBtn = document.createElement("button");
+    removeAllBtn.className = "preview-remove-all-btn";
+    removeAllBtn.innerHTML = `${icons.trash}<span>Remove All</span>`;
+    removeAllBtn.title = "Remove all screenshots and recordings";
+    removeAllBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (this.onDeleteAll) {
+        this.onDeleteAll();
+      }
+    });
+
+    // Create container for preview items
+    const itemsContainer = document.createElement("div");
+    itemsContainer.className = "preview-items-wrapper thin-scroll";
+
+    wrapper.appendChild(removeAllBtn);
+    wrapper.appendChild(itemsContainer);
     document.body.appendChild(wrapper);
     this.preview_wrapper = wrapper;
+    this.itemsContainer = itemsContainer;
+    this.removeAllBtn = removeAllBtn;
   };
 
   redrawPreviews = (currentPreviews) => {
     this.currentMediaList = currentPreviews; // Store for carousel
-    if (this.preview_wrapper) {
-      this.preview_wrapper.innerHTML = "";
+    if (this.itemsContainer) {
+      // Clear only the items container
+      this.itemsContainer.innerHTML = "";
     }
     currentPreviews.forEach((item, index) => {
       if (item.type === "image") {
@@ -65,6 +87,8 @@ export default class PreviewManager {
     if (currentPreviews.length === 0 && this.preview_wrapper) {
       this.preview_wrapper.remove();
       this.preview_wrapper = null;
+      this.itemsContainer = null;
+      this.removeAllBtn = null;
     }
   };
 
@@ -101,7 +125,7 @@ export default class PreviewManager {
       }
     });
 
-    this.preview_wrapper.appendChild(wrapper);
+    this.itemsContainer.appendChild(wrapper);
   };
 
   viewFullImage(imageUrl) {
@@ -290,7 +314,7 @@ export default class PreviewManager {
       }
     });
 
-    this.preview_wrapper.appendChild(wrapper);
+    this.itemsContainer.appendChild(wrapper);
   };
 
   playFullVideo(videoUrl, knownDuration = null) {
