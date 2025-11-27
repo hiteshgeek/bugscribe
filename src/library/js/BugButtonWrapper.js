@@ -50,6 +50,8 @@ export default class BugButtonWrapper {
     this.screenshotButton.addEventListener("mouseenter", () => {
       const verticalIcons =
         this.screenshotButton.querySelector(".vertical-icons");
+
+      if (!verticalIcons) return;
       verticalIcons.classList.add("open");
     });
 
@@ -59,6 +61,8 @@ export default class BugButtonWrapper {
       btn.addEventListener("mouseenter", () => {
         const verticalIcons =
           this.screenshotButton.querySelector(".vertical-icons");
+
+        if (!verticalIcons) return;
         verticalIcons.classList.remove("open");
       });
     });
@@ -70,6 +74,7 @@ export default class BugButtonWrapper {
         wrapper.classList.remove("opened");
         const verticalIcons =
           this.screenshotButton.querySelector(".vertical-icons");
+        if (!verticalIcons) return;
         verticalIcons.classList.remove("open");
       }
     });
@@ -165,7 +170,7 @@ export default class BugButtonWrapper {
     verticalIcons.appendChild(this.bug_menu_any_page);
     verticalIcons.appendChild(this.bug_menu_freeform_area);
 
-    screenshotButton.appendChild(verticalIcons);
+    // screenshotButton.appendChild(verticalIcons);
 
     return screenshotButton;
   }

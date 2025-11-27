@@ -349,7 +349,57 @@ export default class EnhancedShapeCapture {
     });
   }
 
-  handleShapeChange(shape, resolve) {
+  async handleShapeChange(shape, resolve) {
+    // Handle instant capture modes (visible, full, any)
+    if (shape === "visible" || shape === "full" || shape === "any") {
+      console.log('[EnhancedShapeCapture] Instant capture mode selected:', shape);
+
+      // Hide toolbar and remove backdrop immediately before capture
+      if (this.toolbar) {
+        this.toolbar.hide();
+      }
+      if (this.backdrop) {
+        this.backdrop.remove();
+      }
+      if (this.selectionBox) {
+        this.selectionBox.remove();
+      }
+      const dimensionsEl = document.querySelector(".mc-selection-dimensions");
+      if (dimensionsEl) {
+        dimensionsEl.remove();
+      }
+      document.body.classList.remove("mc-selecting");
+
+      // Small delay to ensure UI elements are removed
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Import ScreenshotCapture dynamically to avoid circular dependency
+      const { default: ScreenshotCapture } = await import('../ScreenshotCapture.js');
+      const screenshotCapture = new ScreenshotCapture();
+
+      // Cleanup event listeners
+      if (this.cleanup) {
+        this.cleanup();
+      }
+
+      // Destroy toolbar
+      ScreenshotToolbar.destroyInstance();
+
+      // Capture based on selected mode
+      let imgURL;
+      if (shape === "visible") {
+        imgURL = await screenshotCapture.captureVisibleScreen();
+      } else if (shape === "full") {
+        imgURL = await screenshotCapture.captureFullScreen();
+      } else if (shape === "any") {
+        imgURL = await screenshotCapture.captureAny();
+      }
+
+      // Resolve with the captured image (don't save these modes to lastUsedShape)
+      resolve(imgURL);
+      return;
+    }
+
     if (shape === "freeform") {
       // Don't save freeform as lastUsedShape - it's not valid for EnhancedShapeCapture
       // Instead, preserve the current geometric shape for when we return

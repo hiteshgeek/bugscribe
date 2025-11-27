@@ -388,9 +388,62 @@ export default class FreeformCapture {
     }
   }
 
-  handleShapeChange(shape) {
+  async handleShapeChange(shape) {
     console.log('[FreeformCapture] handleShapeChange called with shape:', shape);
-    // Store the new shape to pass back
+
+    // Handle instant capture modes (visible, full, any)
+    if (shape === "visible" || shape === "full" || shape === "any") {
+      console.log('[FreeformCapture] Instant capture mode selected:', shape);
+
+      // Mark as resolved to prevent events
+      this.captureResolved = true;
+
+      // Hide toolbar and remove backdrop/canvas immediately before capture
+      if (this.toolbar) {
+        this.toolbar.hide();
+      }
+      if (this.canvas) {
+        this.canvas.remove();
+      }
+      if (this.backdrop) {
+        this.backdrop.remove();
+      }
+      document.body.classList.remove("mc-freeform-selecting");
+      document.body.style.cursor = "";
+
+      // Small delay to ensure UI elements are removed
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Import ScreenshotCapture dynamically
+      const { default: ScreenshotCapture } = await import('../ScreenshotCapture.js');
+      const screenshotCapture = new ScreenshotCapture();
+
+      // Cleanup event listeners
+      if (this.cleanup) {
+        this.cleanup();
+      }
+
+      // Destroy toolbar
+      ScreenshotToolbar.destroyInstance();
+
+      // Capture based on selected mode
+      let imgURL;
+      if (shape === "visible") {
+        imgURL = await screenshotCapture.captureVisibleScreen();
+      } else if (shape === "full") {
+        imgURL = await screenshotCapture.captureFullScreen();
+      } else if (shape === "any") {
+        imgURL = await screenshotCapture.captureAny();
+      }
+
+      // Resolve with the captured image
+      if (this.resolve) {
+        this.resolve(imgURL);
+      }
+      return;
+    }
+
+    // For shape switches to rectangle/ellipse/freeform, store and restart
     this.newShape = shape;
     console.log('[FreeformCapture] Set this.newShape to:', this.newShape);
     // Cancel and restart with the new shape

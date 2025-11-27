@@ -83,6 +83,19 @@ export default class ScreenshotToolbar {
         <span class="shape-icon">${icons.lasso}</span>
         <span class="shape-name">Freeform</span>
       </div>
+      <div class="screenshot-shape-divider"></div>
+      <div class="screenshot-shape-option" data-shape="visible">
+        <span class="shape-icon">${icons.screenshot}</span>
+        <span class="shape-name">Visible Screen</span>
+      </div>
+      <div class="screenshot-shape-option" data-shape="full">
+        <span class="shape-icon">${icons.fullscreen}</span>
+        <span class="shape-name">Full Page</span>
+      </div>
+      <div class="screenshot-shape-option" data-shape="any">
+        <span class="shape-icon">${icons.mazimize}</span>
+        <span class="shape-name">Any Window</span>
+      </div>
     `;
 
     shapeDropdownWrapper.appendChild(shapeDropdownBtn);

@@ -129,6 +129,12 @@
   }
 }
 
+.screenshot-shape-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 4px;
+}
+
 .screenshot-shape-option {
   display: flex;
   align-items: center;
