@@ -11,7 +11,7 @@ export default class Bugscribe {
   constructor(options = {}) {
     this._options = options;
     this.defaultScreenshotMethod =
-      options.defaultScreenshotMethod || "captureFullScreen"; //screenshot method options: captureFullScreen, captureVisibleScreen, captureSelectedArea, captureAny, captureFreeformArea
+      options.defaultScreenshotMethod || "captureSelectedArea"; //screenshot method options: captureFullScreen, captureVisibleScreen, captureSelectedArea, captureAny, captureFreeformArea
 
     this.maxRecordingSeconds = options.maxRecordingSeconds || 120;
     this.captureMicrophone = true;

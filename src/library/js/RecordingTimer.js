@@ -309,14 +309,17 @@ export default class RecordingTimer {
     // Add click handler to toggle timer display mode (if allowed and maxTime is shown)
     if (this.config.allowTimerToggle && this.config.showMaxTime) {
       timerDisplay.style.cursor = "pointer";
-      timerDisplay.setAttribute("data-tooltip-text", "Click to toggle timer mode");
+      timerDisplay.setAttribute(
+        "data-tooltip-text",
+        "Click to toggle timer mode"
+      );
       timerDisplay.setAttribute("data-tooltip-shortcut", "Click");
       timerDisplay.setAttribute("data-tooltip-position", "auto");
       timerDisplay.addEventListener("click", () => {
         this.isCountdownMode = !this.isCountdownMode;
         const tooltipText = this.isCountdownMode
-          ? "Countdown mode (click to switch)"
-          : "Elapsed mode (click to switch)";
+          ? "Countdown mode"
+          : "Elapsed mode";
         Tooltip.updateText(timerDisplay, tooltipText);
         this._updateDisplay(currentTimeSpan, timerDisplay);
       });

@@ -4,7 +4,7 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: var(--z-separator);
+  z-index: 99998;
   pointer-events: auto;
   cursor: crosshair;
   @include transition(opacity);
@@ -12,19 +12,46 @@
 
 .mc-selection-box {
   position: fixed;
-  z-index: var(--z-selection);
+  z-index: 99999;
   pointer-events: none;
   display: none;
   box-sizing: border-box;
-  border: 2px solid var(--bug-primary);
+  border: 2px dashed var(--bug-primary);
   background: transparent;
   backdrop-filter: none;
   filter: none;
   box-shadow: none;
+
+  &.completed {
+    cursor: move;
+    pointer-events: auto;
+
+    &:hover {
+      cursor: move;
+    }
+  }
 }
 
-.mc-selecting,
-.mc-selecting * {
+.mc-selecting {
   cursor: crosshair !important;
   user-select: none !important;
+}
+
+.mc-selecting *:not(.screenshot-toolbar-container):not(.screenshot-toolbar-container *) {
+  cursor: crosshair !important;
+  user-select: none !important;
+}
+
+.mc-selection-dimensions {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 100000;
+  pointer-events: none;
+  white-space: nowrap;
 }

@@ -3,6 +3,7 @@
 import CaptureUtils from "./utils/CaptureUtils.js";
 import FreeformCapture from "./utils/FreeformCapture.js";
 import ShapeCapture from "./utils/ShapeCapture.js";
+import EnhancedShapeCapture from "./utils/EnhancedShapeCapture.js";
 import ShapeSelector from "./utils/ShapeSelector.js";
 
 export default class ScreenshotCapture {
@@ -170,7 +171,7 @@ export default class ScreenshotCapture {
   }
 
   async captureSelectedArea() {
-    return new ShapeCapture(this.utils, this.shapeSelector).capture();
+    return new EnhancedShapeCapture(this.utils).capture();
   }
 
   async captureFreeformArea() {
