@@ -294,8 +294,8 @@ export default class FreeformCapture {
       this.cleanup();
     }
     if (this.resolve) {
-      // Restart capture
-      this.capture().then(this.resolve);
+      // Signal to restart with parent capture mode
+      this.resolve('restart');
     }
   }
 

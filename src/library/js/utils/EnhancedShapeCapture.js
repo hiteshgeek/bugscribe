@@ -296,8 +296,8 @@ export default class EnhancedShapeCapture {
 
   handleShapeChange(shape, resolve) {
     if (shape === "freeform") {
-      // Save last used shape
-      EnhancedShapeCapture.lastUsedShape = "freeform";
+      // Don't save freeform as lastUsedShape - it's not valid for EnhancedShapeCapture
+      // Instead, preserve the current geometric shape for when we return
 
       // Manually cleanup EnhancedShapeCapture elements but preserve toolbar
       if (this.backdrop) {
@@ -315,7 +315,14 @@ export default class EnhancedShapeCapture {
 
       // Switch to freeform capture, passing existing toolbar
       const freeformCapture = new FreeformCapture(this.utils);
-      freeformCapture.capture(this.toolbar).then(resolve);
+      freeformCapture.capture(this.toolbar).then((result) => {
+        // If freeform returns 'restart', restart EnhancedShapeCapture with current shape
+        if (result === 'restart') {
+          this.capture().then(resolve);
+        } else {
+          resolve(result);
+        }
+      });
     } else {
       this.currentShape = shape;
       EnhancedShapeCapture.lastUsedShape = shape;

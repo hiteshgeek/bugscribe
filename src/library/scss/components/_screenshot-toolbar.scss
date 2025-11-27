@@ -24,8 +24,8 @@
     pointer-events: none;
   }
 
-  * {
-    cursor: default;
+  *:not(button):not(.screenshot-shape-info) {
+    cursor: default !important;
   }
 
   button,

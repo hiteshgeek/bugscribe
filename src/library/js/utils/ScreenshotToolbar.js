@@ -262,6 +262,10 @@ export default class ScreenshotToolbar {
 
   show() {
     if (this.toolbar) {
+      // Ensure toolbar is in DOM
+      if (!document.body.contains(this.toolbar)) {
+        document.body.appendChild(this.toolbar);
+      }
       // Ensure toolbar wrapper is attached
       if (this.toolbarWrapper && !this.toolbar.contains(this.toolbarWrapper)) {
         this.toolbar.appendChild(this.toolbarWrapper);

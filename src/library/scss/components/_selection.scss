@@ -37,7 +37,7 @@
   user-select: none !important;
 }
 
-.mc-selecting *:not(.screenshot-toolbar-container):not(.screenshot-toolbar-container *) {
+.mc-selecting *:not(.screenshot-toolbar-container):not(.screenshot-toolbar-container *):not(.screenshot-toolbar-container button):not(.screenshot-shape-info) {
   cursor: crosshair !important;
   user-select: none !important;
 }
