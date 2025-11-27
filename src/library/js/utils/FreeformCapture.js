@@ -10,38 +10,40 @@ export default class FreeformCapture {
   }
 
   async capture(existingToolbar = null) {
+    console.log('[FreeformCapture] capture() called, existingToolbar:', !!existingToolbar, existingToolbar);
+
+    // Reset instance flag for new capture
+    this.captureResolved = false;
+
     return new Promise((resolve) => {
       let isDrawing = false;
       const points = [];
       let cleanupDone = false;
       let rafId = null;
       let selectionComplete = false;
-      const isReusedToolbar = !!existingToolbar;
 
       const borderColor = this.utils.getCSSVariable("--bug-primary", "#d81d65");
       this.borderColor = borderColor; // Store for move function
 
-      // Reuse existing toolbar or create new one
-      if (existingToolbar) {
-        this.toolbar = existingToolbar;
-        this.toolbar.setShape("freeform");
-        this.toolbar.showSelectionMode(); // Reset to selection mode
-        this.toolbar.show(); // Make sure it's visible
-        // Update callbacks
-        this.toolbar.onAccept = () => this.handleAccept();
-        this.toolbar.onCancel = () => this.handleCancel();
-        this.toolbar.onClose = () => this.handleClose();
-      } else {
-        // Create toolbar FIRST
-        this.toolbar = new ScreenshotToolbar(
-          () => {}, // No shape change for freeform
-          () => this.handleAccept(),
-          () => this.handleCancel(),
-          () => this.handleClose()
-        );
+      // Get or create the single toolbar instance
+      console.log('[FreeformCapture] Getting toolbar instance (existingToolbar ignored - using singleton)');
+      this.toolbar = ScreenshotToolbar.getInstance(
+        (shape) => this.handleShapeChange(shape),
+        () => this.handleAccept(),
+        () => this.handleCancel(),
+        () => this.handleClose()
+      );
+
+      // If toolbar doesn't have DOM element, create it
+      if (!this.toolbar.toolbar) {
+        console.log('[FreeformCapture] Toolbar DOM not found, creating it');
         this.toolbar.create();
-        this.toolbar.setShape("freeform");
       }
+
+      // Set shape and show in selection mode
+      this.toolbar.setShape("freeform");
+      this.toolbar.showSelectionMode();
+      this.toolbar.show();
 
       const backdrop = document.createElement("div");
       backdrop.className = "mc-backdrop";
@@ -118,8 +120,17 @@ export default class FreeformCapture {
       };
 
       const onMouseDown = (e) => {
-        // Don't start selection if clicking on toolbar
-        if (e.target.closest('.screenshot-toolbar-container')) {
+        // Ignore all events if capture has been resolved
+        if (this.captureResolved) {
+          console.log('[FreeformCapture] Ignoring mousedown - capture already resolved');
+          return;
+        }
+
+        // Don't start selection if clicking on toolbar or dropdown menu
+        if (e.target.closest('.screenshot-toolbar-container') ||
+            e.target.closest('.screenshot-shape-menu') ||
+            e.target.closest('.screenshot-shape-option')) {
+          console.log('[FreeformCapture] Ignoring mousedown on toolbar/menu');
           return;
         }
 
@@ -139,12 +150,20 @@ export default class FreeformCapture {
         backdrop.style.clipPath = "";
 
         // Hide toolbar during drawing
-        this.toolbar.hide();
+        console.log('[FreeformCapture] Hiding toolbar, this.toolbar:', !!this.toolbar);
+        if (this.toolbar) {
+          this.toolbar.hide();
+        }
 
         drawLassoBorder();
       };
 
       const onMouseMove = (e) => {
+        // Ignore all events if capture has been resolved
+        if (this.captureResolved) {
+          return;
+        }
+
         if (this.isMoving) {
           this.moveSelection(e, points, canvas, ctx, backdrop, drawLassoBorder);
           return;
@@ -175,14 +194,25 @@ export default class FreeformCapture {
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
         document.removeEventListener("keydown", onKeyDown);
-        // Only remove toolbar if we created it (not reused)
-        if (this.toolbar && !isReusedToolbar) {
-          this.toolbar.remove();
+        // Hide toolbar but don't remove it (singleton pattern)
+        if (this.toolbar) {
+          console.log('[FreeformCapture] Hiding toolbar in cleanup');
+          this.toolbar.hide();
         }
         if (rafId) cancelAnimationFrame(rafId);
       };
 
+      // Store cleanup and resolve early so handleShapeChange can use them
+      this.cleanup = cleanup;
+      this.resolve = resolve;
+
       const onMouseUp = async () => {
+        // Ignore all events if capture has been resolved
+        if (this.captureResolved) {
+          console.log('[FreeformCapture] Ignoring mouseup - capture already resolved');
+          return;
+        }
+
         if (this.isMoving) {
           this.stopMoveSelection(canvas);
           return;
@@ -207,10 +237,8 @@ export default class FreeformCapture {
 
         selectionComplete = true;
 
-        // Store for accept handler
+        // Store for accept handler (cleanup and resolve already stored earlier)
         this.points = points;
-        this.cleanup = cleanup;
-        this.resolve = resolve;
         this.canvas = canvas;
         this.ctx = ctx;
         this.backdrop = backdrop;
@@ -218,15 +246,24 @@ export default class FreeformCapture {
 
         // Remove freeform-selecting class and change cursor
         document.body.classList.remove("mc-freeform-selecting");
-        document.body.style.cursor = "auto";
+        document.body.style.cursor = "";
         canvas.style.cursor = "move";
-        backdrop.style.cursor = "auto";
+        backdrop.style.cursor = "";
 
         // Show toolbar with accept/cancel
-        this.toolbar.show();
-        this.toolbar.showPreviewMode();
+        console.log('[FreeformCapture] Showing toolbar after selection complete, this.toolbar:', !!this.toolbar, this.toolbar);
+        if (this.toolbar) {
+          this.toolbar.show();
+          this.toolbar.showPreviewMode();
+        } else {
+          console.error('[FreeformCapture] ERROR: this.toolbar is falsy!');
+        }
 
         backdrop.style.opacity = "0.7";
+
+        // Ensure canvas doesn't block toolbar by adjusting z-index temporarily
+        canvas.style.zIndex = "99999"; // Below toolbar (1000000)
+        console.log('[FreeformCapture] Toolbar should be visible now');
       };
 
       const onKeyDown = (e) => {
@@ -256,6 +293,9 @@ export default class FreeformCapture {
 
   async handleAccept() {
     if (this.points && this.cleanup && this.resolve) {
+      // Mark capture as resolved to prevent any queued events from firing
+      this.captureResolved = true;
+
       // Hide toolbar and canvas border before capturing
       if (this.toolbar) {
         this.toolbar.hide();
@@ -275,37 +315,86 @@ export default class FreeformCapture {
         const imgURL = await this._captureFreeform(this.points);
         if (imgURL) {
           this.cleanup();
+          // Destroy toolbar instance on successful capture
+          ScreenshotToolbar.destroyInstance();
           this.resolve(imgURL);
         } else {
           console.error("Failed to capture freeform screenshot");
           this.cleanup();
+          ScreenshotToolbar.destroyInstance();
           this.resolve(false);
         }
       } catch (error) {
         console.error("Error capturing freeform screenshot:", error);
         this.cleanup();
+        ScreenshotToolbar.destroyInstance();
         this.resolve(false);
       }
     }
   }
 
   handleCancel() {
+    console.log('[FreeformCapture] handleCancel called, newShape:', this.newShape);
+
+    // Mark capture as resolved to prevent any queued events from firing
+    this.captureResolved = true;
+    console.log('[FreeformCapture] Set captureResolved = true');
+
+    // Reset toolbar to selection mode before cleanup
+    if (this.toolbar) {
+      console.log('[FreeformCapture] Resetting toolbar to selection mode');
+      this.toolbar.showSelectionMode();
+    }
+
+    console.log('[FreeformCapture] About to call cleanup, this.cleanup:', !!this.cleanup);
     if (this.cleanup) {
       this.cleanup();
+      console.log('[FreeformCapture] Cleanup completed');
+    } else {
+      console.log('[FreeformCapture] No cleanup function available');
     }
+
+    console.log('[FreeformCapture] About to resolve, this.resolve:', !!this.resolve);
     if (this.resolve) {
       // Signal to restart with parent capture mode
-      this.resolve('restart');
+      // If newShape is set, pass it along with restart signal
+      if (this.newShape) {
+        console.log('[FreeformCapture] Resolving with restart object:', { restart: true, shape: this.newShape });
+        this.resolve({ restart: true, shape: this.newShape });
+        console.log('[FreeformCapture] Resolve called with restart object');
+      } else {
+        console.log('[FreeformCapture] Resolving with restart string');
+        this.resolve('restart');
+        console.log('[FreeformCapture] Resolve called with restart string');
+      }
+    } else {
+      console.log('[FreeformCapture] ERROR: No resolve function available!');
     }
   }
 
   handleClose() {
+    console.log('[FreeformCapture] handleClose called');
+
+    // Mark capture as resolved to prevent any queued events from firing
+    this.captureResolved = true;
+
     if (this.cleanup) {
       this.cleanup();
     }
+    // Destroy toolbar instance when closing
+    ScreenshotToolbar.destroyInstance();
     if (this.resolve) {
       this.resolve(false);
     }
+  }
+
+  handleShapeChange(shape) {
+    console.log('[FreeformCapture] handleShapeChange called with shape:', shape);
+    // Store the new shape to pass back
+    this.newShape = shape;
+    console.log('[FreeformCapture] Set this.newShape to:', this.newShape);
+    // Cancel and restart with the new shape
+    this.handleCancel();
   }
 
   isPointInPath(ctx, points, x, y) {

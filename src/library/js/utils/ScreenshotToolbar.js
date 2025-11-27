@@ -4,6 +4,32 @@ import { icons } from "../icons.js";
 import Tooltip from "../Tooltip.js";
 
 export default class ScreenshotToolbar {
+  static instance = null; // Track the single toolbar instance
+
+  static getInstance(onShapeChange, onAccept, onCancel, onClose = null) {
+    console.log('[ScreenshotToolbar] getInstance called, current instance:', !!ScreenshotToolbar.instance);
+    if (ScreenshotToolbar.instance) {
+      console.log('[ScreenshotToolbar] Reusing existing instance, updating callbacks');
+      // Update callbacks on existing instance
+      ScreenshotToolbar.instance.onShapeChange = onShapeChange;
+      ScreenshotToolbar.instance.onAccept = onAccept;
+      ScreenshotToolbar.instance.onCancel = onCancel;
+      ScreenshotToolbar.instance.onClose = onClose || onCancel;
+      return ScreenshotToolbar.instance;
+    }
+    console.log('[ScreenshotToolbar] Creating new instance');
+    ScreenshotToolbar.instance = new ScreenshotToolbar(onShapeChange, onAccept, onCancel, onClose);
+    return ScreenshotToolbar.instance;
+  }
+
+  static destroyInstance() {
+    console.log('[ScreenshotToolbar] destroyInstance called');
+    if (ScreenshotToolbar.instance) {
+      ScreenshotToolbar.instance.remove();
+      ScreenshotToolbar.instance = null;
+    }
+  }
+
   constructor(onShapeChange, onAccept, onCancel, onClose = null) {
     this.onShapeChange = onShapeChange;
     this.onAccept = onAccept;
@@ -135,7 +161,9 @@ export default class ScreenshotToolbar {
 
     // Shape selection
     this.shapeMenu.querySelectorAll(".screenshot-shape-option").forEach((option) => {
-      option.addEventListener("click", () => {
+      option.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent click from bubbling to canvas
+        e.preventDefault();
         const shape = option.getAttribute("data-shape");
         this.setShape(shape);
         this.shapeMenu.classList.remove("show");
@@ -213,6 +241,7 @@ export default class ScreenshotToolbar {
   }
 
   showPreviewMode() {
+    console.log('[ScreenshotToolbar] showPreviewMode() called');
     this.mode = "preview";
     this.acceptBtn.style.display = "flex";
     this.cancelBtn.style.display = "flex";
@@ -229,6 +258,7 @@ export default class ScreenshotToolbar {
     if (dropdownWrapper) {
       dropdownWrapper.style.display = "none";
     }
+    console.log('[ScreenshotToolbar] Preview mode set - acceptBtn display:', this.acceptBtn.style.display);
   }
 
   showSelectionMode() {
@@ -261,23 +291,38 @@ export default class ScreenshotToolbar {
   }
 
   show() {
+    console.log('[ScreenshotToolbar] show() called, toolbar exists:', !!this.toolbar);
     if (this.toolbar) {
       // Ensure toolbar is in DOM
-      if (!document.body.contains(this.toolbar)) {
+      const inDOM = document.body.contains(this.toolbar);
+      console.log('[ScreenshotToolbar] Toolbar in DOM:', inDOM);
+      if (!inDOM) {
         document.body.appendChild(this.toolbar);
+        console.log('[ScreenshotToolbar] Appended toolbar to body');
       }
       // Ensure toolbar wrapper is attached
       if (this.toolbarWrapper && !this.toolbar.contains(this.toolbarWrapper)) {
         this.toolbar.appendChild(this.toolbarWrapper);
+        console.log('[ScreenshotToolbar] Appended toolbarWrapper to toolbar');
       }
       this.toolbar.classList.remove("hidden");
+      console.log('[ScreenshotToolbar] Removed hidden class, display:', window.getComputedStyle(this.toolbar).display);
+      console.log('[ScreenshotToolbar] Toolbar z-index:', window.getComputedStyle(this.toolbar).zIndex);
     }
   }
 
   remove() {
+    console.log('[ScreenshotToolbar] remove() called');
+    console.trace('[ScreenshotToolbar] remove() stack trace');
     if (this.toolbar) {
       this.toolbar.remove();
       this.toolbar = null;
+      console.log('[ScreenshotToolbar] Toolbar DOM element removed and set to null');
+    }
+    // Clear static instance reference
+    if (ScreenshotToolbar.instance === this) {
+      ScreenshotToolbar.instance = null;
+      console.log('[ScreenshotToolbar] Cleared static instance reference');
     }
   }
 }

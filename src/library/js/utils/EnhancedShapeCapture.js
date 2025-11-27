@@ -16,17 +16,52 @@ export default class EnhancedShapeCapture {
   }
 
   async capture() {
+    console.log('[EnhancedShapeCapture] ===== CAPTURE() CALLED =====');
+    console.log('[EnhancedShapeCapture] this.currentShape at start:', this.currentShape);
     return new Promise(async (resolve) => {
-      // Start with last used shape or rectangle
-      this.currentShape = EnhancedShapeCapture.lastUsedShape || "rectangle";
+      // Only set currentShape from lastUsedShape if not already set (first capture)
+      // This preserves the shape when restarting from handleShapeChange
+      if (!this.currentShape) {
+        console.log('[EnhancedShapeCapture] currentShape was falsy, setting from lastUsedShape');
+        this.currentShape = EnhancedShapeCapture.lastUsedShape || "rectangle";
+      }
+      console.log('[EnhancedShapeCapture] this.currentShape after check:', this.currentShape);
+
+      // If last used shape was freeform, directly start freeform capture
+      if (this.currentShape === "freeform") {
+        console.log('[EnhancedShapeCapture] Starting freeform capture, currentShape:', this.currentShape);
+        const freeformCapture = new FreeformCapture(this.utils);
+        console.log('[EnhancedShapeCapture] About to await freeformCapture.capture()');
+        const result = await freeformCapture.capture();
+        console.log('[EnhancedShapeCapture] ===== FREEFORM CAPTURE RETURNED =====');
+        console.log('[EnhancedShapeCapture] Freeform result:', result, 'typeof:', typeof result);
+        console.log('[EnhancedShapeCapture] Checking restart: result === restart?', result === 'restart', 'result.restart?', result && result.restart);
+        // If freeform returns 'restart' or restart object, it means user switched to a geometric shape
+        if (result === 'restart' || (result && result.restart)) {
+          console.log('[EnhancedShapeCapture] Detected restart signal');
+          // Update currentShape and lastUsedShape to the newly selected shape
+          const newShape = (result && result.shape) ? result.shape : "freeform";
+          console.log('[EnhancedShapeCapture] New shape to use:', newShape, 'from result.shape:', result.shape);
+          console.log('[EnhancedShapeCapture] Setting currentShape and lastUsedShape to:', newShape);
+          this.currentShape = newShape;
+          EnhancedShapeCapture.lastUsedShape = newShape;
+          console.log('[EnhancedShapeCapture] Restarting capture with new shape, this.currentShape now:', this.currentShape);
+          console.log('[EnhancedShapeCapture] About to call this.capture() recursively...');
+          return this.capture().then(resolve);
+        }
+        console.log('[EnhancedShapeCapture] Returning freeform result');
+        return resolve(result);
+      }
 
       let startX, startY, endX, endY;
       let isSelecting = false;
       let rafId = null;
       let selectionComplete = false;
 
-      // Create toolbar FIRST (before backdrop) so it appears above overlay
-      this.toolbar = new ScreenshotToolbar(
+      // Get or create the single toolbar instance
+      console.log('[EnhancedShapeCapture] *** STARTING GEOMETRIC SHAPE SELECTION ***');
+      console.log('[EnhancedShapeCapture] Getting toolbar instance');
+      this.toolbar = ScreenshotToolbar.getInstance(
         (shape) => this.handleShapeChange(shape, resolve),
         () => this.handleAccept(resolve),
         () => this.handleCancel(resolve),
@@ -36,8 +71,17 @@ export default class EnhancedShapeCapture {
           resolve(false);
         }
       );
-      this.toolbar.create();
+
+      // If toolbar doesn't have DOM element, create it
+      if (!this.toolbar.toolbar) {
+        console.log('[EnhancedShapeCapture] Toolbar DOM not found, creating it');
+        this.toolbar.create();
+      }
+
+      // Set shape and show in selection mode
       this.toolbar.setShape(this.currentShape);
+      this.toolbar.showSelectionMode();
+      this.toolbar.show();
 
       const backdrop = document.createElement("div");
       backdrop.className = "mc-backdrop";
@@ -123,8 +167,10 @@ export default class EnhancedShapeCapture {
       };
 
       const onMouseDown = (e) => {
-        // Don't start selection if clicking on toolbar or its children
-        if (e.target.closest('.screenshot-toolbar-container')) {
+        // Don't start selection if clicking on toolbar, dropdown menu, or its children
+        if (e.target.closest('.screenshot-toolbar-container') ||
+            e.target.closest('.screenshot-shape-menu') ||
+            e.target.closest('.screenshot-shape-option')) {
           return;
         }
 
@@ -190,8 +236,10 @@ export default class EnhancedShapeCapture {
         document.removeEventListener("mouseup", onMouseUp);
         document.removeEventListener("keydown", onKeyDown);
         document.removeEventListener("keyup", onKeyUp);
+        // Hide toolbar but don't remove it (singleton pattern)
         if (this.toolbar) {
-          this.toolbar.remove();
+          console.log('[EnhancedShapeCapture] Hiding toolbar in cleanup');
+          this.toolbar.hide();
         }
         if (rafId) cancelAnimationFrame(rafId);
       };
@@ -231,13 +279,13 @@ export default class EnhancedShapeCapture {
 
         // Remove selecting class to remove crosshair cursor
         document.body.classList.remove("mc-selecting");
-        document.body.style.cursor = "auto";
+        document.body.style.cursor = "";
 
         // Keep selection box visible and adjust backdrop
         selectionBox.classList.add("completed");
         selectionBox.style.pointerEvents = "auto";
         backdrop.style.opacity = "0.7";
-        backdrop.style.cursor = "auto";
+        backdrop.style.cursor = "";
 
         // Show toolbar and accept/cancel buttons
         this.toolbar.show();
@@ -286,11 +334,18 @@ export default class EnhancedShapeCapture {
         }
       };
 
-      document.addEventListener("mousedown", onMouseDown);
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
-      document.addEventListener("keydown", onKeyDown);
-      document.addEventListener("keyup", onKeyUp);
+      // Store event handlers for cleanup
+      this.onMouseDown = onMouseDown;
+      this.onMouseMove = onMouseMove;
+      this.onMouseUp = onMouseUp;
+      this.onKeyDown = onKeyDown;
+      this.onKeyUp = onKeyUp;
+
+      document.addEventListener("mousedown", this.onMouseDown);
+      document.addEventListener("mousemove", this.onMouseMove);
+      document.addEventListener("mouseup", this.onMouseUp);
+      document.addEventListener("keydown", this.onKeyDown);
+      document.addEventListener("keyup", this.onKeyUp);
     });
   }
 
@@ -298,6 +353,24 @@ export default class EnhancedShapeCapture {
     if (shape === "freeform") {
       // Don't save freeform as lastUsedShape - it's not valid for EnhancedShapeCapture
       // Instead, preserve the current geometric shape for when we return
+
+      // Remove event listeners to prevent conflicts with FreeformCapture
+      console.log('[EnhancedShapeCapture] Removing event listeners before switching to freeform');
+      if (this.onMouseDown) {
+        document.removeEventListener("mousedown", this.onMouseDown);
+      }
+      if (this.onMouseMove) {
+        document.removeEventListener("mousemove", this.onMouseMove);
+      }
+      if (this.onMouseUp) {
+        document.removeEventListener("mouseup", this.onMouseUp);
+      }
+      if (this.onKeyDown) {
+        document.removeEventListener("keydown", this.onKeyDown);
+      }
+      if (this.onKeyUp) {
+        document.removeEventListener("keyup", this.onKeyUp);
+      }
 
       // Manually cleanup EnhancedShapeCapture elements but preserve toolbar
       if (this.backdrop) {
@@ -316,10 +389,23 @@ export default class EnhancedShapeCapture {
       // Switch to freeform capture, passing existing toolbar
       const freeformCapture = new FreeformCapture(this.utils);
       freeformCapture.capture(this.toolbar).then((result) => {
-        // If freeform returns 'restart', restart EnhancedShapeCapture with current shape
-        if (result === 'restart') {
+        // If freeform returns 'restart' or restart object, restart EnhancedShapeCapture with new shape
+        if (result === 'restart' || (result && result.restart)) {
+          // Update to the new shape if provided, otherwise keep freeform
+          if (result && result.shape) {
+            this.currentShape = result.shape;
+            EnhancedShapeCapture.lastUsedShape = result.shape;
+          } else {
+            // No shape change - user just cancelled, keep freeform
+            this.currentShape = "freeform";
+            EnhancedShapeCapture.lastUsedShape = "freeform";
+          }
           this.capture().then(resolve);
         } else {
+          // If freeform completed successfully (not cancelled/closed), save it as last used shape
+          if (result !== false) {
+            EnhancedShapeCapture.lastUsedShape = "freeform";
+          }
           resolve(result);
         }
       });
@@ -356,6 +442,8 @@ export default class EnhancedShapeCapture {
 
       if (imgURL) {
         this.cleanup();
+        // Destroy toolbar instance on successful capture
+        ScreenshotToolbar.destroyInstance();
         this.resolve(imgURL);
       } else {
         console.error("Failed to capture screenshot");
