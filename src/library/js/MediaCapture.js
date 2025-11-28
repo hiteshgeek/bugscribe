@@ -4,8 +4,8 @@ import VideoRecorder from "./VideoRecorder.js";
 import ThumbnailGenerator from "./ThumbnailGenerator.js";
 
 export default class MediaCapture {
-  constructor() {
-    this.screenshots = new ScreenshotCapture();
+  constructor(config = {}) {
+    this.screenshots = new ScreenshotCapture(config.screenshot || {});
     this.video = new VideoRecorder();
     this.thumbnail = new ThumbnailGenerator(); // Proxy callbacks
 

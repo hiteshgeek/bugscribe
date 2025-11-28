@@ -7,6 +7,9 @@ if (typeof window !== "undefined") {
       },
       bgColor: "#ff5733",
     },
+    screenshot: {
+      dimensionsPosition: "center", // "center", "right-bottom", "right-top", "left-bottom", "left-top"
+    },
   });
 
   window.bugscribe = bugscribe;

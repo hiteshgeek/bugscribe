@@ -19,7 +19,9 @@ export default class Bugscribe {
 
     this._screenshotPreviews = [];
     this.bugButtonWrapper = new BugButtonWrapper(options.button || {});
-    this.mediaCapture = new MediaCapture(); // Initialize new helper classes
+    this.mediaCapture = new MediaCapture({
+      screenshot: options.screenshot || {}
+    }); // Initialize new helper classes
 
     // this.previewManager = new PreviewManager(
     //   this.getFullMediaData,

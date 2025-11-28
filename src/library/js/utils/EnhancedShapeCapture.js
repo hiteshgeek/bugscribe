@@ -4,7 +4,7 @@ import ScreenshotToolbar from "./ScreenshotToolbar.js";
 import FreeformCapture from "./FreeformCapture.js";
 
 export default class EnhancedShapeCapture {
-  constructor(utils) {
+  constructor(utils, config = {}) {
     this.utils = utils;
     this.toolbar = null;
     this.currentShape = EnhancedShapeCapture.lastUsedShape || "rectangle";
@@ -13,6 +13,8 @@ export default class EnhancedShapeCapture {
     this.capturedImage = null;
     this.moveOffsetX = 0;
     this.moveOffsetY = 0;
+    // Config for dimensions label position: "center", "right-bottom", "right-top", "left-top", "left-bottom"
+    this.dimensionsPosition = config.dimensionsPosition || "center";
   }
 
   async capture() {
@@ -147,18 +149,12 @@ export default class EnhancedShapeCapture {
         if (effectiveShape === "rectangle" || effectiveShape === "square") {
           dimensionsEl.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
           dimensionsEl.style.display = "block";
-          // Position at bottom-right: horizontally aligned with right edge, vertically below
-          const dimRect = dimensionsEl.getBoundingClientRect();
-          dimensionsEl.style.left = `${rect.left + rect.width - dimRect.width}px`;
-          dimensionsEl.style.top = `${rect.top + rect.height + 5}px`;
+          this._positionDimensionsElement(dimensionsEl, rect);
         } else if (effectiveShape === "circle") {
           const radius = Math.round(rect.width / 2);
           dimensionsEl.textContent = `Radius: ${radius}`;
           dimensionsEl.style.display = "block";
-          // Position at bottom-right: horizontally aligned with right edge, vertically below
-          const dimRect = dimensionsEl.getBoundingClientRect();
-          dimensionsEl.style.left = `${rect.left + rect.width - dimRect.width}px`;
-          dimensionsEl.style.top = `${rect.top + rect.height + 5}px`;
+          this._positionDimensionsElement(dimensionsEl, rect);
         } else {
           dimensionsEl.style.display = "none";
         }
@@ -558,9 +554,8 @@ export default class EnhancedShapeCapture {
       // Update dimensions element position
       const dimensionsEl = document.querySelector(".mc-selection-dimensions");
       if (dimensionsEl && dimensionsEl.style.display !== "none") {
-        const dimRect = dimensionsEl.getBoundingClientRect();
-        dimensionsEl.style.left = `${newLeft + width - dimRect.width}px`;
-        dimensionsEl.style.top = `${newTop + height + 5}px`;
+        const rect = { left: newLeft, top: newTop, width, height };
+        this._positionDimensionsElement(dimensionsEl, rect);
       }
     }
   }
@@ -655,6 +650,44 @@ export default class EnhancedShapeCapture {
       finalCtx.drawImage(screenshotCanvas, 0, 0);
 
       return finalCanvas.toDataURL("image/png");
+    }
+  }
+
+  _positionDimensionsElement(dimensionsEl, rect) {
+    const dimRect = dimensionsEl.getBoundingClientRect();
+    const offset = 5; // Offset from edges
+
+    switch (this.dimensionsPosition) {
+      case "center":
+        // Position at center of selection
+        dimensionsEl.style.left = `${rect.left + (rect.width / 2) - (dimRect.width / 2)}px`;
+        dimensionsEl.style.top = `${rect.top + (rect.height / 2) - (dimRect.height / 2)}px`;
+        break;
+
+      case "right-top":
+        // Position at top-right corner (aligned with right edge, above selection)
+        dimensionsEl.style.left = `${rect.left + rect.width - dimRect.width}px`;
+        dimensionsEl.style.top = `${rect.top - dimRect.height - offset}px`;
+        break;
+
+      case "left-top":
+        // Position at top-left corner (aligned with left edge, above selection)
+        dimensionsEl.style.left = `${rect.left}px`;
+        dimensionsEl.style.top = `${rect.top - dimRect.height - offset}px`;
+        break;
+
+      case "left-bottom":
+        // Position at bottom-left corner (aligned with left edge, below selection)
+        dimensionsEl.style.left = `${rect.left}px`;
+        dimensionsEl.style.top = `${rect.top + rect.height + offset}px`;
+        break;
+
+      case "right-bottom":
+      default:
+        // Position at bottom-right corner (aligned with right edge, below selection)
+        dimensionsEl.style.left = `${rect.left + rect.width - dimRect.width}px`;
+        dimensionsEl.style.top = `${rect.top + rect.height + offset}px`;
+        break;
     }
   }
 }
