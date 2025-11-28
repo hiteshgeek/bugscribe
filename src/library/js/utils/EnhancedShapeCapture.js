@@ -2,6 +2,7 @@
 
 import ScreenshotToolbar from "./ScreenshotToolbar.js";
 import FreeformCapture from "./FreeformCapture.js";
+import BackdropManager from "./BackdropManager.js";
 
 export default class EnhancedShapeCapture {
   constructor(utils, config = {}) {
@@ -89,9 +90,8 @@ export default class EnhancedShapeCapture {
       this.toolbar.showSelectionMode();
       this.toolbar.show();
 
-      const backdrop = document.createElement("div");
-      backdrop.className = "mc-backdrop";
-      document.body.appendChild(backdrop);
+      // Use BackdropManager to get or create backdrop
+      const backdrop = BackdropManager.getBackdrop();
       this.backdrop = backdrop; // Store early for shape switching
 
       const selectionBox = document.createElement("div");
@@ -414,7 +414,7 @@ export default class EnhancedShapeCapture {
       }
 
       // Show preview with accept/cancel
-      await this._showInstantCapturePreview(imgURL, previousShape, resolve);
+      await this._showCapturePreview(imgURL, resolve, previousShape);
       return;
     }
 
@@ -805,9 +805,8 @@ export default class EnhancedShapeCapture {
   }
 
   async _showCapturePreview(imgURL, resolve, previousShape = null) {
-    // Create backdrop using existing mc-backdrop class for consistency
-    const backdrop = document.createElement("div");
-    backdrop.className = "mc-backdrop";
+    // Use BackdropManager to get or create backdrop
+    const backdrop = BackdropManager.getBackdrop();
     backdrop.style.clipPath = "none"; // No clip path for full coverage
 
     // Create preview image container
@@ -834,7 +833,6 @@ export default class EnhancedShapeCapture {
     `;
 
     imgContainer.appendChild(img);
-    document.body.appendChild(backdrop);
     document.body.appendChild(imgContainer);
 
     // Ensure toolbar exists, create if needed
@@ -852,7 +850,7 @@ export default class EnhancedShapeCapture {
 
     // Show toolbar in preview mode
     this.toolbar.show();
-    this.toolbar.showPreviewMode();
+    this.toolbar.showPreviewMode(true); // true = instant capture (no repositioning)
 
     // Store handlers for accept/cancel/annotate
     const handleAccept = () => {
@@ -910,7 +908,7 @@ export default class EnhancedShapeCapture {
     };
 
     const cleanup = () => {
-      backdrop.remove();
+      BackdropManager.removeBackdrop();
       imgContainer.remove();
       document.removeEventListener("keydown", handleKeyboard);
     };

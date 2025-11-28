@@ -1,4 +1,5 @@
 import ScreenshotToolbar from "./ScreenshotToolbar.js";
+import BackdropManager from "./BackdropManager.js";
 
 export default class FreeformCapture {
   constructor(utils) {
@@ -45,12 +46,11 @@ export default class FreeformCapture {
       this.toolbar.showSelectionMode();
       this.toolbar.show();
 
-      const backdrop = document.createElement("div");
-      backdrop.className = "mc-backdrop";
+      // Use BackdropManager to get or create backdrop
+      const backdrop = BackdropManager.getBackdrop();
       backdrop.style.pointerEvents = "auto";
       backdrop.style.cursor = "crosshair";
       backdrop.style.opacity = "0.5";
-      document.body.appendChild(backdrop);
 
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
@@ -187,7 +187,7 @@ export default class FreeformCapture {
         if (cleanupDone) return;
         cleanupDone = true;
         canvas.remove();
-        backdrop.remove();
+        BackdropManager.removeBackdrop();
         document.body.classList.remove("mc-freeform-selecting");
         document.body.style.cursor = "";
         canvas.removeEventListener("mousedown", onMouseDown);
@@ -682,9 +682,8 @@ export default class FreeformCapture {
   }
 
   async _showInstantCapturePreview(imgURL) {
-    // Create backdrop using existing mc-backdrop class for consistency
-    const backdrop = document.createElement("div");
-    backdrop.className = "mc-backdrop";
+    // Use BackdropManager to get or create backdrop
+    const backdrop = BackdropManager.getBackdrop();
     backdrop.style.clipPath = "none"; // No clip path for full coverage
 
     // Create preview image container
@@ -711,7 +710,6 @@ export default class FreeformCapture {
     `;
 
     imgContainer.appendChild(img);
-    document.body.appendChild(backdrop);
     document.body.appendChild(imgContainer);
 
     // Ensure toolbar exists, create if needed
@@ -729,7 +727,7 @@ export default class FreeformCapture {
 
     // Show toolbar in preview mode
     this.toolbar.show();
-    this.toolbar.showPreviewMode();
+    this.toolbar.showPreviewMode(true); // true = instant capture (no repositioning)
 
     // Store handlers for accept/cancel
     const handleAccept = () => {
@@ -789,7 +787,7 @@ export default class FreeformCapture {
     };
 
     const cleanup = () => {
-      backdrop.remove();
+      BackdropManager.removeBackdrop();
       imgContainer.remove();
       document.removeEventListener("keydown", handleKeyboard);
     };

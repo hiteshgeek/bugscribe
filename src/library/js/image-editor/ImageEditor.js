@@ -2,6 +2,7 @@
 
 import { icons } from "../icons.js";
 import Tooltip from "../Tooltip.js";
+import BackdropManager from "../utils/BackdropManager.js";
 
 export default class ImageEditor {
   constructor(imageURL, options = {}) {
@@ -27,19 +28,21 @@ export default class ImageEditor {
   }
 
   _createOverlay() {
-    // If backdrop was provided, reuse it without modifying its appearance
-    if (this.backdrop) {
+    // If backdrop was provided, reuse it
+    if (this.backdrop && document.body.contains(this.backdrop)) {
+      console.log('[ImageEditor] Reusing provided backdrop');
       this.overlay = this.backdrop;
       this.overlay.classList.add("bug-element");
       this.overlay.classList.add("image-editor-overlay");
       this.overlay.style.zIndex = "1000001"; // Higher than toolbar
       // Don't modify opacity or background - use original mc-backdrop styles
     } else {
-      // Create new backdrop/overlay
-      this.overlay = document.createElement("div");
-      this.overlay.className = "mc-backdrop bug-element image-editor-overlay";
+      // Use BackdropManager to get or create backdrop
+      console.log('[ImageEditor] Getting backdrop from BackdropManager');
+      this.overlay = BackdropManager.getBackdrop();
+      this.overlay.classList.add("bug-element");
+      this.overlay.classList.add("image-editor-overlay");
       this.overlay.style.zIndex = "1000001";
-      document.body.appendChild(this.overlay);
       this.createdBackdrop = true;
     }
   }

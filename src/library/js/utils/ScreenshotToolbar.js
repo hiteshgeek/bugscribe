@@ -312,15 +312,25 @@ export default class ScreenshotToolbar {
     }
   }
 
-  showPreviewMode() {
-    console.log("[ScreenshotToolbar] showPreviewMode() called");
+  showPreviewMode(isInstantCapture = false) {
+    console.log("[ScreenshotToolbar] showPreviewMode() called, isInstantCapture:", isInstantCapture);
     this.mode = "preview";
     this.annotateBtn.style.display = "flex";
     this.acceptBtn.style.display = "flex";
     this.cancelBtn.style.display = "flex";
     this.closeBtn.style.display = "none";
-    this.hintText.style.display = "block";
-    this.hintText.textContent = "Drag to reposition";
+
+    // Update hint text and button based on capture type
+    if (isInstantCapture) {
+      this.hintText.style.display = "none"; // No repositioning for instant captures
+      this.cancelBtn.innerHTML = `${icons.cancel} Back`;
+      this.cancelBtn.setAttribute("data-tooltip-text", "Go back and recapture");
+    } else {
+      this.hintText.style.display = "block";
+      this.hintText.textContent = "Drag to reposition";
+      this.cancelBtn.innerHTML = `${icons.backward10} Reset`;
+      this.cancelBtn.setAttribute("data-tooltip-text", "Reset Selection");
+    }
 
     // Hide shape dropdown and shape info in preview mode
     this.shapeInfo.style.display = "none";
