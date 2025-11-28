@@ -286,7 +286,6 @@ export default class EnhancedShapeCapture {
         // Keep selection box visible and adjust backdrop
         selectionBox.classList.add("completed");
         selectionBox.style.pointerEvents = "auto";
-        backdrop.style.opacity = "0.7";
         backdrop.style.cursor = "";
 
         // Show toolbar and accept/cancel buttons
@@ -298,6 +297,9 @@ export default class EnhancedShapeCapture {
         this.resolve = resolve;
         this.selectionBox = selectionBox;
         this.backdrop = backdrop;
+
+        // Set annotate handler
+        this.toolbar.onAnnotate = () => this.handleAnnotate();
       };
 
       const onKeyDown = (e) => {
@@ -500,6 +502,9 @@ export default class EnhancedShapeCapture {
         dimensionsEl.style.display = "none";
       }
 
+      // Hide all bug elements before capture
+      document.querySelectorAll(".bug-element").forEach((el) => el.classList.add("hide_el"));
+
       // Small delay to ensure elements are hidden
       await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -507,8 +512,8 @@ export default class EnhancedShapeCapture {
       const imgURL = await this._captureArea(this.finalRect, this.finalShape);
 
       if (imgURL) {
+        // Clean up selection UI
         this.cleanup();
-        // Destroy toolbar instance on successful capture
         ScreenshotToolbar.destroyInstance();
         this.resolve(imgURL);
       } else {
@@ -519,6 +524,94 @@ export default class EnhancedShapeCapture {
         }
         if (this.selectionBox) {
           this.selectionBox.style.display = "block";
+        }
+      }
+    }
+  }
+
+  async handleAnnotate() {
+    if (this.finalRect && this.finalShape && this.cleanup && this.resolve) {
+      // Store selection state for restoration
+      const selectionBox = this.selectionBox;
+      const backdrop = this.backdrop;
+      const originalClipPath = backdrop ? backdrop.style.clipPath : null;
+      const dimensionsEl = document.querySelector(".mc-selection-dimensions");
+
+      // Hide toolbar, selection box, and dimensions before capturing
+      if (this.toolbar) {
+        this.toolbar.hide();
+      }
+      if (selectionBox) {
+        selectionBox.style.display = "none";
+      }
+      if (backdrop) {
+        backdrop.style.clipPath = "none";
+      }
+      if (dimensionsEl) {
+        dimensionsEl.style.display = "none";
+      }
+
+      // Hide all bug elements before capture
+      document.querySelectorAll(".bug-element").forEach((el) => el.classList.add("hide_el"));
+
+      // Small delay to ensure elements are hidden
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Capture the final area
+      const imgURL = await this._captureArea(this.finalRect, this.finalShape);
+
+      if (imgURL) {
+        // Dynamically import ImageEditor
+        const { default: ImageEditor } = await import('../image-editor/ImageEditor.js');
+
+        const editor = new ImageEditor(imgURL, {
+          backdrop: backdrop, // Pass existing backdrop to reuse
+          onDone: (editedImageURL) => {
+            console.log('[EnhancedShapeCapture] Image editor done');
+            // Clean up everything
+            if (selectionBox) selectionBox.remove();
+            if (dimensionsEl) dimensionsEl.remove();
+            if (this.cleanup) this.cleanup();
+            ScreenshotToolbar.destroyInstance();
+            this.resolve(editedImageURL);
+          },
+          onCancel: () => {
+            console.log('[EnhancedShapeCapture] Image editor cancelled, restoring selection');
+            // Restore selection state
+            if (selectionBox) {
+              selectionBox.style.display = "block";
+            }
+            if (backdrop && originalClipPath) {
+              backdrop.style.clipPath = originalClipPath;
+            }
+            if (dimensionsEl) {
+              dimensionsEl.style.display = "block";
+            }
+            // Show bug elements again
+            document.querySelectorAll(".bug-element").forEach((el) => el.classList.remove("hide_el"));
+            // Show toolbar in preview mode
+            if (this.toolbar) {
+              this.toolbar.show();
+              this.toolbar.showPreviewMode();
+            }
+          }
+        });
+
+        editor.open();
+      } else {
+        console.error("Failed to capture screenshot");
+        // Restore UI if capture failed
+        if (this.toolbar) {
+          this.toolbar.show();
+        }
+        if (selectionBox) {
+          selectionBox.style.display = "block";
+        }
+        if (backdrop && originalClipPath) {
+          backdrop.style.clipPath = originalClipPath;
+        }
+        if (dimensionsEl) {
+          dimensionsEl.style.display = "block";
         }
       }
     }
@@ -711,7 +804,7 @@ export default class EnhancedShapeCapture {
     }
   }
 
-  async _showInstantCapturePreview(imgURL, previousShape, resolve) {
+  async _showCapturePreview(imgURL, resolve, previousShape = null) {
     // Create backdrop using existing mc-backdrop class for consistency
     const backdrop = document.createElement("div");
     backdrop.className = "mc-backdrop";
@@ -761,7 +854,7 @@ export default class EnhancedShapeCapture {
     this.toolbar.show();
     this.toolbar.showPreviewMode();
 
-    // Store handlers for accept/cancel
+    // Store handlers for accept/cancel/annotate
     const handleAccept = () => {
       cleanup();
       ScreenshotToolbar.destroyInstance();
@@ -769,11 +862,43 @@ export default class EnhancedShapeCapture {
     };
 
     const handleCancel = () => {
-      console.log('[EnhancedShapeCapture] Instant capture preview cancelled, restoring shape:', previousShape);
+      console.log('[EnhancedShapeCapture] Capture preview cancelled');
       cleanup();
-      this.currentShape = previousShape;
-      EnhancedShapeCapture.lastUsedShape = previousShape;
+
+      // If previousShape provided (instant capture), restore it
+      if (previousShape) {
+        this.currentShape = previousShape;
+        EnhancedShapeCapture.lastUsedShape = previousShape;
+      }
+
+      // Restart capture
       this.capture().then(resolve);
+    };
+
+    const handleAnnotate = async () => {
+      console.log('[EnhancedShapeCapture] Opening image editor for annotation');
+
+      // Remove imgContainer but keep backdrop for editor
+      imgContainer.remove();
+      document.removeEventListener("keydown", handleKeyboard);
+
+      // Dynamically import ImageEditor
+      const { default: ImageEditor } = await import('../image-editor/ImageEditor.js');
+
+      const editor = new ImageEditor(imgURL, {
+        backdrop: backdrop, // Pass existing backdrop to reuse
+        onDone: (editedImageURL) => {
+          console.log('[EnhancedShapeCapture] Image editor done');
+          ScreenshotToolbar.destroyInstance();
+          resolve(editedImageURL);
+        },
+        onCancel: () => {
+          console.log('[EnhancedShapeCapture] Image editor cancelled, showing preview again');
+          this._showCapturePreview(imgURL, resolve, previousShape);
+        }
+      });
+
+      editor.open();
     };
 
     const handleKeyboard = (e) => {
@@ -793,6 +918,7 @@ export default class EnhancedShapeCapture {
     // Update toolbar callbacks
     this.toolbar.onAccept = handleAccept;
     this.toolbar.onCancel = handleCancel;
+    this.toolbar.onAnnotate = handleAnnotate;
 
     // Add keyboard listener
     document.addEventListener("keydown", handleKeyboard);

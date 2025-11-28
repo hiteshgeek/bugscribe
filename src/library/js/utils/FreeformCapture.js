@@ -255,11 +255,12 @@ export default class FreeformCapture {
         if (this.toolbar) {
           this.toolbar.show();
           this.toolbar.showPreviewMode();
+
+          // Set annotate handler
+          this.toolbar.onAnnotate = () => this.handleAnnotate();
         } else {
           console.error('[FreeformCapture] ERROR: this.toolbar is falsy!');
         }
-
-        backdrop.style.opacity = "0.7";
 
         // Ensure canvas doesn't block toolbar by adjusting z-index temporarily
         canvas.style.zIndex = "99999"; // Below toolbar (1000000)
@@ -323,6 +324,94 @@ export default class FreeformCapture {
           this.cleanup();
           ScreenshotToolbar.destroyInstance();
           this.resolve(false);
+        }
+      } catch (error) {
+        console.error("Error capturing freeform screenshot:", error);
+        this.cleanup();
+        ScreenshotToolbar.destroyInstance();
+        this.resolve(false);
+      }
+    }
+  }
+
+  async handleAnnotate() {
+    if (this.points && this.cleanup && this.resolve) {
+      // Mark capture as resolved
+      this.captureResolved = true;
+
+      // Store selection state for restoration
+      const canvas = this.canvas;
+      const backdrop = this.backdrop;
+      const originalClipPath = backdrop ? backdrop.style.clipPath : null;
+      const originalOpacity = backdrop ? backdrop.style.opacity : null;
+
+      // Hide toolbar and canvas border before capturing
+      if (this.toolbar) {
+        this.toolbar.hide();
+      }
+      if (canvas) {
+        canvas.style.display = "none";
+      }
+      if (backdrop) {
+        backdrop.style.clipPath = "none";
+        backdrop.style.opacity = "0";
+      }
+
+      // Small delay to ensure elements are hidden
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      try {
+        const imgURL = await this._captureFreeform(this.points);
+        if (imgURL) {
+          // Dynamically import ImageEditor
+          const { default: ImageEditor } = await import('../image-editor/ImageEditor.js');
+
+          const editor = new ImageEditor(imgURL, {
+            backdrop: backdrop, // Pass existing backdrop to reuse
+            onDone: (editedImageURL) => {
+              console.log('[FreeformCapture] Image editor done');
+              // Clean up everything
+              if (canvas) canvas.remove();
+              if (this.cleanup) this.cleanup();
+              ScreenshotToolbar.destroyInstance();
+              this.resolve(editedImageURL);
+            },
+            onCancel: () => {
+              console.log('[FreeformCapture] Image editor cancelled, restoring selection');
+              // Restore selection state
+              if (canvas) {
+                canvas.style.display = "block";
+              }
+              if (backdrop && originalClipPath) {
+                backdrop.style.clipPath = originalClipPath;
+              }
+              if (backdrop && originalOpacity) {
+                backdrop.style.opacity = originalOpacity;
+              }
+              // Show toolbar in preview mode
+              if (this.toolbar) {
+                this.toolbar.show();
+                this.toolbar.showPreviewMode();
+              }
+            }
+          });
+
+          editor.open();
+        } else {
+          console.error("Failed to capture freeform screenshot");
+          // Restore UI if capture failed
+          if (this.toolbar) {
+            this.toolbar.show();
+          }
+          if (canvas) {
+            canvas.style.display = "block";
+          }
+          if (backdrop && originalClipPath) {
+            backdrop.style.clipPath = originalClipPath;
+          }
+          if (backdrop && originalOpacity) {
+            backdrop.style.opacity = originalOpacity;
+          }
         }
       } catch (error) {
         console.error("Error capturing freeform screenshot:", error);
@@ -663,6 +752,34 @@ export default class FreeformCapture {
       });
     };
 
+    const handleAnnotate = async () => {
+      console.log('[FreeformCapture] Opening image editor for instant capture annotation');
+
+      // Remove imgContainer but keep backdrop for editor
+      imgContainer.remove();
+      document.removeEventListener("keydown", handleKeyboard);
+
+      // Dynamically import ImageEditor
+      const { default: ImageEditor } = await import('../image-editor/ImageEditor.js');
+
+      const editor = new ImageEditor(imgURL, {
+        backdrop: backdrop, // Pass existing backdrop to reuse
+        onDone: (editedImageURL) => {
+          console.log('[FreeformCapture] Image editor done');
+          ScreenshotToolbar.destroyInstance();
+          if (this.resolve) {
+            this.resolve(editedImageURL);
+          }
+        },
+        onCancel: () => {
+          console.log('[FreeformCapture] Image editor cancelled, showing preview again');
+          this._showInstantCapturePreview(imgURL);
+        }
+      });
+
+      editor.open();
+    };
+
     const handleKeyboard = (e) => {
       if (e.key === "Enter") {
         handleAccept();
@@ -680,6 +797,7 @@ export default class FreeformCapture {
     // Update toolbar callbacks
     this.toolbar.onAccept = handleAccept;
     this.toolbar.onCancel = handleCancel;
+    this.toolbar.onAnnotate = handleAnnotate;
 
     // Add keyboard listener
     document.addEventListener("keydown", handleKeyboard);

@@ -120,7 +120,10 @@ function addAllScriptsESM() {
       .pipe(useSourceMaps() ? plugins.sourcemaps.init() : noop())
       .pipe(
         rollup(
-          { plugins: [rollupBabel({ babelHelpers: "bundled" })] },
+          {
+            plugins: [rollupBabel({ babelHelpers: "bundled" })],
+            inlineDynamicImports: true  // Inline dynamic imports to avoid code-splitting
+          },
           { format: "esm" }
         )
       )
@@ -146,7 +149,10 @@ function addAllScriptsIIFE() {
       .pipe(useSourceMaps() ? plugins.sourcemaps.init() : noop())
       .pipe(
         rollup(
-          { plugins: [rollupBabel({ babelHelpers: "bundled" })] },
+          {
+            plugins: [rollupBabel({ babelHelpers: "bundled" })],
+            inlineDynamicImports: true  // Inline dynamic imports for IIFE compatibility
+          },
           { format: "iife", name: "Bugscribe" } //provide library name
         )
       )

@@ -7,9 +7,14 @@ export default class ScreenshotToolbar {
   static instance = null; // Track the single toolbar instance
 
   static getInstance(onShapeChange, onAccept, onCancel, onClose = null) {
-    console.log('[ScreenshotToolbar] getInstance called, current instance:', !!ScreenshotToolbar.instance);
+    console.log(
+      "[ScreenshotToolbar] getInstance called, current instance:",
+      !!ScreenshotToolbar.instance
+    );
     if (ScreenshotToolbar.instance) {
-      console.log('[ScreenshotToolbar] Reusing existing instance, updating callbacks');
+      console.log(
+        "[ScreenshotToolbar] Reusing existing instance, updating callbacks"
+      );
       // Update callbacks on existing instance
       ScreenshotToolbar.instance.onShapeChange = onShapeChange;
       ScreenshotToolbar.instance.onAccept = onAccept;
@@ -17,13 +22,18 @@ export default class ScreenshotToolbar {
       ScreenshotToolbar.instance.onClose = onClose || onCancel;
       return ScreenshotToolbar.instance;
     }
-    console.log('[ScreenshotToolbar] Creating new instance');
-    ScreenshotToolbar.instance = new ScreenshotToolbar(onShapeChange, onAccept, onCancel, onClose);
+    console.log("[ScreenshotToolbar] Creating new instance");
+    ScreenshotToolbar.instance = new ScreenshotToolbar(
+      onShapeChange,
+      onAccept,
+      onCancel,
+      onClose
+    );
     return ScreenshotToolbar.instance;
   }
 
   static destroyInstance() {
-    console.log('[ScreenshotToolbar] destroyInstance called');
+    console.log("[ScreenshotToolbar] destroyInstance called");
     if (ScreenshotToolbar.instance) {
       ScreenshotToolbar.instance.remove();
       ScreenshotToolbar.instance = null;
@@ -35,6 +45,7 @@ export default class ScreenshotToolbar {
     this.onAccept = onAccept;
     this.onCancel = onCancel;
     this.onClose = onClose || onCancel; // Default to onCancel if not provided
+    this.onAnnotate = null; // Will be set from outside when needed
     this.currentShape = "rectangle";
     this.mode = "selecting"; // 'selecting' or 'preview'
     this.toolbar = null;
@@ -102,6 +113,16 @@ export default class ScreenshotToolbar {
     shapeDropdownWrapper.appendChild(this.shapeMenu);
 
     // Create action buttons (initially hidden)
+    this.annotateBtn = document.createElement("button");
+    this.annotateBtn.className =
+      "screenshot-action-btn screenshot-annotate-btn";
+    this.annotateBtn.innerHTML = `${icons.note} Annotate`;
+    this.annotateBtn.style.display = "none";
+    this.annotateBtn.setAttribute(
+      "data-tooltip-text",
+      "Add annotations to screenshot"
+    );
+
     this.acceptBtn = document.createElement("button");
     this.acceptBtn.className = "screenshot-action-btn screenshot-accept-btn";
     this.acceptBtn.innerHTML = `${icons.accept} Accept`;
@@ -111,9 +132,9 @@ export default class ScreenshotToolbar {
 
     this.cancelBtn = document.createElement("button");
     this.cancelBtn.className = "screenshot-action-btn screenshot-cancel-btn";
-    this.cancelBtn.innerHTML = `${icons.cancel} Cancel`;
+    this.cancelBtn.innerHTML = `${icons.backward10} Reset`;
     this.cancelBtn.style.display = "none";
-    this.cancelBtn.setAttribute("data-tooltip-text", "Cancel and restart");
+    this.cancelBtn.setAttribute("data-tooltip-text", "Reset Selection");
     this.cancelBtn.setAttribute("data-tooltip-shortcut", "Esc");
 
     // Create close button (always visible)
@@ -132,6 +153,7 @@ export default class ScreenshotToolbar {
     // Append elements
     this.toolbarWrapper.appendChild(this.shapeInfo);
     this.toolbarWrapper.appendChild(shapeDropdownWrapper);
+    this.toolbarWrapper.appendChild(this.annotateBtn);
     this.toolbarWrapper.appendChild(this.acceptBtn);
     this.toolbarWrapper.appendChild(this.cancelBtn);
     this.toolbarWrapper.appendChild(this.closeBtn);
@@ -145,6 +167,7 @@ export default class ScreenshotToolbar {
 
     // Initialize tooltips
     Tooltip.init(shapeDropdownBtn);
+    Tooltip.init(this.annotateBtn);
     Tooltip.init(this.acceptBtn);
     Tooltip.init(this.cancelBtn);
     Tooltip.init(this.closeBtn);
@@ -173,17 +196,26 @@ export default class ScreenshotToolbar {
     });
 
     // Shape selection
-    this.shapeMenu.querySelectorAll(".screenshot-shape-option").forEach((option) => {
-      option.addEventListener("click", (e) => {
-        e.stopPropagation(); // Prevent click from bubbling to canvas
-        e.preventDefault();
-        const shape = option.getAttribute("data-shape");
-        this.setShape(shape);
-        this.shapeMenu.classList.remove("show");
-        if (this.onShapeChange) {
-          this.onShapeChange(shape);
-        }
+    this.shapeMenu
+      .querySelectorAll(".screenshot-shape-option")
+      .forEach((option) => {
+        option.addEventListener("click", (e) => {
+          e.stopPropagation(); // Prevent click from bubbling to canvas
+          e.preventDefault();
+          const shape = option.getAttribute("data-shape");
+          this.setShape(shape);
+          this.shapeMenu.classList.remove("show");
+          if (this.onShapeChange) {
+            this.onShapeChange(shape);
+          }
+        });
       });
+
+    // Annotate button
+    this.annotateBtn.addEventListener("click", () => {
+      if (this.onAnnotate) {
+        this.onAnnotate();
+      }
     });
 
     // Accept button
@@ -226,8 +258,12 @@ export default class ScreenshotToolbar {
     };
 
     this.shapeInfo.innerHTML = `
-      <span class="screenshot-shape-icon">${shapeIcons[shape] || icons.square}</span>
-      <span class="screenshot-shape-text">${shapeNames[shape] || "Rectangle"}</span>
+      <span class="screenshot-shape-icon">${
+        shapeIcons[shape] || icons.square
+      }</span>
+      <span class="screenshot-shape-text">${
+        shapeNames[shape] || "Rectangle"
+      }</span>
     `;
 
     // Always show shape info
@@ -257,23 +293,29 @@ export default class ScreenshotToolbar {
 
   updateShapeHighlight(shape) {
     // Map display shapes to menu shapes
-    const menuShape = shape === "square" ? "rectangle" : shape === "circle" ? "ellipse" : shape;
+    const menuShape =
+      shape === "square" ? "rectangle" : shape === "circle" ? "ellipse" : shape;
 
     // Remove highlight from all options
-    this.shapeMenu.querySelectorAll(".screenshot-shape-option").forEach((option) => {
-      option.classList.remove("active");
-    });
+    this.shapeMenu
+      .querySelectorAll(".screenshot-shape-option")
+      .forEach((option) => {
+        option.classList.remove("active");
+      });
 
     // Add highlight to current shape
-    const activeOption = this.shapeMenu.querySelector(`[data-shape="${menuShape}"]`);
+    const activeOption = this.shapeMenu.querySelector(
+      `[data-shape="${menuShape}"]`
+    );
     if (activeOption) {
       activeOption.classList.add("active");
     }
   }
 
   showPreviewMode() {
-    console.log('[ScreenshotToolbar] showPreviewMode() called');
+    console.log("[ScreenshotToolbar] showPreviewMode() called");
     this.mode = "preview";
+    this.annotateBtn.style.display = "flex";
     this.acceptBtn.style.display = "flex";
     this.cancelBtn.style.display = "flex";
     this.closeBtn.style.display = "none";
@@ -285,15 +327,21 @@ export default class ScreenshotToolbar {
     if (this.shapeMenu) {
       this.shapeMenu.style.display = "none";
     }
-    const dropdownWrapper = this.toolbar?.querySelector(".screenshot-shape-dropdown-wrapper");
+    const dropdownWrapper = this.toolbar?.querySelector(
+      ".screenshot-shape-dropdown-wrapper"
+    );
     if (dropdownWrapper) {
       dropdownWrapper.style.display = "none";
     }
-    console.log('[ScreenshotToolbar] Preview mode set - acceptBtn display:', this.acceptBtn.style.display);
+    console.log(
+      "[ScreenshotToolbar] Preview mode set - annotateBtn display:",
+      this.annotateBtn.style.display
+    );
   }
 
   showSelectionMode() {
     this.mode = "selecting";
+    this.annotateBtn.style.display = "none";
     this.acceptBtn.style.display = "none";
     this.cancelBtn.style.display = "none";
     this.closeBtn.style.display = "flex";
@@ -306,7 +354,9 @@ export default class ScreenshotToolbar {
     if (this.shapeMenu) {
       this.shapeMenu.style.display = "";
     }
-    const dropdownWrapper = this.toolbar?.querySelector(".screenshot-shape-dropdown-wrapper");
+    const dropdownWrapper = this.toolbar?.querySelector(
+      ".screenshot-shape-dropdown-wrapper"
+    );
     if (dropdownWrapper) {
       dropdownWrapper.style.display = "flex";
     }
@@ -323,38 +373,49 @@ export default class ScreenshotToolbar {
   }
 
   show() {
-    console.log('[ScreenshotToolbar] show() called, toolbar exists:', !!this.toolbar);
+    console.log(
+      "[ScreenshotToolbar] show() called, toolbar exists:",
+      !!this.toolbar
+    );
     if (this.toolbar) {
       // Ensure toolbar is in DOM
       const inDOM = document.body.contains(this.toolbar);
-      console.log('[ScreenshotToolbar] Toolbar in DOM:', inDOM);
+      console.log("[ScreenshotToolbar] Toolbar in DOM:", inDOM);
       if (!inDOM) {
         document.body.appendChild(this.toolbar);
-        console.log('[ScreenshotToolbar] Appended toolbar to body');
+        console.log("[ScreenshotToolbar] Appended toolbar to body");
       }
       // Ensure toolbar wrapper is attached
       if (this.toolbarWrapper && !this.toolbar.contains(this.toolbarWrapper)) {
         this.toolbar.appendChild(this.toolbarWrapper);
-        console.log('[ScreenshotToolbar] Appended toolbarWrapper to toolbar');
+        console.log("[ScreenshotToolbar] Appended toolbarWrapper to toolbar");
       }
       this.toolbar.classList.remove("hidden");
-      console.log('[ScreenshotToolbar] Removed hidden class, display:', window.getComputedStyle(this.toolbar).display);
-      console.log('[ScreenshotToolbar] Toolbar z-index:', window.getComputedStyle(this.toolbar).zIndex);
+      console.log(
+        "[ScreenshotToolbar] Removed hidden class, display:",
+        window.getComputedStyle(this.toolbar).display
+      );
+      console.log(
+        "[ScreenshotToolbar] Toolbar z-index:",
+        window.getComputedStyle(this.toolbar).zIndex
+      );
     }
   }
 
   remove() {
-    console.log('[ScreenshotToolbar] remove() called');
-    console.trace('[ScreenshotToolbar] remove() stack trace');
+    console.log("[ScreenshotToolbar] remove() called");
+    console.trace("[ScreenshotToolbar] remove() stack trace");
     if (this.toolbar) {
       this.toolbar.remove();
       this.toolbar = null;
-      console.log('[ScreenshotToolbar] Toolbar DOM element removed and set to null');
+      console.log(
+        "[ScreenshotToolbar] Toolbar DOM element removed and set to null"
+      );
     }
     // Clear static instance reference
     if (ScreenshotToolbar.instance === this) {
       ScreenshotToolbar.instance = null;
-      console.log('[ScreenshotToolbar] Cleared static instance reference');
+      console.log("[ScreenshotToolbar] Cleared static instance reference");
     }
   }
 }

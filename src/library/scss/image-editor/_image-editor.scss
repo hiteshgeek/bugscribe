@@ -1,0 +1,198 @@
+@use "../mixins" as *;
+
+// Image Editor Overlay
+.image-editor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  // No background property - use mc-backdrop's background
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000001; // Above everything else
+}
+
+// Canvas Container
+.image-editor-canvas-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 20px;
+  overflow: auto;
+}
+
+// Canvas
+.image-editor-canvas {
+  max-width: 90vw;
+  max-height: calc(90vh - 120px); // Leave space for toolbar
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+}
+
+// Toolbar - Match screenshot toolbar style
+.image-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--timer-bg, #1a1a1a) 40%, transparent);
+  border-radius: var(--timer-border-radius, 12px);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.5));
+  margin-bottom: 20px;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  @include transition(background);
+
+  &:hover {
+    background: var(--timer-bg, #1a1a1a);
+  }
+}
+
+// Tool Buttons - Match screenshot toolbar control buttons
+.image-editor-tool-btn {
+  @include button-reset;
+  @include circle-button(var(--timer-control-size, 32px));
+  background: rgba(255, 255, 255, 0.15);
+  @include transition(background, transform);
+  position: relative;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    fill: var(--timer-text, #fff);
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.1);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.8) !important;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  &.active {
+    background: var(--bug-primary);
+  }
+}
+
+// Action Buttons (Done, Cancel) - Match screenshot toolbar action buttons
+.image-editor-action-btn {
+  @include button-reset;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  @include transition(all);
+  margin-left: auto; // Push to right
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  // Done button (green)
+  &:not(.image-editor-cancel-btn) {
+    background: color-mix(in srgb, var(--timer-primary, #2ecc71) 70%, transparent);
+    color: #fff;
+
+    &:hover {
+      background: var(--timer-primary, #2ecc71);
+      transform: scale(1.05);
+    }
+  }
+
+  // Cancel button (gray)
+  &.image-editor-cancel-btn {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--timer-text, #fff);
+    margin-left: 12px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.05);
+    }
+  }
+}
+
+// Shape Dropdown
+.image-editor-shape-dropdown {
+  position: relative;
+}
+
+.image-editor-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 140px;
+  background: rgba(0, 0, 0, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  @include transition(all);
+
+  &.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+}
+
+.image-editor-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  color: white;
+  cursor: pointer;
+  @include transition(background);
+
+  .shape-icon {
+    @include flex-center;
+    width: 20px;
+    height: 20px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      fill: white;
+    }
+  }
+
+  .shape-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
