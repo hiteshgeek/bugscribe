@@ -8,34 +8,37 @@
   width: 100%;
   height: 100%;
   // No background property - use mc-backdrop's background
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   z-index: 1000001; // Above everything else
 }
 
 // Canvas Container
 .image-editor-canvas-container {
-  flex: 1;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  max-width: 90vw;
+  max-height: calc(100vh - 140px); // Leave space for toolbar at bottom
   padding: 20px;
-  overflow: auto;
 }
 
 // Canvas
 .image-editor-canvas {
-  max-width: 90vw;
-  max-height: calc(90vh - 120px); // Leave space for toolbar
+  max-width: 100%;
+  max-height: 100%;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   border-radius: 4px;
 }
 
 // Toolbar - Match screenshot toolbar style
 .image-editor-toolbar {
+  position: fixed;
+  bottom: 30px; // Match screenshot toolbar position
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -44,7 +47,6 @@
   border-radius: var(--timer-border-radius, 12px);
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow-lg, 0 10px 40px rgba(0, 0, 0, 0.5));
-  margin-bottom: 20px;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   @include transition(background);
 
