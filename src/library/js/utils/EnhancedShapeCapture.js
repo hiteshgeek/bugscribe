@@ -352,9 +352,15 @@ export default class EnhancedShapeCapture {
   }
 
   async handleShapeChange(shape, resolve) {
-    // Handle instant capture modes (visible, full, any)
+    // Handle instant capture modes (visible, full, any) - now with preview
     if (shape === "visible" || shape === "full" || shape === "any") {
       console.log('[EnhancedShapeCapture] Instant capture mode selected:', shape);
+
+      // Store the previous shape to restore on cancel
+      const previousShape = this.currentShape;
+
+      // Hide preview and bug button before capture
+      document.querySelectorAll(".bug-element").forEach((el) => el.classList.add("hide_el"));
 
       // Hide toolbar and remove backdrop immediately before capture
       if (this.toolbar) {
@@ -379,14 +385,6 @@ export default class EnhancedShapeCapture {
       const { default: ScreenshotCapture } = await import('../ScreenshotCapture.js');
       const screenshotCapture = new ScreenshotCapture();
 
-      // Cleanup event listeners
-      if (this.cleanup) {
-        this.cleanup();
-      }
-
-      // Destroy toolbar
-      ScreenshotToolbar.destroyInstance();
-
       // Capture based on selected mode
       let imgURL;
       if (shape === "visible") {
@@ -397,8 +395,24 @@ export default class EnhancedShapeCapture {
         imgURL = await screenshotCapture.captureAny();
       }
 
-      // Resolve with the captured image (don't save these modes to lastUsedShape)
-      resolve(imgURL);
+      // If capture was cancelled, restore previous shape and restart
+      if (!imgURL) {
+        console.log('[EnhancedShapeCapture] Instant capture cancelled, restoring shape:', previousShape);
+        this.currentShape = previousShape;
+        EnhancedShapeCapture.lastUsedShape = previousShape;
+
+        // Cleanup existing listeners
+        if (this.cleanup) {
+          this.cleanup();
+        }
+
+        // Restart capture with previous shape
+        this.capture().then(resolve);
+        return;
+      }
+
+      // Show preview with accept/cancel
+      await this._showInstantCapturePreview(imgURL, previousShape, resolve);
       return;
     }
 
@@ -695,5 +709,92 @@ export default class EnhancedShapeCapture {
         dimensionsEl.style.top = `${rect.top + rect.height + offset}px`;
         break;
     }
+  }
+
+  async _showInstantCapturePreview(imgURL, previousShape, resolve) {
+    // Create backdrop using existing mc-backdrop class for consistency
+    const backdrop = document.createElement("div");
+    backdrop.className = "mc-backdrop";
+    backdrop.style.clipPath = "none"; // No clip path for full coverage
+
+    // Create preview image container
+    const imgContainer = document.createElement("div");
+    imgContainer.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    // Create preview image
+    const img = document.createElement("img");
+    img.src = imgURL;
+    img.style.cssText = `
+      max-width: 90vw;
+      max-height: 80vh;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    `;
+
+    imgContainer.appendChild(img);
+    document.body.appendChild(backdrop);
+    document.body.appendChild(imgContainer);
+
+    // Ensure toolbar exists, create if needed
+    if (!this.toolbar) {
+      this.toolbar = ScreenshotToolbar.getInstance(
+        () => {}, // onShapeChange - not needed in preview
+        () => {}, // onAccept - will be set below
+        () => {}, // onCancel - will be set below
+        () => {}  // onClose - will be set below
+      );
+      if (!this.toolbar.toolbar) {
+        this.toolbar.create();
+      }
+    }
+
+    // Show toolbar in preview mode
+    this.toolbar.show();
+    this.toolbar.showPreviewMode();
+
+    // Store handlers for accept/cancel
+    const handleAccept = () => {
+      cleanup();
+      ScreenshotToolbar.destroyInstance();
+      resolve(imgURL);
+    };
+
+    const handleCancel = () => {
+      console.log('[EnhancedShapeCapture] Instant capture preview cancelled, restoring shape:', previousShape);
+      cleanup();
+      this.currentShape = previousShape;
+      EnhancedShapeCapture.lastUsedShape = previousShape;
+      this.capture().then(resolve);
+    };
+
+    const handleKeyboard = (e) => {
+      if (e.key === "Enter") {
+        handleAccept();
+      } else if (e.key === "Escape") {
+        handleCancel();
+      }
+    };
+
+    const cleanup = () => {
+      backdrop.remove();
+      imgContainer.remove();
+      document.removeEventListener("keydown", handleKeyboard);
+    };
+
+    // Update toolbar callbacks
+    this.toolbar.onAccept = handleAccept;
+    this.toolbar.onCancel = handleCancel;
+
+    // Add keyboard listener
+    document.addEventListener("keydown", handleKeyboard);
   }
 }

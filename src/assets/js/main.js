@@ -8,6 +8,7 @@ if (typeof window !== "undefined") {
       bgColor: "#ff5733",
     },
     screenshot: {
+      defaultShape: "rectangle", // "rectangle", "ellipse", or "freeform"
       dimensionsPosition: "center", // false, "center", "right-bottom", "right-top", "left-bottom", "left-top"
     },
   });
