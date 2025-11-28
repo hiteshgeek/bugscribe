@@ -233,8 +233,26 @@ export default class ScreenshotToolbar {
     // Always show shape info
     this.shapeInfo.style.display = "flex";
 
+    // Update hint text based on shape
+    this._updateHintForShape(shape);
+
     // Update highlighted option in dropdown
     this.updateShapeHighlight(shape);
+  }
+
+  _updateHintForShape(shape) {
+    // Only update hint if in selection mode
+    if (this.mode !== "selecting") return;
+
+    if (shape === "rectangle" || shape === "square") {
+      this.hintText.textContent = "Hold Ctrl for square • Esc to cancel";
+      this.hintText.style.display = "block";
+    } else if (shape === "ellipse" || shape === "circle") {
+      this.hintText.textContent = "Hold Ctrl for circle • Esc to cancel";
+      this.hintText.style.display = "block";
+    } else {
+      this.hintText.style.display = "none";
+    }
   }
 
   updateShapeHighlight(shape) {
@@ -279,8 +297,9 @@ export default class ScreenshotToolbar {
     this.acceptBtn.style.display = "none";
     this.cancelBtn.style.display = "none";
     this.closeBtn.style.display = "flex";
-    this.hintText.style.display = "none";
-    this.hintText.textContent = "Hold Ctrl for square/circle • Esc to cancel";
+
+    // Update hint text based on current shape
+    this._updateHintForShape(this.currentShape);
 
     // Show shape dropdown and shape info in selection mode
     this.shapeInfo.style.display = "flex";

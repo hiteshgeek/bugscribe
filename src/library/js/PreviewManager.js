@@ -27,7 +27,7 @@ export default class PreviewManager {
   };
 
   showWrapper = () => {
-    if (!this.preview_wrapper) this.createWrapper();
+    // Always show bug button and other elements
     document
       .querySelectorAll(".bug-element")
       .forEach((el) => el.classList.remove("hide_el"));
@@ -95,7 +95,9 @@ export default class PreviewManager {
   // --- Image Preview ---
 
   showImagePreview = (index, thumbnailUrl) => {
-    this.createWrapper();
+    if (!this.preview_wrapper) {
+      this.createWrapper();
+    }
 
     const wrapper = document.createElement("div");
     wrapper.className = "image-preview-wrapper";
@@ -280,7 +282,9 @@ export default class PreviewManager {
   // --- Video Preview ---
 
   showVideoPreview = (index, thumbnailUrl) => {
-    this.createWrapper();
+    if (!this.preview_wrapper) {
+      this.createWrapper();
+    }
 
     const wrapper = document.createElement("div");
     wrapper.className = "video-preview-wrapper";

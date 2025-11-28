@@ -7,14 +7,18 @@ export default class EnhancedShapeCapture {
   constructor(utils, config = {}) {
     this.utils = utils;
     this.toolbar = null;
-    this.currentShape = EnhancedShapeCapture.lastUsedShape || "rectangle";
+
+    // Config for default shape: "rectangle", "ellipse", or "freeform"
+    const defaultShape = config.defaultShape || "rectangle";
+    this.currentShape = EnhancedShapeCapture.lastUsedShape || defaultShape;
+
     this.isCtrlPressed = false;
     this.isMoving = false;
     this.capturedImage = null;
     this.moveOffsetX = 0;
     this.moveOffsetY = 0;
-    // Config for dimensions label position: "center", "right-bottom", "right-top", "left-top", "left-bottom"
-    this.dimensionsPosition = config.dimensionsPosition || "center";
+    // Config for dimensions label position: "center", "right-bottom", "right-top", "left-top", "left-bottom", or false to hide
+    this.dimensionsPosition = config.dimensionsPosition !== undefined ? config.dimensionsPosition : "center";
   }
 
   async capture() {
@@ -145,8 +149,10 @@ export default class EnhancedShapeCapture {
         // Update toolbar to show effective shape
         this.toolbar.setShape(effectiveShape);
 
-        // Show dimensions for rectangle/square or radius for circle
-        if (effectiveShape === "rectangle" || effectiveShape === "square") {
+        // Show dimensions for rectangle/square or radius for circle (if not disabled)
+        if (this.dimensionsPosition === false) {
+          dimensionsEl.style.display = "none";
+        } else if (effectiveShape === "rectangle" || effectiveShape === "square") {
           dimensionsEl.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
           dimensionsEl.style.display = "block";
           this._positionDimensionsElement(dimensionsEl, rect);
@@ -551,9 +557,9 @@ export default class EnhancedShapeCapture {
       const clipPathValue = this._generateClipPath(effectiveShape, this.finalRect);
       backdrop.style.clipPath = clipPathValue;
 
-      // Update dimensions element position
+      // Update dimensions element position (if not disabled)
       const dimensionsEl = document.querySelector(".mc-selection-dimensions");
-      if (dimensionsEl && dimensionsEl.style.display !== "none") {
+      if (this.dimensionsPosition !== false && dimensionsEl && dimensionsEl.style.display !== "none") {
         const rect = { left: newLeft, top: newTop, width, height };
         this._positionDimensionsElement(dimensionsEl, rect);
       }
