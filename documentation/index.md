@@ -1,0 +1,15 @@
+# Bugscribe Documentation Index
+
+1. [Introduction](./01-introduction.md)
+2. [Installation](./02-installation.md)
+3. [Quick Start](./03-quick-start.md)
+4. [Configuration Options](./04-configuration-options.md)
+5. [UI Components](./05-ui-components.md)
+6. [Screenshot & Recording](./06-screenshot-recording.md)
+7. [Preview & Modal](./07-preview-modal.md)
+8. [Custom Styling](./08-custom-styling.md)
+9. [Extending Bugscribe](./09-extending-bugscribe.md)
+10. [API Reference](./10-api-reference.md)
+11. [Troubleshooting](./11-troubleshooting.md)
+12. [Contributing](./12-contributing.md)
+13. [License](./13-license.md)
